@@ -3,8 +3,7 @@
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Save, Store, CreditCard, Truck, Receipt, Bot } from 'lucide-react';
+import { Save, Store } from 'lucide-react';
 
 function SettingsSection({
   title,
@@ -48,11 +47,11 @@ export default function SettingsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
-          <p className="mt-1 text-muted-foreground">Configure your store</p>
+          <p className="mt-1 text-muted-foreground">General store configuration</p>
         </div>
         <button
           onClick={handleSave}
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
         >
           <Save className="h-4 w-4" />
           {saved ? 'Saved!' : 'Save Changes'}
@@ -61,13 +60,13 @@ export default function SettingsPage() {
 
       <div className="mt-8 space-y-6">
         <SettingsSection
-          title="General"
-          description="Store name, contact, and basic info."
+          title="Store Details"
+          description="Basic information about your store."
           icon={Store}
         >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Label htmlFor="shopName">Store Name</Label>
+              <Label htmlFor="shopName">Shop Name</Label>
               <Input
                 id="shopName"
                 value={shopName}
@@ -98,11 +97,10 @@ export default function SettingsPage() {
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="address">Address</Label>
-              <Textarea
+              <Input
                 id="address"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                rows={2}
                 placeholder="Street, City, Country"
                 className="mt-1.5"
               />
@@ -110,66 +108,43 @@ export default function SettingsPage() {
           </div>
         </SettingsSection>
 
-        <SettingsSection
-          title="Payments"
-          description="Configure payment providers."
-          icon={CreditCard}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="stripeKey">Stripe Secret Key</Label>
-              <Input id="stripeKey" type="password" placeholder="sk_live_..." className="mt-1.5" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="stripeWebhook">Stripe Webhook Secret</Label>
-              <Input
-                id="stripeWebhook"
-                type="password"
-                placeholder="whsec_..."
-                className="mt-1.5"
-              />
-            </div>
-          </div>
-        </SettingsSection>
-
-        <SettingsSection
-          title="Shipping"
-          description="Manage shipping methods and rates."
-          icon={Truck}
-        >
+        <div className="rounded-lg border bg-muted/30 p-6">
           <p className="text-sm text-muted-foreground">
-            Shipping configuration is coming soon. You&apos;ll be able to define zones, rates, and
-            carrier integrations here.
+            Looking for other settings? They have their own pages now:
           </p>
-        </SettingsSection>
-
-        <SettingsSection title="Tax" description="Configure tax rules and rates." icon={Receipt}>
-          <p className="text-sm text-muted-foreground">
-            Tax configuration is coming soon. EU VAT, US sales tax, and custom tax rules.
-          </p>
-        </SettingsSection>
-
-        <SettingsSection
-          title="AI"
-          description="Configure AI providers for product descriptions and SEO."
-          icon={Bot}
-        >
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <Label htmlFor="openaiKey">OpenAI API Key</Label>
-              <Input id="openaiKey" type="password" placeholder="sk-..." className="mt-1.5" />
-            </div>
-            <div className="sm:col-span-2">
-              <Label htmlFor="anthropicKey">Anthropic API Key</Label>
-              <Input
-                id="anthropicKey"
-                type="password"
-                placeholder="sk-ant-..."
-                className="mt-1.5"
-              />
-            </div>
-          </div>
-        </SettingsSection>
+          <ul className="mt-3 space-y-1 text-sm">
+            <li>
+              💳 <strong>Payments</strong> →{' '}
+              <a href="/plugins" className="text-primary hover:underline">
+                Plugins
+              </a>
+            </li>
+            <li>
+              🚚 <strong>Shipping</strong> →{' '}
+              <a href="/shipping" className="text-primary hover:underline">
+                Versand
+              </a>
+            </li>
+            <li>
+              🧮 <strong>Tax / MwSt</strong> →{' '}
+              <a href="/tax" className="text-primary hover:underline">
+                Steuern
+              </a>
+            </li>
+            <li>
+              🤖 <strong>AI Provider</strong> →{' '}
+              <a href="/ai" className="text-primary hover:underline">
+                AI Settings
+              </a>
+            </li>
+            <li>
+              📧 <strong>Emails</strong> →{' '}
+              <a href="/plugins" className="text-primary hover:underline">
+                Plugins
+              </a>
+            </li>
+          </ul>
+        </div>
       </div>
     </div>
   );
