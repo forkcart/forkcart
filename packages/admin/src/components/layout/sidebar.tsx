@@ -12,13 +12,6 @@ import {
   Settings,
   LogOut,
   Store,
-  Truck,
-  Mail,
-  Calculator,
-  MessageCircle,
-  Search,
-  Sparkles,
-  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { removeToken } from '@/lib/auth';
@@ -30,14 +23,7 @@ const NAV_ITEMS = [
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/shipping', label: 'Shipping', icon: Truck },
-  { href: '/tax', label: 'Tax', icon: Calculator },
-  { href: '/emails', label: 'Emails', icon: Mail },
-  { href: '/chatbot', label: 'Chatbot', icon: MessageCircle },
-  { href: '/search', label: 'Search', icon: Search },
-  { href: '/seo', label: 'SEO', icon: Globe },
   { href: '/plugins', label: 'Plugins', icon: Puzzle },
-  { href: '/ai', label: 'AI', icon: Sparkles },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;
 
