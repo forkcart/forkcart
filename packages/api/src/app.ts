@@ -14,6 +14,7 @@ import {
   OrderService,
   CustomerRepository,
   CustomerService,
+  CustomerAuthService,
   MediaRepository,
   MediaService,
   CartRepository,
@@ -23,10 +24,20 @@ import {
   PaymentProviderRegistry,
   UserRepository,
   AuthService,
+  ShippingRepository,
+  ShippingService,
   EventBus,
   PluginLoader,
+  EmailProviderRegistry,
+  EmailLogRepository,
+  EmailService,
+  registerEmailEventListeners,
+  TaxRepository,
+  TaxService,
+  VatValidator,
 } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
+import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
 import { errorHandler } from './middleware/error-handler';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
@@ -39,6 +50,11 @@ import { createProductImageRoutes } from './routes/v1/product-images';
 import { createCartRoutes } from './routes/v1/carts';
 import { createPaymentRoutes, createWebhookRoute } from './routes/v1/payments';
 import { createPluginRoutes } from './routes/v1/plugins';
+import { createEmailRoutes } from './routes/v1/emails';
+import { createShippingRoutes } from './routes/v1/shipping';
+import { createTaxRoutes } from './routes/v1/tax';
+import { createCustomerAuthRoutes, createCartAssignRoute } from './routes/v1/customer-auth';
+import { createStorefrontCustomerRoutes } from './routes/v1/storefront-customers';
 
 /** Create the Hono application with all routes and middleware */
 export async function createApp(db: Database) {
@@ -89,6 +105,7 @@ export async function createApp(db: Database) {
   const cartRepository = new CartRepository(db);
   const paymentRepository = new PaymentRepository(db);
   const userRepository = new UserRepository(db);
+  const shippingRepository = new ShippingRepository(db);
 
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
@@ -109,16 +126,53 @@ export async function createApp(db: Database) {
     eventBus,
   });
 
+  const shippingService = new ShippingService({ shippingRepository, eventBus });
+
+  // Tax system
+  const taxRepository = new TaxRepository(db);
+  const vatValidator = new VatValidator();
+  const taxService = new TaxService({
+    taxRepository,
+    vatValidator,
+    eventBus,
+    getProductTaxClassId: async (productId: string) => {
+      const product = await productRepository.findById(productId);
+      return ((product as Record<string, unknown>)?.['taxClassId'] as string | null) ?? null;
+    },
+  });
+
   const jwtSecret = process.env['SESSION_SECRET'] ?? '';
   const authService = new AuthService(userRepository, jwtSecret);
 
+  // Customer auth uses a separate secret (falls back to SESSION_SECRET with prefix)
+  const customerJwtSecret = process.env['CUSTOMER_JWT_SECRET'] ?? `customer_${jwtSecret}`;
+  const customerAuthService = new CustomerAuthService({
+    customerRepository,
+    eventBus,
+    jwtSecret: customerJwtSecret,
+  });
+
+  // Initialize email provider registry and service
+  const emailProviderRegistry = new EmailProviderRegistry();
+  const emailLogRepository = new EmailLogRepository(db);
+  const emailService = new EmailService({
+    emailRegistry: emailProviderRegistry,
+    emailLogRepository,
+  });
+
   // Initialize plugin loader and register built-in plugins
-  const pluginLoader = new PluginLoader(db, paymentProviderRegistry);
+  const pluginLoader = new PluginLoader(db, paymentProviderRegistry, emailProviderRegistry);
   pluginLoader.registerDefinition(stripePlugin);
-  // Future: pluginLoader.registerDefinition(paypalPlugin);
+  pluginLoader.registerDefinition({
+    ...mailgunPlugin,
+    createEmailProvider: createMailgunProvider,
+  });
 
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
+
+  // Register email event listeners (order confirmation, shipping, welcome)
+  registerEmailEventListeners(eventBus, emailService);
 
   // Auth middleware — protects all routes except /health and /auth/login
   app.use('*', createAuthMiddleware(authService));
@@ -136,6 +190,15 @@ export async function createApp(db: Database) {
   v1.route('/payments', createPaymentRoutes(paymentService));
   v1.route('/payments/webhook', createWebhookRoute(paymentService));
   v1.route('/plugins', createPluginRoutes(pluginLoader));
+  v1.route('/emails', createEmailRoutes(emailService));
+  v1.route('/shipping', createShippingRoutes(shippingService));
+  v1.route('/tax', createTaxRoutes(taxService));
+  v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService, cartService));
+  v1.route('/carts', createCartAssignRoute(cartService));
+  v1.route(
+    '/storefront/customers',
+    createStorefrontCustomerRoutes(customerAuthService, customerRepository, orderRepository),
+  );
 
   app.route('/api/v1', v1);
 

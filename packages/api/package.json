@@ -24,7 +24,8 @@
     "hono": "^4.6.0",
     "pino": "^9.5.0",
     "pino-pretty": "^13.0.0",
-    "zod": "^3.24.0"
+    "zod": "^3.24.0",
+    "@forkcart/plugin-mailgun": "workspace:*"
   },
   "devDependencies": {
     "tsx": "^4.19.0",

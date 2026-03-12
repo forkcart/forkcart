@@ -7,4 +7,7 @@ export * from './payments/index';
 export * from './media/index';
 export * from './plugins/index';
 export * from './auth/index';
+export * from './shipping/index';
+export * from './email/index';
+export * from './tax/index';
 export { createLogger } from './lib/logger';
