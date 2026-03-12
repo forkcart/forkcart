@@ -31,3 +31,6 @@ uploads/
 
 # Logs
 *.log
+
+# Uploads
+packages/api/uploads/
