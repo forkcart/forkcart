@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
+import { useAuth } from '@/components/auth/auth-provider';
 import { StripePayment } from '@/components/checkout/stripe-payment';
 import { PrepaymentForm } from '@/components/checkout/prepayment-form';
-import { Lock, CreditCard, ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react';
+import { Lock, CreditCard, ChevronRight, ChevronLeft, Check, Loader2, Truck } from 'lucide-react';
 import Link from 'next/link';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
@@ -34,11 +35,22 @@ interface ShippingData {
   country: string;
 }
 
-type CheckoutStep = 'shipping' | 'payment' | 'success';
+interface ShippingMethodOption {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  estimatedDays: string | null;
+  freeAbove: number | null;
+  calculatedPrice: number;
+}
+
+type CheckoutStep = 'address' | 'shipping' | 'payment' | 'success';
 
 export default function CheckoutPage() {
   const { items, subtotal, clearCart, serverCartId } = useCart();
-  const [step, setStep] = useState<CheckoutStep>('shipping');
+  const { customer, token } = useAuth();
+  const [step, setStep] = useState<CheckoutStep>('address');
   const [shipping, setShipping] = useState<ShippingData>({
     firstName: '',
     lastName: '',
@@ -48,6 +60,10 @@ export default function CheckoutPage() {
     postalCode: '',
     country: '',
   });
+  const [shippingMethods, setShippingMethods] = useState<ShippingMethodOption[]>([]);
+  const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('');
+  const [shippingCost, setShippingCost] = useState(0);
+  const [loadingShipping, setLoadingShipping] = useState(false);
   const [providers, setProviders] = useState<PaymentProviderConfig[]>([]);
   const [fallbackMode, setFallbackMode] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<string>('');
@@ -56,6 +72,48 @@ export default function CheckoutPage() {
   const [paymentError, setPaymentError] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState('');
+
+  // Prefill from logged-in customer's default address
+  useEffect(() => {
+    if (!customer || !token) return;
+
+    setShipping((s) => ({
+      ...s,
+      firstName: s.firstName || customer.firstName,
+      lastName: s.lastName || customer.lastName,
+      email: s.email || customer.email,
+    }));
+
+    // Try to load default address
+    fetch(`${API_URL}/api/v1/storefront/customers/${customer.id}/addresses`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => res.json())
+      .then(
+        (data: {
+          data: Array<{
+            isDefault: boolean;
+            addressLine1: string;
+            city: string;
+            postalCode: string;
+            country: string;
+          }>;
+        }) => {
+          const defaultAddr =
+            data.data?.find((a: { isDefault: boolean }) => a.isDefault) ?? data.data?.[0];
+          if (defaultAddr) {
+            setShipping((s) => ({
+              ...s,
+              address: s.address || defaultAddr.addressLine1,
+              city: s.city || defaultAddr.city,
+              postalCode: s.postalCode || defaultAddr.postalCode,
+              country: s.country || defaultAddr.country,
+            }));
+          }
+        },
+      )
+      .catch(() => {});
+  }, [customer, token]);
 
   // Fetch available payment providers
   useEffect(() => {
@@ -112,12 +170,44 @@ export default function CheckoutPage() {
     );
   }
 
-  async function handleShippingSubmit(e: React.FormEvent) {
+  async function handleAddressSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setPaymentError('');
+    setLoadingShipping(true);
+
+    try {
+      const res = await fetch(
+        `${API_URL}/api/v1/shipping/methods/available?country=${encodeURIComponent(shipping.country)}&total=${subtotal}`,
+      );
+      if (!res.ok) throw new Error('Failed to load shipping methods');
+      const data = (await res.json()) as { data: ShippingMethodOption[] };
+      setShippingMethods(data.data);
+
+      if (data.data.length > 0) {
+        setSelectedShippingMethod(data.data[0]!.id);
+        setShippingCost(data.data[0]!.calculatedPrice);
+      }
+
+      setStep('shipping');
+    } catch (err) {
+      setPaymentError(err instanceof Error ? err.message : 'Failed to load shipping methods');
+    } finally {
+      setLoadingShipping(false);
+    }
+  }
+
+  function handleShippingMethodSelect(methodId: string) {
+    setSelectedShippingMethod(methodId);
+    const method = shippingMethods.find((m) => m.id === methodId);
+    if (method) {
+      setShippingCost(method.calculatedPrice);
+    }
+  }
+
+  async function handleShippingSubmit() {
     setPaymentError('');
 
     if (!fallbackMode && selectedProvider) {
-      // Create payment intent with the selected provider
       setLoading(true);
       try {
         const res = await fetch(`${API_URL}/api/v1/payments/create-intent`, {
@@ -139,6 +229,7 @@ export default function CheckoutPage() {
               postalCode: shipping.postalCode,
               country: shipping.country,
             },
+            shippingMethodId: selectedShippingMethod,
           }),
         });
 
@@ -164,7 +255,6 @@ export default function CheckoutPage() {
         setLoading(false);
       }
     } else {
-      // Fallback mode — go directly to payment step with prepayment
       setStep('payment');
     }
   }
@@ -219,12 +309,16 @@ export default function CheckoutPage() {
     <div className="container-page py-12">
       {/* Step indicator */}
       <div className="mb-8 flex items-center gap-2 text-sm">
+        <span className={step === 'address' ? 'font-semibold text-gray-900' : 'text-gray-500'}>
+          1. Address
+        </span>
+        <ChevronRight className="h-4 w-4 text-gray-400" />
         <span className={step === 'shipping' ? 'font-semibold text-gray-900' : 'text-gray-500'}>
-          1. Shipping
+          2. Shipping
         </span>
         <ChevronRight className="h-4 w-4 text-gray-400" />
         <span className={step === 'payment' ? 'font-semibold text-gray-900' : 'text-gray-500'}>
-          2. Payment
+          3. Payment
         </span>
       </div>
 
@@ -232,9 +326,9 @@ export default function CheckoutPage() {
 
       <div className="mt-8 grid gap-12 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
-          {/* STEP 1: Shipping */}
-          {step === 'shipping' && (
-            <form onSubmit={handleShippingSubmit}>
+          {/* STEP 1: Address */}
+          {step === 'address' && (
+            <form onSubmit={handleAddressSubmit}>
               <section className="rounded-lg border p-6">
                 <h2 className="text-lg font-semibold text-gray-900">Shipping Address</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -343,7 +437,101 @@ export default function CheckoutPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loadingShipping}
+                className="mt-6 flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+              >
+                {loadingShipping ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Truck className="h-4 w-4" />
+                )}
+                Continue to Shipping
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </form>
+          )}
+
+          {/* STEP 2: Shipping Method */}
+          {step === 'shipping' && (
+            <div>
+              <button
+                onClick={() => setStep('address')}
+                className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              >
+                <ChevronLeft className="h-4 w-4" /> Back to Address
+              </button>
+
+              <section className="rounded-lg border p-6">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                  <Truck className="h-5 w-5" />
+                  Shipping Method
+                </h2>
+
+                {shippingMethods.length === 0 && (
+                  <p className="mt-4 text-sm text-gray-500">
+                    No shipping methods available for your country.
+                  </p>
+                )}
+
+                <div className="mt-4 space-y-3">
+                  {shippingMethods.map((method) => (
+                    <label
+                      key={method.id}
+                      className={`flex cursor-pointer items-center justify-between rounded-lg border p-4 transition ${
+                        selectedShippingMethod === method.id
+                          ? 'border-gray-900 bg-gray-50 ring-1 ring-gray-900'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="shippingMethod"
+                          value={method.id}
+                          checked={selectedShippingMethod === method.id}
+                          onChange={() => handleShippingMethodSelect(method.id)}
+                          className="h-4 w-4"
+                        />
+                        <div>
+                          <p className="font-medium text-gray-900">{method.name}</p>
+                          {method.description && (
+                            <p className="text-sm text-gray-500">{method.description}</p>
+                          )}
+                          {method.estimatedDays && (
+                            <p className="text-xs text-gray-400">
+                              Est. {method.estimatedDays} days
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {method.calculatedPrice === 0 ? (
+                          <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-sm font-medium text-green-800">
+                            Free!
+                          </span>
+                        ) : (
+                          <span className="font-medium">{formatPrice(method.calculatedPrice)}</span>
+                        )}
+                        {method.freeAbove && method.calculatedPrice > 0 && (
+                          <p className="text-xs text-gray-400">
+                            Free above {formatPrice(method.freeAbove)}
+                          </p>
+                        )}
+                      </div>
+                    </label>
+                  ))}
+                </div>
+
+                {paymentError && (
+                  <div className="mt-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                    {paymentError}
+                  </div>
+                )}
+              </section>
+
+              <button
+                onClick={handleShippingSubmit}
+                disabled={loading || !selectedShippingMethod}
                 className="mt-6 flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
               >
                 {loading ? (
@@ -354,7 +542,7 @@ export default function CheckoutPage() {
                 Continue to Payment
                 <ChevronRight className="h-4 w-4" />
               </button>
-            </form>
+            </div>
           )}
 
           {/* STEP 2: Payment */}
@@ -364,7 +552,7 @@ export default function CheckoutPage() {
                 onClick={() => setStep('shipping')}
                 className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
               >
-                <ChevronLeft className="h-4 w-4" /> Back to Shipping
+                <ChevronLeft className="h-4 w-4" /> Back to Shipping Method
               </button>
 
               <section className="rounded-lg border p-6">
@@ -442,11 +630,17 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Shipping</span>
-                <span className="font-medium text-green-600">Free</span>
+                <span className={`font-medium ${shippingCost === 0 ? 'text-green-600' : ''}`}>
+                  {step === 'address'
+                    ? '—'
+                    : shippingCost === 0
+                      ? 'Free'
+                      : formatPrice(shippingCost)}
+                </span>
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-semibold">Total</span>
-                <span className="text-lg font-bold">{formatPrice(subtotal)}</span>
+                <span className="text-lg font-bold">{formatPrice(subtotal + shippingCost)}</span>
               </div>
             </div>
 

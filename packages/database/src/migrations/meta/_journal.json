@@ -8,6 +8,13 @@
       "when": 1773341240018,
       "tag": "0000_hot_changeling",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1741813560000,
+      "tag": "0001_shipping-update",
+      "breakpoints": true
     }
   ]
 }
