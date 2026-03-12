@@ -54,8 +54,40 @@ export async function getCategoryBySlug(slug: string): Promise<Category> {
   return res.data;
 }
 
-export async function searchProducts(query: string): Promise<PaginatedResponse<Product>> {
-  return getProducts({ search: query, limit: 20 });
+export async function searchProducts(
+  query: string,
+  options?: {
+    category?: string;
+    priceMin?: number;
+    priceMax?: number;
+    sort?: string;
+    limit?: number;
+    offset?: number;
+  },
+): Promise<{
+  data: Product[];
+  pagination: { total: number; limit: number; offset: number; totalPages: number };
+  meta: { query: string; mode: string; suggestions?: string[] };
+}> {
+  const params = new URLSearchParams({ q: query });
+  if (options?.category) params.set('category', options.category);
+  if (options?.priceMin !== undefined) params.set('priceMin', String(options.priceMin));
+  if (options?.priceMax !== undefined) params.set('priceMax', String(options.priceMax));
+  if (options?.sort) params.set('sort', options.sort);
+  if (options?.limit) params.set('limit', String(options.limit));
+  if (options?.offset !== undefined) params.set('offset', String(options.offset));
+
+  return fetchApi(`/search?${params.toString()}`);
+}
+
+export async function getSearchSuggestions(query: string): Promise<{ data: string[] }> {
+  return fetchApi(`/search/suggestions?q=${encodeURIComponent(query)}`);
+}
+
+export async function getPopularSearches(): Promise<{
+  data: Array<{ query: string; searchCount: number }>;
+}> {
+  return fetchApi('/search/popular');
 }
 
 // Cart operations (client-side)

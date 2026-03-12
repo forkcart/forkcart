@@ -10,3 +10,7 @@ export * from './users';
 export * from './plugins';
 export * from './media';
 export * from './email-logs';
+export * from './seo';
+export * from './ai-settings';
+export * from './chatbot';
+export * from './search';

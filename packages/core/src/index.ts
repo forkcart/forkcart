@@ -10,4 +10,8 @@ export * from './auth/index';
 export * from './shipping/index';
 export * from './email/index';
 export * from './tax/index';
+export * from './ai/index';
+export * from './chatbot/index';
+export * from './search/index';
+export * from './seo/index';
 export { createLogger } from './lib/logger';
