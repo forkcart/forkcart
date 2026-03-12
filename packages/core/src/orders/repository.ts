@@ -128,6 +128,14 @@ export class OrderRepository {
     return result ?? null;
   }
 
+  async findByCustomerId(customerId: string) {
+    return this.db.query.orders.findMany({
+      where: eq(orders.customerId, customerId),
+      orderBy: [desc(orders.createdAt)],
+      limit: 50,
+    });
+  }
+
   async getStats() {
     const [totals] = await this.db
       .select({

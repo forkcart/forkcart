@@ -2,9 +2,10 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Search, ShoppingBag, Menu, X } from 'lucide-react';
+import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/cart/cart-provider';
+import { useAuth } from '@/components/auth/auth-provider';
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -12,6 +13,7 @@ export function Header() {
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
   const { itemCount } = useCart();
+  const { customer } = useAuth();
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -74,6 +76,13 @@ export function Header() {
                 <Search className="h-5 w-5" />
               </button>
             )}
+
+            <Link
+              href={customer ? '/account' : '/account/login'}
+              className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+            >
+              <User className="h-5 w-5" />
+            </Link>
 
             <Link href="/cart" className="relative rounded-md p-2 text-gray-600 hover:bg-gray-100">
               <ShoppingBag className="h-5 w-5" />

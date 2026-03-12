@@ -150,6 +150,42 @@ export class CartRepository {
     return image?.path ?? null;
   }
 
+  async findByCustomerId(customerId: string) {
+    const cart = await this.db.query.carts.findFirst({
+      where: eq(carts.customerId, customerId),
+      with: {
+        items: {
+          with: {
+            product: true,
+            variant: true,
+          },
+        },
+      },
+    });
+    return cart ?? null;
+  }
+
+  async assignToCustomer(cartId: string, customerId: string) {
+    const [cart] = await this.db
+      .update(carts)
+      .set({ customerId, updatedAt: new Date() })
+      .where(eq(carts.id, cartId))
+      .returning();
+    return cart ?? null;
+  }
+
+  async moveItems(fromCartId: string, toCartId: string) {
+    await this.db
+      .update(cartItems)
+      .set({ cartId: toCartId, updatedAt: new Date() })
+      .where(eq(cartItems.cartId, fromCartId));
+  }
+
+  async deleteCart(cartId: string) {
+    await this.db.delete(cartItems).where(eq(cartItems.cartId, cartId));
+    await this.db.delete(carts).where(eq(carts.id, cartId));
+  }
+
   private async touchCart(cartId: string) {
     await this.db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cartId));
   }
