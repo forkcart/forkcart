@@ -122,13 +122,13 @@ export default function SettingsPage() {
             <li>
               🚚 <strong>Shipping</strong> →{' '}
               <a href="/shipping" className="text-primary hover:underline">
-                Versand
+                Shipping
               </a>
             </li>
             <li>
-              🧮 <strong>Tax / MwSt</strong> →{' '}
+              🧮 <strong>Tax</strong> →{' '}
               <a href="/tax" className="text-primary hover:underline">
-                Steuern
+                Tax
               </a>
             </li>
             <li>
