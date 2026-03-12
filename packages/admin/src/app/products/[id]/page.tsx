@@ -2,10 +2,11 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
-import { formatPrice } from '@forkcart/shared';
+
 import { apiClient } from '@/lib/api-client';
 import type { Product } from '@forkcart/shared';
 import { ProductForm } from '@/components/products/product-form';
+import { ProductImages } from '@/components/products/product-images';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -62,12 +63,17 @@ export default function ProductDetailPage() {
         )}
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 space-y-8">
         <ProductForm
           initialData={isNew ? undefined : data?.data}
           onSubmit={(values) => saveMutation.mutate(values)}
           isSubmitting={saveMutation.isPending}
         />
+
+        {/* Product Images — only show for existing products */}
+        {!isNew && (
+          <ProductImages productId={id} />
+        )}
       </div>
     </div>
   );

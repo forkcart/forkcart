@@ -2,11 +2,15 @@
   "name": "forkcart",
   "version": "0.1.0",
   "private": true,
-  "description": "AI-First Open Source E-Commerce Platform",
+  "description": "The AI-native e-commerce platform",
   "license": "MIT",
+  "homepage": "https://github.com/forkcart/forkcart#readme",
   "repository": {
     "type": "git",
     "url": "https://github.com/forkcart/forkcart.git"
+  },
+  "bugs": {
+    "url": "https://github.com/forkcart/forkcart/issues"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -30,6 +34,8 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^22.10.0",
     "husky": "^9.1.0",
     "lint-staged": "^15.2.0",
@@ -45,5 +51,9 @@
     "*.{json,md}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3"
   }
 }

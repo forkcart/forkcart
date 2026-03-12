@@ -1,4 +1,4 @@
-import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types.js';
+import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types';
 
 /** OpenAI provider using the REST API directly (no SDK dependency) */
 export class OpenAIProvider implements AIProvider {

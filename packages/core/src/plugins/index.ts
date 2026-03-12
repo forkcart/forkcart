@@ -1,2 +1,4 @@
-export { EventBus } from './event-bus.js';
-export type { DomainEvent, EventHandler } from './types.js';
+export { EventBus } from './event-bus';
+export { PluginLoader } from './plugin-loader';
+export type { PluginDefinition } from './plugin-loader';
+export type { DomainEvent, EventHandler } from './types';

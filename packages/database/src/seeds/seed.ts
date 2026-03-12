@@ -1,6 +1,6 @@
-import { createDatabase } from '../connection.js';
-import { categories, products, productCategories, users, shippingMethods, taxRules } from '../schemas/index.js';
-import crypto from 'node:crypto';
+import { createDatabase } from '../connection';
+import { categories, products, productCategories, users, shippingMethods, taxRules } from '../schemas/index';
+import bcrypt from 'bcryptjs';
 
 const connectionString = process.env['DATABASE_URL'];
 if (!connectionString) {
@@ -10,20 +10,21 @@ if (!connectionString) {
 
 const db = createDatabase(connectionString);
 
-/** Simple password hash for seeding (use bcrypt/argon2 in production) */
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex');
+/** Hash password with bcrypt */
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
 }
 
 async function seed() {
   console.log('Seeding database...');
 
   // Create admin user
+  const hashedPassword = await hashPassword('admin123');
   const [adminUser] = await db
     .insert(users)
     .values({
       email: 'admin@forkcart.dev',
-      passwordHash: hashPassword('admin123'),
+      passwordHash: hashedPassword,
       firstName: 'Admin',
       lastName: 'User',
       role: 'superadmin',

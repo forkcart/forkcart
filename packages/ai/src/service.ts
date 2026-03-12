@@ -1,6 +1,6 @@
 import pino from 'pino';
-import type { AIConfig, AIProvider, TextGenerationOptions, TextGenerationResult } from './types.js';
-import { createAIProvider } from './providers/index.js';
+import type { AIConfig, AIProvider, TextGenerationOptions, TextGenerationResult } from './types';
+import { createAIProvider } from './providers/index';
 
 const logger = pino({ name: 'ai-service' });
 

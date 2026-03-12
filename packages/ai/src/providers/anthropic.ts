@@ -1,4 +1,4 @@
-import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types.js';
+import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types';
 
 /** Anthropic provider using the REST API directly */
 export class AnthropicProvider implements AIProvider {

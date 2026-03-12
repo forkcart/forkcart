@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import * as schema from './schemas/index.js';
+import * as schema from './schemas/index';
 
 /** Create a database connection from a connection string */
 export function createDatabase(connectionString: string) {

@@ -1,5 +1,5 @@
-import { createLogger } from '../lib/logger.js';
-import type { DomainEvent, EventHandler } from './types.js';
+import { createLogger } from '../lib/logger';
+import type { DomainEvent, EventHandler } from './types';
 
 const logger = createLogger('event-bus');
 

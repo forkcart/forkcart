@@ -1,4 +1,4 @@
-import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types.js';
+import type { AIProvider, TextGenerationOptions, TextGenerationResult } from '../types';
 
 /** Ollama provider for local/self-hosted models */
 export class OllamaProvider implements AIProvider {
