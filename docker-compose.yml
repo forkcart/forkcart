@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: forkcart-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forkcart
+      POSTGRES_PASSWORD: forkcart
+      POSTGRES_DB: forkcart
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forkcart"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: packages/api/Dockerfile
+    container_name: forkcart-api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    environment:
+      DATABASE_URL: postgresql://forkcart:forkcart@postgres:5432/forkcart
+      API_PORT: "4000"
+      API_HOST: "0.0.0.0"
+      SESSION_SECRET: "change-me-in-production"
+      LOG_LEVEL: "info"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: .
+      dockerfile: packages/admin/Dockerfile
+    container_name: forkcart-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://api:4000
+    depends_on:
+      - api
+
+  storefront:
+    build:
+      context: .
+      dockerfile: packages/storefront/Dockerfile
+    container_name: forkcart-storefront
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_STOREFRONT_API_URL: http://api:4000
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
