@@ -1,7 +1,7 @@
 import { Sidebar } from '@/components/layout/sidebar';
 import { AuthGuard } from '@/components/layout/auth-guard';
 
-export default function TaxLayout({ children }: { children: React.ReactNode }) {
+export default function EmailsLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <div className="flex h-screen">
