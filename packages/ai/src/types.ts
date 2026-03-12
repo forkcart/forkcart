@@ -1,40 +1,41 @@
-/** Configuration for the AI layer */
-export interface AIConfig {
-  defaultProvider: 'openai' | 'anthropic' | 'ollama';
-  providers: {
-    openai?: { apiKey: string; model?: string };
-    anthropic?: { apiKey: string; model?: string };
-    ollama?: { baseUrl: string; model?: string };
-  };
-  cache?: {
-    enabled: boolean;
-    ttlSeconds: number;
-  };
+/** Supported AI provider identifiers */
+export type AIProviderId = 'openai' | 'anthropic' | 'gemini' | 'openrouter';
+
+/** Chat message for AI conversations */
+export interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
 }
 
-/** Text generation options */
-export interface TextGenerationOptions {
-  prompt: string;
-  systemPrompt?: string;
+/** Options for AI chat completion */
+export interface ChatOptions {
+  model?: string;
   maxTokens?: number;
   temperature?: number;
-  provider?: 'openai' | 'anthropic' | 'ollama';
 }
 
-/** Text generation result */
-export interface TextGenerationResult {
-  text: string;
-  provider: string;
+/** Response from an AI chat completion */
+export interface ChatResponse {
+  content: string;
   model: string;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
   };
 }
 
-/** Provider interface — all AI providers implement this */
+/** AI provider interface — all providers implement this */
 export interface AIProvider {
+  readonly id: AIProviderId;
   readonly name: string;
-  generateText(options: TextGenerationOptions): Promise<TextGenerationResult>;
+  readonly defaultModel: string;
+  chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse>;
+  isConfigured(): boolean;
+}
+
+/** Stored AI settings (from database) */
+export interface AISettings {
+  provider: AIProviderId;
+  apiKey: string;
+  model?: string;
 }

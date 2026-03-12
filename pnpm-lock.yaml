@@ -110,6 +110,9 @@ importers:
 
   packages/api:
     dependencies:
+      '@forkcart/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@forkcart/core':
         specifier: workspace:*
         version: link:../core
@@ -156,6 +159,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@forkcart/ai':
+        specifier: workspace:*
+        version: link:../ai
       '@forkcart/database':
         specifier: workspace:*
         version: link:../database

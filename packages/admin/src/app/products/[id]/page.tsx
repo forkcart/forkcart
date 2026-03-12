@@ -66,6 +66,7 @@ export default function ProductDetailPage() {
       <div className="mt-8 space-y-8">
         <ProductForm
           initialData={isNew ? undefined : data?.data}
+          productId={isNew ? undefined : id}
           onSubmit={(values) => saveMutation.mutate(values)}
           isSubmitting={saveMutation.isPending}
         />

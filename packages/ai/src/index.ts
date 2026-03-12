@@ -1,3 +1,18 @@
-export type { AIProvider, AIConfig, TextGenerationOptions, TextGenerationResult } from './types';
-export { AIService } from './service';
-export { createAIProvider } from './providers/index';
+export type {
+  AIProvider,
+  AIProviderId,
+  AISettings,
+  ChatMessage,
+  ChatOptions,
+  ChatResponse,
+} from './types';
+export { AIProviderRegistry } from './registry';
+export type { AIProviderInfo } from './registry';
+export { OpenAIProvider } from './providers/openai';
+export { AnthropicProvider } from './providers/anthropic';
+export { GeminiProvider } from './providers/gemini';
+export { OpenRouterProvider } from './providers/openrouter';
+
+// Legacy exports for backward compatibility (ChatbotService, SearchService)
+export { AIService } from './legacy';
+export type { AIConfig, TextGenerationOptions, TextGenerationResult } from './legacy';

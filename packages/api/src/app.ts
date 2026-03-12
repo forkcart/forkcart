@@ -5,7 +5,8 @@ import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { resolve, relative } from 'node:path';
 import type { Database } from '@forkcart/database';
-import { AIProviderRegistry } from '@forkcart/ai';
+import { AIProviderRegistry, AIService } from '@forkcart/ai';
+import type { AIConfig } from '@forkcart/ai';
 import {
   ProductRepository,
   ProductService,
@@ -213,10 +214,9 @@ export async function createApp(db: Database) {
 
   // Legacy AI service for chatbot (env-based config — will be migrated later)
   const aiConfig = buildAIConfig();
-  let aiService: import('@forkcart/ai').AIService | null = null;
+  let aiService: AIService | null = null;
   if (aiConfig) {
     try {
-      const { AIService } = await import('@forkcart/ai');
       aiService = new AIService(aiConfig);
     } catch {
       // AI not available — chatbot will be disabled
@@ -303,7 +303,7 @@ export async function createApp(db: Database) {
 }
 
 /** Build AI config from environment variables (returns null if no provider configured) */
-function buildAIConfig(): import('@forkcart/ai').AIConfig | null {
+function buildAIConfig(): AIConfig | null {
   const openaiKey = process.env['OPENAI_API_KEY'];
   const anthropicKey = process.env['ANTHROPIC_API_KEY'];
   const ollamaUrl = process.env['OLLAMA_BASE_URL'];

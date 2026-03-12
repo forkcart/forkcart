@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@forkcart/ai": "workspace:*",
     "@forkcart/core": "workspace:*",
     "@forkcart/database": "workspace:*",
     "@forkcart/plugin-stripe": "workspace:*",
