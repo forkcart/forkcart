@@ -116,6 +116,9 @@ importers:
       '@forkcart/database':
         specifier: workspace:*
         version: link:../database
+      '@forkcart/plugin-mailgun':
+        specifier: workspace:*
+        version: link:../plugins/mailgun
       '@forkcart/plugin-stripe':
         specifier: workspace:*
         version: link:../plugins/stripe
@@ -215,6 +218,16 @@ importers:
       vitest:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.15)
+
+  packages/plugins/mailgun:
+    dependencies:
+      '@forkcart/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
 
   packages/plugins/stripe:
     dependencies:

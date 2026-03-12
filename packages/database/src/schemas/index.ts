@@ -9,3 +9,4 @@ export * from './tax';
 export * from './users';
 export * from './plugins';
 export * from './media';
+export * from './email-logs';

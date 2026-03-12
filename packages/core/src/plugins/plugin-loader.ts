@@ -3,6 +3,8 @@ import type { Database } from '@forkcart/database';
 import { plugins, pluginSettings } from '@forkcart/database/schemas';
 import type { PaymentProvider } from '../payments/provider';
 import type { PaymentProviderRegistry } from '../payments/registry';
+import type { EmailProvider } from '../email/provider';
+import type { EmailProviderRegistry } from '../email/registry';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('plugin-loader');
@@ -14,8 +16,10 @@ export interface PluginDefinition {
   description: string;
   author: string;
   type: 'payment' | 'shipping' | 'notification' | 'general';
-  /** Factory function that creates the provider instance */
+  /** Factory function that creates the payment provider instance */
   createProvider?: () => PaymentProvider;
+  /** Factory function that creates the email provider instance */
+  createEmailProvider?: () => EmailProvider;
   /** Required settings with defaults */
   defaultSettings?: Record<string, unknown>;
 }
@@ -30,6 +34,7 @@ export class PluginLoader {
   constructor(
     private readonly db: Database,
     private readonly paymentRegistry: PaymentProviderRegistry,
+    private readonly emailRegistry?: EmailProviderRegistry,
   ) {}
 
   /** Register a plugin definition (called at app startup) */
@@ -120,6 +125,11 @@ export class PluginLoader {
         await provider.initialize(settings);
         this.paymentRegistry.register(provider);
         logger.info({ pluginName: plugin.name }, 'Payment provider plugin loaded');
+      } else if (def.type === 'notification' && def.createEmailProvider && this.emailRegistry) {
+        const provider = def.createEmailProvider();
+        await provider.initialize(settings);
+        this.emailRegistry.register(provider);
+        logger.info({ pluginName: plugin.name }, 'Email provider plugin loaded');
       }
     }
 
@@ -137,7 +147,8 @@ export class PluginLoader {
 
     return allPlugins.map((p) => {
       const def = this.knownPlugins.get(p.name);
-      const provider = def?.createProvider?.();
+      const paymentProvider = def?.createProvider?.();
+      const emailProvider = def?.createEmailProvider?.();
       return {
         id: p.id,
         name: p.name,
@@ -155,7 +166,8 @@ export class PluginLoader {
                 : null // mask secrets
               : s.value,
         })),
-        requiredSettings: provider?.getRequiredSettings() ?? [],
+        requiredSettings:
+          paymentProvider?.getRequiredSettings() ?? emailProvider?.getRequiredSettings() ?? [],
         installedAt: p.installedAt,
       };
     });
@@ -178,7 +190,7 @@ export class PluginLoader {
     const def = this.knownPlugins.get(plugin.name);
 
     if (active && def?.type === 'payment' && def.createProvider) {
-      // Initialize and register
+      // Initialize and register payment provider
       const provider = def.createProvider();
       const settings: Record<string, unknown> = {};
       for (const s of plugin.settings) {
@@ -186,14 +198,34 @@ export class PluginLoader {
       }
       await provider.initialize(settings);
       this.paymentRegistry.register(provider);
-      logger.info({ pluginName: plugin.name }, 'Plugin activated');
+      logger.info({ pluginName: plugin.name }, 'Payment plugin activated');
+    } else if (
+      active &&
+      def?.type === 'notification' &&
+      def.createEmailProvider &&
+      this.emailRegistry
+    ) {
+      // Initialize and register email provider
+      const provider = def.createEmailProvider();
+      const settings: Record<string, unknown> = {};
+      for (const s of plugin.settings) {
+        settings[s.key] = s.value;
+      }
+      await provider.initialize(settings);
+      this.emailRegistry.register(provider);
+      logger.info({ pluginName: plugin.name }, 'Email plugin activated');
     } else if (!active && def?.type === 'payment') {
-      // Unregister
       const provider = def.createProvider?.();
       if (provider) {
         this.paymentRegistry.unregister(provider.id);
       }
-      logger.info({ pluginName: plugin.name }, 'Plugin deactivated');
+      logger.info({ pluginName: plugin.name }, 'Payment plugin deactivated');
+    } else if (!active && def?.type === 'notification' && this.emailRegistry) {
+      const provider = def.createEmailProvider?.();
+      if (provider) {
+        this.emailRegistry.unregister(provider.id);
+      }
+      logger.info({ pluginName: plugin.name }, 'Email plugin deactivated');
     }
   }
 
@@ -228,16 +260,22 @@ export class PluginLoader {
     // If plugin is active, re-initialize provider with new settings
     if (plugin.isActive) {
       const def = this.knownPlugins.get(plugin.name);
+      const mergedSettings: Record<string, unknown> = {};
+      for (const s of plugin.settings) {
+        mergedSettings[s.key] = s.value;
+      }
+      Object.assign(mergedSettings, newSettings);
+
       if (def?.type === 'payment' && def.createProvider) {
         const provider = def.createProvider();
-        const mergedSettings: Record<string, unknown> = {};
-        for (const s of plugin.settings) {
-          mergedSettings[s.key] = s.value;
-        }
-        Object.assign(mergedSettings, newSettings);
         await provider.initialize(mergedSettings);
         this.paymentRegistry.register(provider);
-        logger.info({ pluginName: plugin.name }, 'Plugin re-initialized with new settings');
+        logger.info({ pluginName: plugin.name }, 'Payment plugin re-initialized with new settings');
+      } else if (def?.type === 'notification' && def.createEmailProvider && this.emailRegistry) {
+        const provider = def.createEmailProvider();
+        await provider.initialize(mergedSettings);
+        this.emailRegistry.register(provider);
+        logger.info({ pluginName: plugin.name }, 'Email plugin re-initialized with new settings');
       }
     }
 
