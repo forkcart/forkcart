@@ -1,147 +1,146 @@
-# 🍴 ForkCart
+```
+  ___         _     ___          _
+ | __|__ _ _ | |__ / __|__ _ _ _| |_
+ | _/ _ \ '_|| / /| (__/ _` | '_|  _|
+ |_|\___/_|  |_\_\ \___\__,_|_|  \__|
+```
 
-**AI-First Open Source E-Commerce Platform**
+**The AI-native e-commerce platform. Open source. Plugin-first. Built for builders.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-
-ForkCart is a modern, modular e-commerce platform built for developers who want full control over their stack. It's designed from the ground up with AI capabilities baked in — not bolted on.
-
-## Why ForkCart?
-
-- **AI-First** — Built-in AI layer for product descriptions, SEO, translations, and image generation. Provider-agnostic: OpenAI, Anthropic, or self-hosted via Ollama.
-- **Clean Architecture** — Business logic lives in a pure core package with no HTTP or database dependencies. Testable, composable, swappable.
-- **Modern Stack** — TypeScript strict mode, Hono for the API, Drizzle ORM, Next.js 15 for both admin and storefront.
-- **Plugin System** — Event-driven architecture with hooks for extending every part of the platform.
-- **Developer Experience** — Monorepo with Turborepo, shared Zod schemas, type-safe from database to frontend.
-
-## Architecture
-
-```
-┌─────────────┐  ┌─────────────┐
-│  Storefront  │  │    Admin    │   Next.js 15 (App Router)
-│  (SSR/SSG)   │  │   Panel    │   Tailwind + Shadcn/ui
-└──────┬───────┘  └──────┬──────┘
-       │                 │
-       └────────┬────────┘
-                │
-         ┌──────▼──────┐
-         │   REST API   │              Hono + OpenAPI
-         │  /api/v1/*   │
-         └──────┬───────┘
-                │
-         ┌──────▼──────┐
-         │    Core      │              Pure business logic
-         │  Services    │              Event-driven
-         └──────┬───────┘
-                │
-    ┌───────────┼───────────┐
-    │           │           │
-┌───▼───┐  ┌───▼───┐  ┌───▼───┐
-│  DB   │  │  AI   │  │Plugins│
-│Drizzle│  │Layer  │  │System │
-└───────┘  └───────┘  └───────┘
-```
-
-## Quick Start
-
-### Prerequisites
-
-- Node.js >= 20
-- pnpm >= 9
-- Docker (for PostgreSQL)
-
-### Setup
-
-```bash
-# Clone
-git clone https://github.com/forkcart/forkcart.git
-cd forkcart
-
-# Install
-pnpm install
-
-# Start database
-docker compose up -d postgres
-
-# Configure environment
-cp .env.example .env
-
-# Run migrations & seed
-pnpm db:migrate
-pnpm db:seed
-
-# Start everything
-pnpm dev
-```
-
-### What's Running
-
-| Service    | URL                    | Description           |
-|------------|------------------------|-----------------------|
-| Storefront | http://localhost:3000   | Customer-facing shop  |
-| Admin      | http://localhost:3001   | Management panel      |
-| API        | http://localhost:4000   | REST API              |
-| DB Studio  | `pnpm db:studio`       | Drizzle Studio        |
-
-**Default admin login:** `admin@forkcart.dev` / `admin123`
-
-## Packages
-
-| Package | Description |
-|---------|-------------|
-| `@forkcart/shared` | Zod schemas, TypeScript types, utilities |
-| `@forkcart/database` | Drizzle ORM schemas, migrations, seeds |
-| `@forkcart/core` | Business logic — products, orders, cart, payments |
-| `@forkcart/api` | Hono REST API with OpenAPI docs |
-| `@forkcart/admin` | Next.js 15 admin panel with Shadcn/ui |
-| `@forkcart/storefront` | Next.js 15 SSR storefront |
-| `@forkcart/ai` | AI provider abstraction (OpenAI, Anthropic, Ollama) |
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|------------|
-| Language | TypeScript (strict) |
-| Package Manager | pnpm workspaces |
-| Build | Turborepo |
-| API | Hono |
-| Database | PostgreSQL + Drizzle ORM |
-| Frontend | Next.js 15 (App Router) |
-| UI Components | Shadcn/ui + Tailwind CSS |
-| Validation | Zod |
-| Auth | Session-based |
-| Testing | Vitest |
-| AI | OpenAI / Anthropic / Ollama |
-
-## Project Principles
-
-1. **Dependency Inversion** — Core has zero infrastructure dependencies
-2. **Clean Architecture** — Use Cases → Repositories → Database
-3. **Event-Driven** — Every significant action emits domain events
-4. **Type-Safe** — TypeScript strict + Zod at all boundaries
-5. **Modular** — Each module is independently testable
-6. **Convention over Configuration** — Sensible defaults, everything configurable
-
-## Docker
-
-```bash
-# Start everything (Postgres + API + Admin + Storefront)
-docker compose up -d
-
-# Just the database
-docker compose up -d postgres
-```
-
-## Contributing
-
-We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+[![Discord](https://img.shields.io/badge/Discord-Join%20us-7289da.svg)](https://discord.gg/forkcart)
 
 ---
 
-Built with ❤️ and a healthy disrespect for legacy e-commerce platforms.
+## What is ForkCart?
+
+ForkCart is a modular, open source e-commerce platform built from the ground up with AI capabilities and a plugin-first architecture. No vendor lock-in. Swap out payments, shipping, or AI providers without touching your core code. Own your store, own your data.
+
+## ✨ Features
+
+- 🔌 **Plugin System** — Payments, shipping, AI — everything is swappable. Write a plugin in 50 lines.
+- 🤖 **AI-native** — Product descriptions, smart search, chatbot, auto-categorization — AI is a first-class citizen, not a bolt-on.
+- 🛒 **Full Shop** — Products, categories, cart, checkout, orders — the whole deal.
+- 📊 **Admin Panel** — Dashboard, product management, customers, orders, plugin settings — all in one place.
+- 🖼️ **Media Management** — Image uploads, product galleries, drag & drop.
+- 🔐 **Auth** — JWT-based authentication with role-based access control.
+- 💳 **Payment Plugins** — Stripe included. PayPal and Klarna coming soon.
+- 📦 **Modern Stack** — Next.js 15, Hono, Drizzle ORM, PostgreSQL, TypeScript end-to-end.
+
+## 🚀 Quick Start
+
+```bash
+# 1. Clone
+git clone https://github.com/forkcart/forkcart.git
+cd forkcart
+
+# 2. Install dependencies
+pnpm install
+
+# 3. Configure environment
+cp .env.example .env
+# Edit .env — at minimum set DATABASE_URL
+
+# 4. Run migrations
+pnpm db:migrate
+
+# 5. Start development
+pnpm dev
+```
+
+The storefront runs on `http://localhost:3000`, admin on `http://localhost:3001`, and the API on `http://localhost:4000`.
+
+## 🏗️ Architecture
+
+ForkCart is a monorepo powered by pnpm workspaces and Turborepo:
+
+```
+forkcart/
+├── packages/
+│   ├── api/            # Hono REST API (Port 4000)
+│   ├── admin/          # Next.js 15 Admin Panel (Port 3001)
+│   ├── storefront/     # Next.js 15 Storefront (Port 3000)
+│   ├── database/       # Drizzle ORM + PostgreSQL schemas
+│   ├── core/           # Business logic — services, repositories, events
+│   ├── shared/         # Types, constants, utils shared across packages
+│   ├── ai/             # AI providers (OpenAI, Anthropic, Ollama)
+│   └── plugins/
+│       └── stripe/     # Stripe payment plugin (reference implementation)
+```
+
+**Request flow:**
+
+```
+Client → Hono Route → Service → Repository → Drizzle → PostgreSQL
+                         ↓
+                      EventBus → Plugin handlers
+```
+
+Clean architecture: routes don't touch the database, services don't know about HTTP, and plugins react to domain events.
+
+## 🔌 Plugin System
+
+ForkCart's plugin system is interface-based. Every payment provider, shipping method, or AI integration implements a well-defined TypeScript interface. The `PluginLoader` handles registration, activation, and settings — all managed from the admin panel.
+
+```typescript
+// That's all it takes to define a plugin
+export const myPlugin: PluginDefinition = {
+  name: 'my-payment',
+  version: '1.0.0',
+  description: 'My custom payment provider',
+  author: 'You',
+  type: 'payment',
+  createProvider: () => new MyPaymentProvider(),
+};
+```
+
+Plugins are activated/deactivated at runtime. Settings are stored in the database and configurable through the admin UI.
+
+👉 **[Full Plugin Development Guide →](docs/plugins.md)**
+
+## 🆚 Why ForkCart?
+
+| | ForkCart | Shopify | Medusa | Saleor |
+|---|---|---|---|---|
+| **Open Source** | ✅ MIT | ❌ | ✅ | ✅ |
+| **AI-native** | ✅ Built-in | 💰 Apps | ❌ DIY | ❌ DIY |
+| **Plugin System** | ✅ Interface-based | 🔒 App Store | 🟡 Modules | 🟡 Apps |
+| **Self-hosted** | ✅ | ❌ | ✅ | ✅ |
+| **Vendor Lock-in** | ❌ None | 🔒 Full | 🟡 Some | 🟡 Some |
+| **TypeScript** | ✅ End-to-end | ❌ Ruby/Liquid | ✅ | ✅ Python |
+
+## 📸 Screenshots
+
+<!-- TODO: Add screenshots -->
+<p align="center">
+  <em>Admin Panel — coming soon</em>
+</p>
+
+<p align="center">
+  <em>Storefront — coming soon</em>
+</p>
+
+## 🤝 Contributing
+
+We'd love your help! Whether it's fixing a bug, adding a feature, or improving docs — every contribution matters.
+
+👉 **[Read the Contributing Guide →](CONTRIBUTING.md)**
+
+## 📖 Documentation
+
+- [Plugin Development Guide](docs/plugins.md)
+- [Self-Hosting Guide](docs/self-hosting.md)
+- [Architecture Overview](ARCHITECTURE.md)
+- [Feature Checklist](FEATURES.md)
+
+## 📄 License
+
+[MIT](LICENSE) © 2026 ForkCart Contributors
+
+---
+
+<p align="center">
+  Built with 🦞 by the ForkCart community
+</p>

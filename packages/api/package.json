@@ -17,6 +17,7 @@
   "dependencies": {
     "@forkcart/core": "workspace:*",
     "@forkcart/database": "workspace:*",
+    "@forkcart/plugin-stripe": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "@hono/node-server": "^1.13.0",
     "@hono/zod-openapi": "^0.18.0",

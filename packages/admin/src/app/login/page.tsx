@@ -5,6 +5,22 @@ import { useRouter } from 'next/navigation';
 import { Store } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { setToken } from '@/lib/auth';
+import { apiClient } from '@/lib/api-client';
+
+interface LoginResponse {
+  data: {
+    user: {
+      id: string;
+      email: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    };
+    token: string;
+    expiresAt: string;
+  };
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,14 +34,19 @@ export default function LoginPage() {
     setLoading(true);
     setError('');
 
-    // Simple session-based auth — in production, call the API
-    if (email === 'admin@forkcart.com' && password === 'admin') {
-      document.cookie = 'forkcart_admin_session=1; path=/; max-age=86400';
+    try {
+      const result = await apiClient<LoginResponse>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+
+      setToken(result.data.token);
       router.push('/dashboard');
-    } else {
-      setError('Invalid email or password');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   return (
@@ -54,7 +75,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@forkcart.com"
+                placeholder="admin@forkcart.dev"
                 required
                 className="mt-1.5"
               />
@@ -83,7 +104,7 @@ export default function LoginPage() {
         </form>
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
-          Default: admin@forkcart.com / admin
+          Default: admin@forkcart.dev / admin123
         </p>
       </div>
     </div>

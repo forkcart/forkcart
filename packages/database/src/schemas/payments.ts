@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
-import { orders } from './orders.js';
+import { orders } from './orders';
 
 export const payments = pgTable(
   'payments',

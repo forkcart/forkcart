@@ -1,9 +1,9 @@
 import type { CreateCategoryInput, UpdateCategoryInput } from '@forkcart/shared';
 import { NotFoundError, ConflictError, ValidationError } from '@forkcart/shared';
-import type { CategoryRepository } from './repository.js';
-import type { EventBus } from '../plugins/event-bus.js';
-import { CATEGORY_EVENTS } from './events.js';
-import { createLogger } from '../lib/logger.js';
+import type { CategoryRepository } from './repository';
+import type { EventBus } from '../plugins/event-bus';
+import { CATEGORY_EVENTS } from './events';
+import { createLogger } from '../lib/logger';
 
 const logger = createLogger('category-service');
 

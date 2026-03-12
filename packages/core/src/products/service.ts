@@ -1,9 +1,9 @@
 import type { CreateProductInput, UpdateProductInput, ProductFilter, Pagination } from '@forkcart/shared';
 import { NotFoundError, ConflictError, ValidationError } from '@forkcart/shared';
-import type { ProductRepository } from './repository.js';
-import type { EventBus } from '../plugins/event-bus.js';
-import { PRODUCT_EVENTS } from './events.js';
-import { createLogger } from '../lib/logger.js';
+import type { ProductRepository } from './repository';
+import type { EventBus } from '../plugins/event-bus';
+import { PRODUCT_EVENTS } from './events';
+import { createLogger } from '../lib/logger';
 
 const logger = createLogger('product-service');
 

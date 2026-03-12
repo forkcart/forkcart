@@ -1,7 +1,7 @@
 import { serve } from '@hono/node-server';
 import { createLogger } from '@forkcart/core';
 import { createDatabase } from '@forkcart/database';
-import { createApp } from './app.js';
+import { createApp } from './app';
 
 const logger = createLogger('api');
 
@@ -14,9 +14,16 @@ if (!databaseUrl) {
   process.exit(1);
 }
 
-const db = createDatabase(databaseUrl);
-const app = createApp(db);
+async function main() {
+  const db = createDatabase(databaseUrl!);
+  const app = await createApp(db);
 
-serve({ fetch: app.fetch, port, hostname: host }, (info) => {
-  logger.info({ port: info.port, host }, 'ForkCart API server started');
+  serve({ fetch: app.fetch, port, hostname: host }, (info) => {
+    logger.info({ port: info.port, host }, 'ForkCart API server started');
+  });
+}
+
+main().catch((err) => {
+  logger.fatal({ err }, 'Failed to start API server');
+  process.exit(1);
 });

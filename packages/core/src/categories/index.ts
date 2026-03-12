@@ -1,4 +1,4 @@
-export { CategoryService } from './service.js';
-export { CategoryRepository } from './repository.js';
-export { CATEGORY_EVENTS } from './events.js';
-export type { CategoryServiceDeps } from './service.js';
+export { CategoryService } from './service';
+export { CategoryRepository } from './repository';
+export { CATEGORY_EVENTS } from './events';
+export type { CategoryServiceDeps } from './service';

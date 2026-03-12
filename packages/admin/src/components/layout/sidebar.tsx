@@ -1,18 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutDashboard,
   Package,
   FolderTree,
   ShoppingCart,
   Users,
+  Puzzle,
   Settings,
   LogOut,
   Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { removeToken } from '@/lib/auth';
+import { apiClient } from '@/lib/api-client';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,11 +23,23 @@ const NAV_ITEMS = [
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/plugins', label: 'Plugins', icon: Puzzle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      await apiClient('/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore errors — we're logging out anyway
+    }
+    removeToken();
+    router.push('/login');
+  }
 
   return (
     <aside className="flex w-64 flex-col border-r bg-card">
@@ -55,7 +70,10 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t p-3">
-        <button className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
           <LogOut className="h-4 w-4" />
           Logout
         </button>
