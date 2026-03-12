@@ -20,6 +20,8 @@ export const customers = pgTable(
     lastName: varchar('last_name', { length: 100 }).notNull(),
     phone: varchar('phone', { length: 50 }),
     passwordHash: text('password_hash'),
+    passwordResetToken: varchar('password_reset_token', { length: 255 }),
+    passwordResetExpires: timestamp('password_reset_expires', { withTimezone: true }),
     acceptsMarketing: boolean('accepts_marketing').notNull().default(false),
     orderCount: integer('order_count').notNull().default(0),
     totalSpent: integer('total_spent').notNull().default(0),

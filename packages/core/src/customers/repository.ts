@@ -70,7 +70,7 @@ export class CustomerRepository {
     };
   }
 
-  async create(input: CreateCustomerInput) {
+  async create(input: CreateCustomerInput & { passwordHash?: string }) {
     const [customer] = await this.db.insert(customers).values(input).returning();
     if (!customer) throw new Error('Failed to create customer');
     return customer;
@@ -89,6 +89,88 @@ export class CustomerRepository {
     await this.db.execute(
       `UPDATE customers SET order_count = order_count + 1, total_spent = total_spent + ${orderTotal}, updated_at = NOW() WHERE id = '${customerId}'`,
     );
+  }
+
+  /** Find by ID with passwordHash (for password verification) */
+  async findByEmail_raw(customerId: string) {
+    const result = await this.db.query.customers.findFirst({
+      where: eq(customers.id, customerId),
+    });
+    return result ?? null;
+  }
+
+  async updatePasswordHash(customerId: string, passwordHash: string) {
+    await this.db
+      .update(customers)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(customers.id, customerId));
+  }
+
+  async setResetToken(customerId: string, token: string, expires: Date) {
+    await this.db
+      .update(customers)
+      .set({
+        passwordResetToken: token,
+        passwordResetExpires: expires,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, customerId));
+  }
+
+  async findByResetToken(token: string) {
+    const result = await this.db.query.customers.findFirst({
+      where: eq(customers.passwordResetToken, token),
+    });
+    return result ?? null;
+  }
+
+  async findAddressesByCustomerId(customerId: string) {
+    return this.db.query.addresses.findMany({
+      where: eq(addresses.customerId, customerId),
+    });
+  }
+
+  async findAddressById(addressId: string) {
+    const result = await this.db.query.addresses.findFirst({
+      where: eq(addresses.id, addressId),
+    });
+    return result ?? null;
+  }
+
+  async updateAddress(
+    addressId: string,
+    data: Partial<{
+      firstName: string;
+      lastName: string;
+      company: string;
+      addressLine1: string;
+      addressLine2: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+      phone: string;
+      isDefault: boolean;
+    }>,
+  ) {
+    const [address] = await this.db
+      .update(addresses)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(addresses.id, addressId))
+      .returning();
+    return address ?? null;
+  }
+
+  async deleteAddress(addressId: string) {
+    const result = await this.db.delete(addresses).where(eq(addresses.id, addressId)).returning();
+    return result.length > 0;
+  }
+
+  async clearDefaultAddresses(customerId: string) {
+    await this.db
+      .update(addresses)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(addresses.customerId, customerId));
   }
 
   async createAddress(data: {

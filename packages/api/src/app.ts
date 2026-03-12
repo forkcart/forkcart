@@ -193,7 +193,7 @@ export async function createApp(db: Database) {
   v1.route('/emails', createEmailRoutes(emailService));
   v1.route('/shipping', createShippingRoutes(shippingService));
   v1.route('/tax', createTaxRoutes(taxService));
-  v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService, cartService));
+  v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(
     '/storefront/customers',

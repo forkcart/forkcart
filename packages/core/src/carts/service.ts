@@ -224,6 +224,60 @@ export class CartService {
     return this.formatCart(cartId);
   }
 
+  /** Assign a cart to a customer. Merges items if customer already has a cart. */
+  async assignToCustomer(cartId: string, customerId: string): Promise<CartResponse> {
+    const cart = await this.repo.findById(cartId);
+    if (!cart) {
+      throw new NotFoundError('Cart', cartId);
+    }
+
+    // Check if customer already has a cart
+    const existingCustomerCart = await this.repo.findByCustomerId(customerId);
+
+    if (existingCustomerCart && existingCustomerCart.id !== cartId) {
+      // Merge: move items from session cart into existing customer cart
+      for (const item of cart.items) {
+        const existingItem = await this.repo.findCartItem(
+          existingCustomerCart.id,
+          item.productId,
+          item.variantId,
+        );
+        if (existingItem) {
+          // Increase quantity
+          await this.repo.updateItemQuantity(
+            existingItem.id,
+            existingItem.quantity + item.quantity,
+            existingCustomerCart.id,
+          );
+        } else {
+          // Move item
+          await this.repo.addItem({
+            cartId: existingCustomerCart.id,
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+          });
+        }
+      }
+
+      // Delete the old session cart
+      await this.repo.deleteCart(cartId);
+
+      logger.info(
+        { fromCartId: cartId, toCartId: existingCustomerCart.id, customerId },
+        'Carts merged',
+      );
+
+      return this.formatCart(existingCustomerCart.id);
+    }
+
+    // No existing customer cart — just assign
+    await this.repo.assignToCustomer(cartId, customerId);
+    logger.info({ cartId, customerId }, 'Cart assigned to customer');
+
+    return this.formatCart(cartId);
+  }
+
   /** Format a cart with full product details and computed totals */
   private async formatCart(cartId: string): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
