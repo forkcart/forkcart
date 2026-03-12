@@ -130,36 +130,47 @@ async function seed() {
   // Create shipping methods
   await db.insert(shippingMethods).values([
     {
-      name: 'Standard Shipping',
-      description: 'Delivery in 5-7 business days',
-      carrier: 'dhl',
+      name: 'Standardversand',
+      description: 'Lieferung in 3-5 Werktagen',
       price: 499,
-      estimatedDays: 7,
+      estimatedDays: '3-5',
+      isActive: true,
+      countries: ['DE', 'AT', 'CH'],
+      freeAbove: 4900,
     },
     {
-      name: 'Express Shipping',
-      description: 'Delivery in 1-2 business days',
-      carrier: 'dhl',
+      name: 'Expressversand',
+      description: 'Lieferung in 1-2 Werktagen',
+      price: 999,
+      estimatedDays: '1-2',
+      isActive: true,
+      countries: ['DE', 'AT'],
+    },
+    {
+      name: 'EU-Versand',
+      description: 'Lieferung in 5-10 Werktagen innerhalb der EU',
       price: 1299,
-      estimatedDays: 2,
+      estimatedDays: '5-10',
+      isActive: true,
+      countries: ['EU'],
     },
     {
-      name: 'Free Shipping',
-      description: 'Free delivery on orders over €50',
-      carrier: 'dhl',
-      price: 0,
-      minOrderAmount: 5000,
-      estimatedDays: 7,
+      name: 'Worldwide',
+      description: 'Weltweiter Versand in 10-20 Werktagen',
+      price: 2499,
+      estimatedDays: '10-20',
+      isActive: true,
+      countries: ['WORLDWIDE'],
     },
   ]);
   console.log('Created shipping methods');
 
-  // Create tax rules
+  // Create tax rules (rate as decimal string, e.g. "0.19" for 19%)
   await db.insert(taxRules).values([
-    { name: 'Germany VAT', country: 'DE', rate: 1900, isDefault: true },
-    { name: 'Germany Reduced VAT', country: 'DE', rate: 700 },
-    { name: 'Austria VAT', country: 'AT', rate: 2000 },
-    { name: 'Switzerland VAT', country: 'CH', rate: 770 },
+    { name: 'Germany VAT', country: 'DE', rate: '0.19000', isDefault: true },
+    { name: 'Germany Reduced VAT', country: 'DE', rate: '0.07000' },
+    { name: 'Austria VAT', country: 'AT', rate: '0.20000' },
+    { name: 'Switzerland VAT', country: 'CH', rate: '0.07700' },
   ]);
   console.log('Created tax rules');
 

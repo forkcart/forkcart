@@ -32,8 +32,18 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Customer auth routes are public (storefront login/register)
+    if (path.startsWith('/api/v1/customer-auth')) {
+      return next();
+    }
+
     // Payment routes are public (storefront checkout)
     if (path.startsWith('/api/v1/payments')) {
+      return next();
+    }
+
+    // Shipping method listing is public (storefront checkout)
+    if (path.startsWith('/api/v1/shipping/methods') && c.req.method === 'GET') {
       return next();
     }
 

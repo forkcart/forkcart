@@ -14,6 +14,7 @@ import {
   Store,
   Truck,
   Mail,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { removeToken } from '@/lib/auth';
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/shipping', label: 'Versand', icon: Truck },
+  { href: '/tax', label: 'Steuern', icon: Calculator },
   { href: '/emails', label: 'Emails', icon: Mail },
   { href: '/plugins', label: 'Plugins', icon: Puzzle },
   { href: '/settings', label: 'Settings', icon: Settings },
