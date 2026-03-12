@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, integer, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 
 export const media = pgTable(
   'media',
@@ -10,6 +19,7 @@ export const media = pgTable(
     size: integer('size').notNull(),
     path: varchar('path', { length: 500 }).notNull(),
     alt: varchar('alt', { length: 255 }),
+    altAuto: text('alt_auto'),
     entityType: varchar('entity_type', { length: 50 }),
     entityId: uuid('entity_id'),
     sortOrder: integer('sort_order').notNull().default(0),

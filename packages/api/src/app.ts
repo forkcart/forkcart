@@ -303,13 +303,13 @@ export async function createApp(db: Database) {
 }
 
 /** Build AI config from environment variables (returns null if no provider configured) */
-function buildAIConfig(): AIConfig | null {
+function buildAIConfig(): import('@forkcart/ai').AIConfig | null {
   const openaiKey = process.env['OPENAI_API_KEY'];
   const anthropicKey = process.env['ANTHROPIC_API_KEY'];
   const ollamaUrl = process.env['OLLAMA_BASE_URL'];
 
-  const providers: AIConfig['providers'] = {};
-  let defaultProvider: AIConfig['defaultProvider'] | null = null;
+  const providers: import('@forkcart/ai').AIConfig['providers'] = {};
+  let defaultProvider: import('@forkcart/ai').AIConfig['defaultProvider'] | null = null;
 
   if (openaiKey) {
     providers.openai = { apiKey: openaiKey, model: process.env['OPENAI_MODEL'] };
@@ -330,5 +330,5 @@ function buildAIConfig(): AIConfig | null {
     defaultProvider,
     providers,
     cache: { enabled: false, ttlSeconds: 0 },
-  };
+  } satisfies import('@forkcart/ai').AIConfig;
 }

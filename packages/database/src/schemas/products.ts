@@ -33,6 +33,11 @@ export const products = pgTable(
     weightUnit: varchar('weight_unit', { length: 5 }).notNull().default('g'),
     taxClassId: uuid('tax_class_id').references(() => taxClasses.id),
     metadata: jsonb('metadata'),
+    /** SEO fields */
+    metaTitle: varchar('meta_title', { length: 255 }),
+    metaDescription: text('meta_description'),
+    metaKeywords: text('meta_keywords'),
+    ogImage: text('og_image'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
