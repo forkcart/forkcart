@@ -5,3 +5,4 @@ export * from './customer';
 export * from './cart';
 export * from './common';
 export * from './media';
+export * from './tax';
