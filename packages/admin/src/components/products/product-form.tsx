@@ -31,6 +31,15 @@ export function ProductForm({ initialData, productId, onSubmit, isSubmitting }: 
     String(initialData?.inventoryQuantity ?? 0),
   );
   const [autoSlug, setAutoSlug] = useState(!initialData);
+  const [metaTitle, setMetaTitle] = useState(
+    ((initialData as Record<string, unknown>)?.metaTitle as string) ?? '',
+  );
+  const [metaDescription, setMetaDescription] = useState(
+    ((initialData as Record<string, unknown>)?.metaDescription as string) ?? '',
+  );
+  const [metaKeywords, setMetaKeywords] = useState(
+    ((initialData as Record<string, unknown>)?.metaKeywords as string) ?? '',
+  );
 
   function handleNameChange(value: string) {
     setName(value);
@@ -50,6 +59,9 @@ export function ProductForm({ initialData, productId, onSubmit, isSubmitting }: 
       compareAtPrice: compareAtPrice ? Math.round(parseFloat(compareAtPrice) * 100) : undefined,
       inventoryQuantity: parseInt(inventoryQuantity, 10) || 0,
       currency: 'EUR',
+      metaTitle: metaTitle || undefined,
+      metaDescription: metaDescription || undefined,
+      metaKeywords: metaKeywords || undefined,
     });
   }
 
@@ -109,8 +121,15 @@ export function ProductForm({ initialData, productId, onSubmit, isSubmitting }: 
                   productId={productId}
                   currentDescription={description || undefined}
                   onDescriptionGenerated={(d) => setDescription(d)}
-                  onSEOGenerated={() => {
-                    // SEO fields not yet on form — could extend later
+                  onSEOGenerated={(seo) => {
+                    if (seo.title) setMetaTitle(seo.title);
+                    if (seo.description) setMetaDescription(seo.description);
+                    if (seo.keywords)
+                      setMetaKeywords(
+                        Array.isArray(seo.keywords)
+                          ? seo.keywords.join(', ')
+                          : String(seo.keywords),
+                      );
                   }}
                 />
               </div>
@@ -157,6 +176,54 @@ export function ProductForm({ initialData, productId, onSubmit, isSubmitting }: 
               min="0"
               value={inventoryQuantity}
               onChange={(e) => setInventoryQuantity(e.target.value)}
+              className="mt-1.5"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <h3 className="text-lg font-semibold">SEO</h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Search engine optimization. Use the ✨ AI buttons above to auto-generate.
+        </p>
+        <div className="mt-4 grid gap-4">
+          <div>
+            <Label htmlFor="metaTitle">
+              Meta Title{' '}
+              <span className="text-xs text-muted-foreground">({metaTitle.length}/60)</span>
+            </Label>
+            <Input
+              id="metaTitle"
+              value={metaTitle}
+              onChange={(e) => setMetaTitle(e.target.value)}
+              placeholder="SEO page title"
+              maxLength={60}
+              className="mt-1.5"
+            />
+          </div>
+          <div>
+            <Label htmlFor="metaDescription">
+              Meta Description{' '}
+              <span className="text-xs text-muted-foreground">({metaDescription.length}/160)</span>
+            </Label>
+            <Textarea
+              id="metaDescription"
+              value={metaDescription}
+              onChange={(e) => setMetaDescription(e.target.value)}
+              placeholder="SEO page description"
+              maxLength={160}
+              rows={2}
+              className="mt-1.5"
+            />
+          </div>
+          <div>
+            <Label htmlFor="metaKeywords">Meta Keywords</Label>
+            <Input
+              id="metaKeywords"
+              value={metaKeywords}
+              onChange={(e) => setMetaKeywords(e.target.value)}
+              placeholder="keyword1, keyword2, keyword3"
               className="mt-1.5"
             />
           </div>
