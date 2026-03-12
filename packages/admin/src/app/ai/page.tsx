@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Check, AlertCircle, Loader2, Eye, EyeOff, MessageCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
@@ -249,6 +249,9 @@ export default function AISettingsPage() {
           </div>
         </div>
 
+        {/* Chatbot Settings */}
+        <ChatbotSettingsSection configured={!!status?.data?.configured} />
+
         {/* Test result */}
         {testResult && (
           <div
@@ -280,5 +283,121 @@ export default function AISettingsPage() {
         )}
       </div>
     </div>
+  );
+}
+
+interface ChatbotSettings {
+  enabled: boolean;
+  systemPrompt: string;
+  welcomeMessage: string;
+}
+
+function ChatbotSettingsSection({ configured }: { configured: boolean }) {
+  const queryClient = useQueryClient();
+  const [enabled, setEnabled] = useState(false);
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [welcomeMessage, setWelcomeMessage] = useState('');
+  const [loaded, setLoaded] = useState(false);
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['chatbot-settings'],
+    queryFn: () => apiClient<{ data: ChatbotSettings }>('/chat/admin/settings'),
+  });
+
+  useEffect(() => {
+    if (settingsData?.data && !loaded) {
+      setEnabled(settingsData.data.enabled);
+      setSystemPrompt(settingsData.data.systemPrompt);
+      setWelcomeMessage(settingsData.data.welcomeMessage);
+      setLoaded(true);
+    }
+  }, [settingsData, loaded]);
+
+  const updateMutation = useMutation({
+    mutationFn: (input: Partial<ChatbotSettings>) =>
+      apiClient('/chat/admin/settings', { method: 'PUT', body: JSON.stringify(input) }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['chatbot-settings'] });
+    },
+  });
+
+  function handleSave(e: React.FormEvent) {
+    e.preventDefault();
+    updateMutation.mutate({ enabled, systemPrompt, welcomeMessage });
+  }
+
+  return (
+    <form onSubmit={handleSave} className="rounded-lg border bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <MessageCircle className="h-5 w-5 text-muted-foreground" />
+          <div>
+            <h2 className="text-lg font-semibold">Chatbot</h2>
+            <p className="text-sm text-muted-foreground">
+              AI-powered customer support widget on your storefront
+            </p>
+          </div>
+        </div>
+        <label className="flex cursor-pointer items-center gap-3">
+          <span className="text-sm font-medium text-muted-foreground">
+            {enabled ? 'Active' : 'Inactive'}
+          </span>
+          <div
+            className={`relative h-6 w-11 rounded-full transition-colors ${
+              enabled ? 'bg-primary' : 'bg-gray-300'
+            }`}
+            onClick={() => setEnabled(!enabled)}
+          >
+            <div
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                enabled ? 'translate-x-5' : 'translate-x-0.5'
+              }`}
+            />
+          </div>
+        </label>
+      </div>
+
+      {!configured && (
+        <p className="mt-4 text-sm text-yellow-700">
+          Configure an AI provider above to enable the chatbot.
+        </p>
+      )}
+
+      <div className="mt-6 space-y-4">
+        <div>
+          <label className="text-sm font-medium">Welcome Message</label>
+          <input
+            value={welcomeMessage}
+            onChange={(e) => setWelcomeMessage(e.target.value)}
+            className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
+            placeholder="Hello! 👋 How can I help you?"
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium">System Prompt</label>
+          <p className="text-xs text-muted-foreground">
+            Instructions for the AI chatbot. Use {'{shopName}'} as placeholder.
+          </p>
+          <textarea
+            value={systemPrompt}
+            onChange={(e) => setSystemPrompt(e.target.value)}
+            className="mt-1 w-full rounded-md border px-3 py-2 font-mono text-sm"
+            rows={8}
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={updateMutation.isPending}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {updateMutation.isPending ? 'Saving...' : 'Save Chatbot Settings'}
+        </button>
+        {updateMutation.isSuccess && <span className="text-sm text-green-600">Saved ✓</span>}
+      </div>
+    </form>
   );
 }
