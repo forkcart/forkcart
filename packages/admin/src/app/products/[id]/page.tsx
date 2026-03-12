@@ -71,9 +71,7 @@ export default function ProductDetailPage() {
         />
 
         {/* Product Images — only show for existing products */}
-        {!isNew && (
-          <ProductImages productId={id} />
-        )}
+        {!isNew && <ProductImages productId={id} />}
       </div>
     </div>
   );

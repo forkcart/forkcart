@@ -29,9 +29,7 @@ export function createProductRoutes(productService: ProductService) {
     // Try UUID first, then slug
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    const product = isUuid
-      ? await productService.getById(id)
-      : await productService.getBySlug(id);
+    const product = isUuid ? await productService.getById(id) : await productService.getBySlug(id);
 
     return c.json({ data: product });
   });

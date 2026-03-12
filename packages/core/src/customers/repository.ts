@@ -47,9 +47,7 @@ export class CustomerRepository {
     const conditions = [];
 
     if (filter.search) {
-      conditions.push(
-        ilike(customers.email, `%${filter.search}%`),
-      );
+      conditions.push(ilike(customers.email, `%${filter.search}%`));
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;

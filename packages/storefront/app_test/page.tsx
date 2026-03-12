@@ -24,8 +24,7 @@ export default async function HomePage() {
       <section className="bg-gray-50">
         <div className="container-page py-24 text-center lg:py-32">
           <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
-            Modern shopping,{' '}
-            <span className="text-accent">beautifully simple</span>
+            Modern shopping, <span className="text-accent">beautifully simple</span>
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-lg text-gray-500">
             Discover curated products crafted with care. Free shipping on orders over €50.
@@ -83,7 +82,9 @@ export default async function HomePage() {
           </div>
         ) : (
           <div className="mt-8 rounded-lg border-2 border-dashed border-gray-200 p-12 text-center">
-            <p className="text-gray-400">Products will appear here once you add them in the admin panel.</p>
+            <p className="text-gray-400">
+              Products will appear here once you add them in the admin panel.
+            </p>
           </div>
         )}
       </section>

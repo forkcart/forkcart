@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const customers = pgTable(
@@ -17,16 +27,16 @@ export const customers = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index('customers_email_idx').on(table.email),
-  ],
+  (table) => [index('customers_email_idx').on(table.email)],
 );
 
 export const addresses = pgTable(
   'addresses',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    customerId: uuid('customer_id').notNull().references(() => customers.id, { onDelete: 'cascade' }),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id, { onDelete: 'cascade' }),
     firstName: varchar('first_name', { length: 100 }).notNull(),
     lastName: varchar('last_name', { length: 100 }).notNull(),
     company: varchar('company', { length: 255 }),

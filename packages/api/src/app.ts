@@ -6,15 +6,23 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { resolve, relative } from 'node:path';
 import type { Database } from '@forkcart/database';
 import {
-  ProductRepository, ProductService,
-  CategoryRepository, CategoryService,
-  OrderRepository, OrderService,
-  CustomerRepository, CustomerService,
-  MediaRepository, MediaService,
-  CartRepository, CartService,
-  PaymentRepository, PaymentService,
+  ProductRepository,
+  ProductService,
+  CategoryRepository,
+  CategoryService,
+  OrderRepository,
+  OrderService,
+  CustomerRepository,
+  CustomerService,
+  MediaRepository,
+  MediaService,
+  CartRepository,
+  CartService,
+  PaymentRepository,
+  PaymentService,
   PaymentProviderRegistry,
-  UserRepository, AuthService,
+  UserRepository,
+  AuthService,
   EventBus,
   PluginLoader,
 } from '@forkcart/core';
@@ -56,10 +64,13 @@ export async function createApp(db: Database) {
 
   // Static file serving for uploads — resolve relative to CWD for serveStatic
   const relativeStoragePath = relative(process.cwd(), storagePath);
-  app.use('/uploads/*', serveStatic({
-    root: relativeStoragePath,
-    rewriteRequestPath: (path) => path.replace('/uploads', ''),
-  }));
+  app.use(
+    '/uploads/*',
+    serveStatic({
+      root: relativeStoragePath,
+      rewriteRequestPath: (path) => path.replace('/uploads', ''),
+    }),
+  );
 
   // Health check
   app.get('/health', (c) =>
@@ -129,9 +140,7 @@ export async function createApp(db: Database) {
   app.route('/api/v1', v1);
 
   // 404 fallback
-  app.notFound((c) =>
-    c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404),
-  );
+  app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 
   return app;
 }

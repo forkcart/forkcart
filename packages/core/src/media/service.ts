@@ -10,12 +10,7 @@ import { createLogger } from '../lib/logger';
 
 const logger = createLogger('media-service');
 
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-]);
+const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -67,7 +62,9 @@ export class MediaService {
 
     // Validate size
     if (file.size > MAX_FILE_SIZE) {
-      throw new ValidationError(`File too large. Maximum: 10MB, got: ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+      throw new ValidationError(
+        `File too large. Maximum: 10MB, got: ${(file.size / 1024 / 1024).toFixed(1)}MB`,
+      );
     }
 
     // Generate UUID filename

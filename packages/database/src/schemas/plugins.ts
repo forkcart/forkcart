@@ -16,7 +16,9 @@ export const plugins = pgTable('plugins', {
 
 export const pluginSettings = pgTable('plugin_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
-  pluginId: uuid('plugin_id').notNull().references(() => plugins.id, { onDelete: 'cascade' }),
+  pluginId: uuid('plugin_id')
+    .notNull()
+    .references(() => plugins.id, { onDelete: 'cascade' }),
   key: varchar('key', { length: 255 }).notNull(),
   value: jsonb('value'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

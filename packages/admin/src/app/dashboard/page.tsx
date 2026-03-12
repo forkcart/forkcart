@@ -24,7 +24,10 @@ interface OrderStats {
   }>;
 }
 
-const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  string,
+  'default' | 'success' | 'warning' | 'destructive' | 'outline'
+> = {
   pending: 'warning',
   confirmed: 'default',
   processing: 'default',
@@ -81,7 +84,7 @@ export default function DashboardPage() {
           title="Total Orders"
           value={isLoading ? '…' : String(stats?.totalOrders ?? 0)}
           icon={ShoppingCart}
-          description={`${isLoading ? '…' : stats?.monthlyOrders ?? 0} this month`}
+          description={`${isLoading ? '…' : (stats?.monthlyOrders ?? 0)} this month`}
         />
         <StatCard
           title="Avg. Order Value"
@@ -107,7 +110,10 @@ export default function DashboardPage() {
         {stats && stats.recentOrders.length > 0 && (
           <div className="mt-4 space-y-3">
             {stats.recentOrders.map((order) => (
-              <div key={order.id} className="flex items-center justify-between rounded-md border p-3">
+              <div
+                key={order.id}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
                 <div>
                   <p className="text-sm font-medium">{order.orderNumber}</p>
                   <p className="text-xs text-muted-foreground">

@@ -7,9 +7,13 @@ export type ProductStatus = z.infer<typeof ProductStatusSchema>;
 /** Create product input */
 export const CreateProductSchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message: 'Slug must be lowercase alphanumeric with hyphens',
-  }),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+      message: 'Slug must be lowercase alphanumeric with hyphens',
+    }),
   description: z.string().max(10000).optional(),
   shortDescription: z.string().max(500).optional(),
   sku: z.string().min(1).max(100).optional(),

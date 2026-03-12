@@ -40,6 +40,7 @@ pnpm dev
 ```
 
 This starts all three services:
+
 - **Storefront** → http://localhost:3000
 - **Admin Panel** → http://localhost:3001
 - **API** → http://localhost:4000
@@ -121,6 +122,7 @@ forkcart/
 ## 🔀 Submitting a Pull Request
 
 1. **Create a branch** from `master`:
+
    ```bash
    git checkout -b feat/my-awesome-feature
    ```
@@ -128,6 +130,7 @@ forkcart/
 2. **Make your changes** — keep commits focused and atomic.
 
 3. **Test your changes:**
+
    ```bash
    pnpm typecheck
    pnpm lint
@@ -135,6 +138,7 @@ forkcart/
    ```
 
 4. **Push and open a PR:**
+
    ```bash
    git push origin feat/my-awesome-feature
    ```
@@ -170,6 +174,7 @@ test: add unit tests for payment service
 ## 🐛 Reporting Bugs
 
 Use our [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md) on GitHub. Include:
+
 - Steps to reproduce
 - Expected vs. actual behavior
 - Environment details (Node version, OS, browser)

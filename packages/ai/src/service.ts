@@ -21,7 +21,9 @@ export class AIService {
     this.cacheEnabled = config.cache?.enabled ?? false;
 
     // Initialize configured providers
-    for (const providerName of Object.keys(config.providers) as Array<keyof typeof config.providers>) {
+    for (const providerName of Object.keys(config.providers) as Array<
+      keyof typeof config.providers
+    >) {
       if (config.providers[providerName]) {
         try {
           const provider = createAIProvider(providerName, config);
@@ -68,7 +70,10 @@ export class AIService {
   }
 
   /** Generate a product description using AI */
-  async generateProductDescription(productName: string, attributes: Record<string, string> = {}): Promise<string> {
+  async generateProductDescription(
+    productName: string,
+    attributes: Record<string, string> = {},
+  ): Promise<string> {
     const attributeList = Object.entries(attributes)
       .map(([key, value]) => `- ${key}: ${value}`)
       .join('\n');
@@ -85,7 +90,10 @@ export class AIService {
   }
 
   /** Generate SEO metadata for a product */
-  async generateSEOMetadata(productName: string, description: string): Promise<{ title: string; metaDescription: string }> {
+  async generateSEOMetadata(
+    productName: string,
+    description: string,
+  ): Promise<{ title: string; metaDescription: string }> {
     const result = await this.generateText({
       systemPrompt:
         'You are an SEO specialist. Generate an SEO title (max 60 chars) and meta description (max 155 chars). Return as JSON: {"title": "...", "metaDescription": "..."}',

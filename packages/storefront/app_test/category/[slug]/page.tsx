@@ -62,7 +62,9 @@ export default async function CategoryPage({ params, searchParams }: Props) {
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">{categoryName}</h1>
         {categoryDescription && <p className="mt-2 text-gray-500">{categoryDescription}</p>}
-        <p className="mt-1 text-sm text-gray-400">{total} product{total !== 1 ? 's' : ''}</p>
+        <p className="mt-1 text-sm text-gray-400">
+          {total} product{total !== 1 ? 's' : ''}
+        </p>
       </div>
 
       <Suspense fallback={<div className="h-9" />}>

@@ -53,10 +53,7 @@ export function createAuthMiddleware(authService: AuthService) {
       c.set('token', token);
       return next();
     } catch {
-      return c.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } },
-        401,
-      );
+      return c.json({ error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' } }, 401);
     }
   };
 }

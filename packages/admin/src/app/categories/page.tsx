@@ -42,27 +42,50 @@ function CategoryForm({
     >
       <div>
         <Label htmlFor="cat-name">Name</Label>
-        <Input id="cat-name" value={name} onChange={(e) => handleNameChange(e.target.value)} required className="mt-1.5" />
+        <Input
+          id="cat-name"
+          value={name}
+          onChange={(e) => handleNameChange(e.target.value)}
+          required
+          className="mt-1.5"
+        />
       </div>
       <div>
         <Label htmlFor="cat-slug">Slug</Label>
         <Input
           id="cat-slug"
           value={slug}
-          onChange={(e) => { setSlug(e.target.value); setAutoSlug(false); }}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setAutoSlug(false);
+          }}
           required
           className="mt-1.5"
         />
       </div>
       <div>
         <Label htmlFor="cat-desc">Description</Label>
-        <Textarea id="cat-desc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="mt-1.5" />
+        <Textarea
+          id="cat-desc"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+          className="mt-1.5"
+        />
       </div>
       <div className="flex justify-end gap-3">
-        <button type="button" onClick={onCancel} className="rounded-md border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="rounded-md border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted"
+        >
           Cancel
         </button>
-        <button type="submit" disabled={isPending} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={isPending}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
           {isPending ? 'Saving…' : 'Save'}
         </button>
       </div>
@@ -83,13 +106,19 @@ export default function CategoriesPage() {
   const createMutation = useMutation({
     mutationFn: (values: Record<string, unknown>) =>
       apiClient('/categories', { method: 'POST', body: JSON.stringify(values) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['categories'] }); setShowForm(false); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      setShowForm(false);
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, values }: { id: string; values: Record<string, unknown> }) =>
       apiClient(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(values) }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['categories'] }); setEditing(null); },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
+      setEditing(null);
+    },
   });
 
   const deleteMutation = useMutation({
@@ -105,7 +134,10 @@ export default function CategoriesPage() {
           <p className="mt-1 text-muted-foreground">Organize your product catalog</p>
         </div>
         <button
-          onClick={() => { setShowForm(true); setEditing(null); }}
+          onClick={() => {
+            setShowForm(true);
+            setEditing(null);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
@@ -115,7 +147,9 @@ export default function CategoriesPage() {
 
       {(showForm || editing) && (
         <div className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
-          <h2 className="mb-4 text-lg font-semibold">{editing ? 'Edit Category' : 'New Category'}</h2>
+          <h2 className="mb-4 text-lg font-semibold">
+            {editing ? 'Edit Category' : 'New Category'}
+          </h2>
           <CategoryForm
             initial={editing ?? undefined}
             onSubmit={(values) =>
@@ -123,15 +157,22 @@ export default function CategoriesPage() {
                 ? updateMutation.mutate({ id: editing.id, values })
                 : createMutation.mutate(values)
             }
-            onCancel={() => { setShowForm(false); setEditing(null); }}
+            onCancel={() => {
+              setShowForm(false);
+              setEditing(null);
+            }}
             isPending={createMutation.isPending || updateMutation.isPending}
           />
         </div>
       )}
 
       <div className="mt-8 rounded-lg border bg-card shadow-sm">
-        {isLoading && <div className="p-8 text-center text-muted-foreground">Loading categories…</div>}
-        {error && <div className="p-8 text-center text-destructive">Failed to load categories.</div>}
+        {isLoading && (
+          <div className="p-8 text-center text-muted-foreground">Loading categories…</div>
+        )}
+        {error && (
+          <div className="p-8 text-center text-destructive">Failed to load categories.</div>
+        )}
         {data && data.data.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">No categories yet.</div>
         )}
@@ -157,10 +198,19 @@ export default function CategoriesPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => { setEditing(cat); setShowForm(false); }} className="rounded p-1 hover:bg-muted">
+                      <button
+                        onClick={() => {
+                          setEditing(cat);
+                          setShowForm(false);
+                        }}
+                        className="rounded p-1 hover:bg-muted"
+                      >
                         <Pencil className="h-4 w-4 text-muted-foreground" />
                       </button>
-                      <button onClick={() => deleteMutation.mutate(cat.id)} className="rounded p-1 hover:bg-muted">
+                      <button
+                        onClick={() => deleteMutation.mutate(cat.id)}
+                        className="rounded p-1 hover:bg-muted"
+                      >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </button>
                     </div>

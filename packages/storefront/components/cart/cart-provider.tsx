@@ -32,7 +32,10 @@ interface CartContextValue {
   itemCount: number;
   subtotal: number;
   serverCartId: string | null;
-  addItem: (product: { id: string; name: string; slug: string; price: number; currency?: string }, quantity?: number) => void;
+  addItem: (
+    product: { id: string; name: string; slug: string; price: number; currency?: string },
+    quantity?: number,
+  ) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
   clearCart: () => void;
@@ -86,14 +89,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           try {
             const saved = localStorage.getItem('forkcart_cart');
             if (saved) setItems(JSON.parse(saved));
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
         });
     } else {
       // No server cart — load from localStorage (backward compat)
       try {
         const saved = localStorage.getItem('forkcart_cart');
         if (saved) setItems(JSON.parse(saved));
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
@@ -115,7 +122,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       body: JSON.stringify({ sessionId }),
     });
 
-    const data = await res.json() as ServerCartResponse;
+    const data = (await res.json()) as ServerCartResponse;
     const newCartId = data.data.id;
     setServerCartId(newCartId);
     localStorage.setItem('forkcart_cart_id', newCartId);
@@ -123,14 +130,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [serverCartId]);
 
   const addItem = useCallback(
-    (product: { id: string; name: string; slug: string; price: number; currency?: string }, quantity = 1) => {
+    (
+      product: { id: string; name: string; slug: string; price: number; currency?: string },
+      quantity = 1,
+    ) => {
       // Optimistic local update
       setItems((prev) => {
         const existing = prev.find((item) => item.productId === product.id);
         if (existing) {
           return prev.map((item) =>
             item.productId === product.id
-              ? { ...item, quantity: item.quantity + quantity, totalPrice: (item.quantity + quantity) * item.unitPrice }
+              ? {
+                  ...item,
+                  quantity: item.quantity + quantity,
+                  totalPrice: (item.quantity + quantity) * item.unitPrice,
+                }
               : item,
           );
         }
@@ -148,65 +162,82 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Sync to server
-      ensureServerCart().then((cartId) => {
-        return fetch(`${API_URL}/api/v1/carts/${cartId}/items`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: product.id, quantity }),
+      ensureServerCart()
+        .then((cartId) => {
+          return fetch(`${API_URL}/api/v1/carts/${cartId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: product.id, quantity }),
+          });
+        })
+        .then((res) => {
+          if (!res.ok) return;
+          return res.json() as Promise<ServerCartResponse>;
+        })
+        .then((data) => {
+          if (data) {
+            // Sync server-side prices (they're authoritative)
+            setItems(data.data.items.map(serverItemToCartItem));
+          }
+        })
+        .catch(() => {
+          // Server sync failed — local state is still valid
         });
-      }).then((res) => {
-        if (!res.ok) return;
-        return res.json() as Promise<ServerCartResponse>;
-      }).then((data) => {
-        if (data) {
-          // Sync server-side prices (they're authoritative)
-          setItems(data.data.items.map(serverItemToCartItem));
-        }
-      }).catch(() => {
-        // Server sync failed — local state is still valid
-      });
     },
     [ensureServerCart],
   );
 
-  const updateQuantity = useCallback((itemId: string, quantity: number) => {
-    if (quantity <= 0) {
+  const updateQuantity = useCallback(
+    (itemId: string, quantity: number) => {
+      if (quantity <= 0) {
+        setItems((prev) => prev.filter((item) => item.id !== itemId));
+      } else {
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === itemId
+              ? { ...item, quantity, totalPrice: item.unitPrice * quantity }
+              : item,
+          ),
+        );
+      }
+
+      // Sync to server
+      if (serverCartId) {
+        const endpoint =
+          quantity <= 0
+            ? fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, { method: 'DELETE' })
+            : fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ quantity }),
+              });
+
+        endpoint
+          .then((res) => {
+            if (!res.ok) return;
+            return res.json() as Promise<ServerCartResponse>;
+          })
+          .then((data) => {
+            if (data) setItems(data.data.items.map(serverItemToCartItem));
+          })
+          .catch(() => {});
+      }
+    },
+    [serverCartId],
+  );
+
+  const removeItem = useCallback(
+    (itemId: string) => {
       setItems((prev) => prev.filter((item) => item.id !== itemId));
-    } else {
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === itemId ? { ...item, quantity, totalPrice: item.unitPrice * quantity } : item,
-        ),
-      );
-    }
 
-    // Sync to server
-    if (serverCartId) {
-      const endpoint = quantity <= 0
-        ? fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, { method: 'DELETE' })
-        : fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ quantity }),
-          });
-
-      endpoint.then((res) => {
-        if (!res.ok) return;
-        return res.json() as Promise<ServerCartResponse>;
-      }).then((data) => {
-        if (data) setItems(data.data.items.map(serverItemToCartItem));
-      }).catch(() => {});
-    }
-  }, [serverCartId]);
-
-  const removeItem = useCallback((itemId: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== itemId));
-
-    if (serverCartId) {
-      fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, { method: 'DELETE' })
-        .catch(() => {});
-    }
-  }, [serverCartId]);
+      if (serverCartId) {
+        fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
+          method: 'DELETE',
+        }).catch(() => {});
+      }
+    },
+    [serverCartId],
+  );
 
   const clearCart = useCallback(() => {
     setItems([]);
@@ -221,7 +252,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const subtotal = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
   return (
-    <CartContext.Provider value={{ items, itemCount, subtotal, serverCartId, addItem, updateQuantity, removeItem, clearCart }}>
+    <CartContext.Provider
+      value={{
+        items,
+        itemCount,
+        subtotal,
+        serverCartId,
+        addItem,
+        updateQuantity,
+        removeItem,
+        clearCart,
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

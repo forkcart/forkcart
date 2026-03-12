@@ -16,7 +16,10 @@ export class PaymentProviderRegistry {
       logger.warn({ providerId: provider.id }, 'Provider already registered, overwriting');
     }
     this.providers.set(provider.id, provider);
-    logger.info({ providerId: provider.id, displayName: provider.displayName }, 'Payment provider registered');
+    logger.info(
+      { providerId: provider.id, displayName: provider.displayName },
+      'Payment provider registered',
+    );
   }
 
   /** Unregister a provider */

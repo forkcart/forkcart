@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { customers } from './customers';
 import { products, productVariants } from './products';
@@ -8,7 +17,9 @@ export const orders = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
-    customerId: uuid('customer_id').notNull().references(() => customers.id),
+    customerId: uuid('customer_id')
+      .notNull()
+      .references(() => customers.id),
     status: varchar('status', { length: 20 }).notNull().default('pending'),
     subtotal: integer('subtotal').notNull().default(0),
     shippingTotal: integer('shipping_total').notNull().default(0),
@@ -35,8 +46,12 @@ export const orderItems = pgTable(
   'order_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
-    productId: uuid('product_id').notNull().references(() => products.id),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id),
     variantId: uuid('variant_id').references(() => productVariants.id),
     productName: varchar('product_name', { length: 255 }).notNull(),
     variantName: varchar('variant_name', { length: 255 }),
@@ -53,7 +68,9 @@ export const orderStatusHistory = pgTable(
   'order_status_history',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    orderId: uuid('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id, { onDelete: 'cascade' }),
     fromStatus: varchar('from_status', { length: 20 }),
     toStatus: varchar('to_status', { length: 20 }).notNull(),
     note: text('note'),

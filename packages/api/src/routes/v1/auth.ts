@@ -32,10 +32,7 @@ export function createAuthRoutes(authService: AuthService) {
     } catch (error) {
       if (error instanceof AuthError) {
         const status = error.code === 'ACCOUNT_DISABLED' ? 403 : 401;
-        return c.json(
-          { error: { code: error.code, message: error.message } },
-          status,
-        );
+        return c.json({ error: { code: error.code, message: error.message } }, status);
       }
       throw error;
     }
@@ -55,10 +52,7 @@ export function createAuthRoutes(authService: AuthService) {
   router.get('/me', async (c) => {
     const user = c.get('user');
     if (!user) {
-      return c.json(
-        { error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } },
-        401,
-      );
+      return c.json({ error: { code: 'UNAUTHORIZED', message: 'Not authenticated' } }, 401);
     }
 
     return c.json({ data: { user } });

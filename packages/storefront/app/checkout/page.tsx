@@ -40,7 +40,13 @@ export default function CheckoutPage() {
   const { items, subtotal, clearCart, serverCartId } = useCart();
   const [step, setStep] = useState<CheckoutStep>('shipping');
   const [shipping, setShipping] = useState<ShippingData>({
-    firstName: '', lastName: '', email: '', address: '', city: '', postalCode: '', country: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    address: '',
+    city: '',
+    postalCode: '',
+    country: '',
   });
   const [providers, setProviders] = useState<PaymentProviderConfig[]>([]);
   const [fallbackMode, setFallbackMode] = useState(true);
@@ -73,7 +79,10 @@ export default function CheckoutPage() {
       <div className="container-page py-24 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Nothing to checkout</h1>
         <p className="mt-2 text-gray-500">Your cart is empty.</p>
-        <Link href="/category/all" className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800">
+        <Link
+          href="/category/all"
+          className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
+        >
           Browse Products
         </Link>
       </div>
@@ -88,14 +97,15 @@ export default function CheckoutPage() {
           <Check className="h-8 w-8 text-green-600" />
         </div>
         <h1 className="mt-6 text-2xl font-bold text-gray-900">Order confirmed!</h1>
-        {orderNumber && (
-          <p className="mt-2 text-lg font-mono text-gray-700">{orderNumber}</p>
-        )}
+        {orderNumber && <p className="mt-2 text-lg font-mono text-gray-700">{orderNumber}</p>}
         <p className="mt-2 text-gray-500">
           Thank you for your purchase. You&apos;ll receive a confirmation email at{' '}
           <span className="font-medium">{shipping.email}</span>.
         </p>
-        <Link href="/" className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800">
+        <Link
+          href="/"
+          className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
+        >
           Back to Home
         </Link>
       </div>
@@ -134,10 +144,15 @@ export default function CheckoutPage() {
 
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
-          throw new Error((err as { error?: { message?: string } }).error?.message ?? 'Failed to initialize payment');
+          throw new Error(
+            (err as { error?: { message?: string } }).error?.message ??
+              'Failed to initialize payment',
+          );
         }
 
-        const data = await res.json() as { data: { clientSecret: string; clientData?: { publishableKey?: string } } };
+        const data = (await res.json()) as {
+          data: { clientSecret: string; clientData?: { publishableKey?: string } };
+        };
         setClientSecret(data.data.clientSecret);
         if (data.data.clientData?.publishableKey) {
           setPublishableKey(data.data.clientData.publishableKey as string);
@@ -177,10 +192,12 @@ export default function CheckoutPage() {
 
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        throw new Error((err as { error?: { message?: string } }).error?.message ?? 'Order creation failed');
+        throw new Error(
+          (err as { error?: { message?: string } }).error?.message ?? 'Order creation failed',
+        );
       }
 
-      const data = await res.json() as { data: { orderNumber: string } };
+      const data = (await res.json()) as { data: { orderNumber: string } };
       setOrderNumber(data.data.orderNumber);
       clearCart();
       setStep('success');
@@ -222,46 +239,89 @@ export default function CheckoutPage() {
                 <h2 className="text-lg font-semibold text-gray-900">Shipping Address</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="firstName" className="text-sm font-medium text-gray-700">First Name</label>
-                    <input id="firstName" required value={shipping.firstName}
+                    <label htmlFor="firstName" className="text-sm font-medium text-gray-700">
+                      First Name
+                    </label>
+                    <input
+                      id="firstName"
+                      required
+                      value={shipping.firstName}
                       onChange={(e) => setShipping((s) => ({ ...s, firstName: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div>
-                    <label htmlFor="lastName" className="text-sm font-medium text-gray-700">Last Name</label>
-                    <input id="lastName" required value={shipping.lastName}
+                    <label htmlFor="lastName" className="text-sm font-medium text-gray-700">
+                      Last Name
+                    </label>
+                    <input
+                      id="lastName"
+                      required
+                      value={shipping.lastName}
                       onChange={(e) => setShipping((s) => ({ ...s, lastName: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div className="sm:col-span-2">
-                    <label htmlFor="email" className="text-sm font-medium text-gray-700">Email</label>
-                    <input id="email" type="email" required value={shipping.email}
+                    <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      type="email"
+                      required
+                      value={shipping.email}
                       onChange={(e) => setShipping((s) => ({ ...s, email: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div className="sm:col-span-2">
-                    <label htmlFor="address" className="text-sm font-medium text-gray-700">Address</label>
-                    <input id="address" required value={shipping.address}
+                    <label htmlFor="address" className="text-sm font-medium text-gray-700">
+                      Address
+                    </label>
+                    <input
+                      id="address"
+                      required
+                      value={shipping.address}
                       onChange={(e) => setShipping((s) => ({ ...s, address: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div>
-                    <label htmlFor="city" className="text-sm font-medium text-gray-700">City</label>
-                    <input id="city" required value={shipping.city}
+                    <label htmlFor="city" className="text-sm font-medium text-gray-700">
+                      City
+                    </label>
+                    <input
+                      id="city"
+                      required
+                      value={shipping.city}
                       onChange={(e) => setShipping((s) => ({ ...s, city: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div>
-                    <label htmlFor="postalCode" className="text-sm font-medium text-gray-700">Postal Code</label>
-                    <input id="postalCode" required value={shipping.postalCode}
+                    <label htmlFor="postalCode" className="text-sm font-medium text-gray-700">
+                      Postal Code
+                    </label>
+                    <input
+                      id="postalCode"
+                      required
+                      value={shipping.postalCode}
                       onChange={(e) => setShipping((s) => ({ ...s, postalCode: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent" />
+                      className="mt-1 h-10 w-full rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    />
                   </div>
                   <div className="sm:col-span-2">
-                    <label htmlFor="country" className="text-sm font-medium text-gray-700">Country</label>
-                    <select id="country" required value={shipping.country}
+                    <label htmlFor="country" className="text-sm font-medium text-gray-700">
+                      Country
+                    </label>
+                    <select
+                      id="country"
+                      required
+                      value={shipping.country}
                       onChange={(e) => setShipping((s) => ({ ...s, country: e.target.value }))}
-                      className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-accent">
+                      className="mt-1 h-10 w-full rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
+                    >
                       <option value="">Select country</option>
                       <option value="DE">Germany</option>
                       <option value="AT">Austria</option>
@@ -276,7 +336,9 @@ export default function CheckoutPage() {
               </section>
 
               {paymentError && (
-                <div className="mt-4 rounded-md bg-red-50 p-4 text-sm text-red-700">{paymentError}</div>
+                <div className="mt-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                  {paymentError}
+                </div>
               )}
 
               <button
@@ -284,7 +346,11 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="mt-6 flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <CreditCard className="h-4 w-4" />
+                )}
                 Continue to Payment
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -328,23 +394,26 @@ export default function CheckoutPage() {
 
                 <div className="mt-4">
                   {paymentError && (
-                    <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">{paymentError}</div>
+                    <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-700">
+                      {paymentError}
+                    </div>
                   )}
 
                   {/* Stripe Payment Element */}
-                  {!fallbackMode && currentProviderConfig?.componentType === 'stripe-payment-element' && clientSecret && publishableKey && (
-                    <StripePayment
-                      clientSecret={clientSecret}
-                      publishableKey={publishableKey}
-                      onSuccess={handleStripeSuccess}
-                      onError={setPaymentError}
-                    />
-                  )}
+                  {!fallbackMode &&
+                    currentProviderConfig?.componentType === 'stripe-payment-element' &&
+                    clientSecret &&
+                    publishableKey && (
+                      <StripePayment
+                        clientSecret={clientSecret}
+                        publishableKey={publishableKey}
+                        onSuccess={handleStripeSuccess}
+                        onError={setPaymentError}
+                      />
+                    )}
 
                   {/* Fallback: Prepayment / Demo mode */}
-                  {fallbackMode && (
-                    <PrepaymentForm onSubmit={handlePrepaymentComplete} />
-                  )}
+                  {fallbackMode && <PrepaymentForm onSubmit={handlePrepaymentComplete} />}
                 </div>
               </section>
             </div>

@@ -1,5 +1,12 @@
 import { createDatabase } from '../connection';
-import { categories, products, productCategories, users, shippingMethods, taxRules } from '../schemas/index';
+import {
+  categories,
+  products,
+  productCategories,
+  users,
+  shippingMethods,
+  taxRules,
+} from '../schemas/index';
 import bcrypt from 'bcryptjs';
 
 const connectionString = process.env['DATABASE_URL'];
@@ -35,9 +42,19 @@ async function seed() {
 
   // Create categories
   const categoryData = [
-    { name: 'Electronics', slug: 'electronics', description: 'Electronic devices and accessories', sortOrder: 1 },
+    {
+      name: 'Electronics',
+      slug: 'electronics',
+      description: 'Electronic devices and accessories',
+      sortOrder: 1,
+    },
     { name: 'Clothing', slug: 'clothing', description: 'Apparel and fashion', sortOrder: 2 },
-    { name: 'Home & Garden', slug: 'home-garden', description: 'Home decor and garden supplies', sortOrder: 3 },
+    {
+      name: 'Home & Garden',
+      slug: 'home-garden',
+      description: 'Home decor and garden supplies',
+      sortOrder: 3,
+    },
     { name: 'Books', slug: 'books', description: 'Physical and digital books', sortOrder: 4 },
   ];
 
@@ -65,7 +82,8 @@ async function seed() {
     {
       name: 'Organic Cotton T-Shirt',
       slug: 'organic-cotton-tshirt',
-      description: 'Sustainably sourced organic cotton t-shirt. Comfortable, breathable, and eco-friendly.',
+      description:
+        'Sustainably sourced organic cotton t-shirt. Comfortable, breathable, and eco-friendly.',
       shortDescription: 'Eco-friendly cotton t-shirt',
       sku: 'TS-001',
       status: 'active' as const,
