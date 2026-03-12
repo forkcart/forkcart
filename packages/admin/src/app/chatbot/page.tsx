@@ -66,7 +66,7 @@ export default function ChatbotPage() {
         <MessageCircle className="h-8 w-8 text-primary" />
         <div>
           <h1 className="text-3xl font-bold">Chatbot</h1>
-          <p className="mt-1 text-muted-foreground">AI Kundenberatung konfigurieren</p>
+          <p className="mt-1 text-muted-foreground">Configure AI customer support chatbot</p>
         </div>
       </div>
 
@@ -74,7 +74,7 @@ export default function ChatbotPage() {
       <div className="mt-8">
         {settingsLoading ? (
           <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
-            Lade Einstellungen...
+            Loading settings...
           </div>
         ) : settings ? (
           <ChatbotSettingsForm settings={settings} />
@@ -86,13 +86,11 @@ export default function ChatbotPage() {
         <h2 className="text-xl font-semibold">Chat-Sessions</h2>
         <div className="mt-4 rounded-lg border bg-card shadow-sm">
           {sessionsLoading && (
-            <div className="p-8 text-center text-muted-foreground">Lade Sessions...</div>
+            <div className="p-8 text-center text-muted-foreground">Loading sessions...</div>
           )}
 
           {!sessionsLoading && sessions.length === 0 && (
-            <div className="p-8 text-center text-muted-foreground">
-              Noch keine Chat-Sessions vorhanden.
-            </div>
+            <div className="p-8 text-center text-muted-foreground">No chat sessions yet.</div>
           )}
 
           {sessions.length > 0 && (
@@ -149,7 +147,7 @@ function ChatbotSettingsForm({ settings }: { settings: ChatbotSettings }) {
   return (
     <form onSubmit={handleSave} className="space-y-6 rounded-lg border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold">Einstellungen</h2>
+        <h2 className="text-xl font-semibold">Settings</h2>
         <label className="flex cursor-pointer items-center gap-3">
           <span className="text-sm font-medium text-muted-foreground">
             {enabled ? 'Aktiv' : 'Inaktiv'}
@@ -198,13 +196,11 @@ function ChatbotSettingsForm({ settings }: { settings: ChatbotSettings }) {
           disabled={updateMutation.isPending}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
-          {updateMutation.isPending ? 'Speichern...' : 'Speichern'}
+          {updateMutation.isPending ? 'Saving...' : 'Save'}
         </button>
       </div>
 
-      {updateMutation.isSuccess && (
-        <p className="text-sm text-green-600">Einstellungen gespeichert ✓</p>
-      )}
+      {updateMutation.isSuccess && <p className="text-sm text-green-600">Settings saved ✓</p>}
     </form>
   );
 }

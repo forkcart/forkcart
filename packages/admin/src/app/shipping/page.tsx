@@ -160,32 +160,30 @@ export default function ShippingPage() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Versandarten</h1>
-          <p className="mt-1 text-muted-foreground">Versandmethoden und Preise verwalten</p>
+          <h1 className="text-3xl font-bold">Shipping Methods</h1>
+          <p className="mt-1 text-muted-foreground">Manage shipping methods and rates</p>
         </div>
         <button
           onClick={openCreate}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
-          Neue Versandart
+          New Shipping Method
         </button>
       </div>
 
       <div className="mt-8 rounded-lg border bg-card shadow-sm">
         {isLoading && (
-          <div className="p-8 text-center text-muted-foreground">Lade Versandarten...</div>
+          <div className="p-8 text-center text-muted-foreground">Loading shipping methods...</div>
         )}
 
         {error && (
-          <div className="p-8 text-center text-destructive">
-            Fehler beim Laden der Versandarten.
-          </div>
+          <div className="p-8 text-center text-destructive">Failed to load shipping methods.</div>
         )}
 
         {!isLoading && methods.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">
-            Noch keine Versandarten. Erstelle die erste Versandart.
+            No shipping methods yet. Create the first one.
           </div>
         )}
 
@@ -249,7 +247,7 @@ export default function ShippingPage() {
                       </button>
                       <button
                         onClick={() => {
-                          if (confirm('Versandart wirklich löschen?')) {
+                          if (confirm('Delete this shipping method?')) {
                             deleteMutation.mutate(method.id);
                           }
                         }}
@@ -272,7 +270,7 @@ export default function ShippingPage() {
           <div className="w-full max-w-lg rounded-lg bg-card p-6 shadow-xl">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold">
-                {editingId ? 'Versandart bearbeiten' : 'Neue Versandart'}
+                {editingId ? 'Edit Shipping Method' : 'New Shipping Method'}
               </h2>
               <button onClick={closeModal} className="rounded p-1 hover:bg-muted">
                 <X className="h-5 w-5" />
@@ -390,7 +388,7 @@ export default function ShippingPage() {
                   disabled={createMutation.isPending || updateMutation.isPending}
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {editingId ? 'Speichern' : 'Erstellen'}
+                  {editingId ? 'Save' : 'Create'}
                 </button>
               </div>
             </form>
