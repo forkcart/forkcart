@@ -60,28 +60,61 @@ export default function SettingsPage() {
       </div>
 
       <div className="mt-8 space-y-6">
-        <SettingsSection title="General" description="Store name, contact, and basic info." icon={Store}>
+        <SettingsSection
+          title="General"
+          description="Store name, contact, and basic info."
+          icon={Store}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="shopName">Store Name</Label>
-              <Input id="shopName" value={shopName} onChange={(e) => setShopName(e.target.value)} className="mt-1.5" />
+              <Input
+                id="shopName"
+                value={shopName}
+                onChange={(e) => setShopName(e.target.value)}
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label htmlFor="contactEmail">Contact Email</Label>
-              <Input id="contactEmail" type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="shop@example.com" className="mt-1.5" />
+              <Input
+                id="contactEmail"
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="shop@example.com"
+                className="mt-1.5"
+              />
             </div>
             <div>
               <Label htmlFor="contactPhone">Contact Phone</Label>
-              <Input id="contactPhone" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+49 ..." className="mt-1.5" />
+              <Input
+                id="contactPhone"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="+49 ..."
+                className="mt-1.5"
+              />
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="address">Address</Label>
-              <Textarea id="address" value={address} onChange={(e) => setAddress(e.target.value)} rows={2} placeholder="Street, City, Country" className="mt-1.5" />
+              <Textarea
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                rows={2}
+                placeholder="Street, City, Country"
+                className="mt-1.5"
+              />
             </div>
           </div>
         </SettingsSection>
 
-        <SettingsSection title="Payments" description="Configure payment providers." icon={CreditCard}>
+        <SettingsSection
+          title="Payments"
+          description="Configure payment providers."
+          icon={CreditCard}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="stripeKey">Stripe Secret Key</Label>
@@ -89,14 +122,24 @@ export default function SettingsPage() {
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="stripeWebhook">Stripe Webhook Secret</Label>
-              <Input id="stripeWebhook" type="password" placeholder="whsec_..." className="mt-1.5" />
+              <Input
+                id="stripeWebhook"
+                type="password"
+                placeholder="whsec_..."
+                className="mt-1.5"
+              />
             </div>
           </div>
         </SettingsSection>
 
-        <SettingsSection title="Shipping" description="Manage shipping methods and rates." icon={Truck}>
+        <SettingsSection
+          title="Shipping"
+          description="Manage shipping methods and rates."
+          icon={Truck}
+        >
           <p className="text-sm text-muted-foreground">
-            Shipping configuration is coming soon. You&apos;ll be able to define zones, rates, and carrier integrations here.
+            Shipping configuration is coming soon. You&apos;ll be able to define zones, rates, and
+            carrier integrations here.
           </p>
         </SettingsSection>
 
@@ -106,7 +149,11 @@ export default function SettingsPage() {
           </p>
         </SettingsSection>
 
-        <SettingsSection title="AI" description="Configure AI providers for product descriptions and SEO." icon={Bot}>
+        <SettingsSection
+          title="AI"
+          description="Configure AI providers for product descriptions and SEO."
+          icon={Bot}
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="openaiKey">OpenAI API Key</Label>
@@ -114,7 +161,12 @@ export default function SettingsPage() {
             </div>
             <div className="sm:col-span-2">
               <Label htmlFor="anthropicKey">Anthropic API Key</Label>
-              <Input id="anthropicKey" type="password" placeholder="sk-ant-..." className="mt-1.5" />
+              <Input
+                id="anthropicKey"
+                type="password"
+                placeholder="sk-ant-..."
+                className="mt-1.5"
+              />
             </div>
           </div>
         </SettingsSection>

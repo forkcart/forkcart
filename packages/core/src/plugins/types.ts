@@ -7,4 +7,6 @@ export interface DomainEvent<TPayload = unknown> {
 }
 
 /** Handler for a specific event type */
-export type EventHandler<TPayload = unknown> = (event: DomainEvent<TPayload>) => void | Promise<void>;
+export type EventHandler<TPayload = unknown> = (
+  event: DomainEvent<TPayload>,
+) => void | Promise<void>;

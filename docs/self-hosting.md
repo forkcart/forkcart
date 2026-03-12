@@ -4,14 +4,14 @@ Run ForkCart on your own server. Full control, no monthly fees, no vendor lock-i
 
 ## Requirements
 
-| Requirement | Minimum | Recommended |
-|---|---|---|
-| **Node.js** | 22+ | 22 LTS |
-| **PostgreSQL** | 16 | 16+ |
-| **pnpm** | 9+ | Latest |
-| **RAM** | 1 GB | 2+ GB |
-| **Disk** | 5 GB | 20+ GB (for media) |
-| **OS** | Any Linux | Ubuntu 22.04 / Debian 12 |
+| Requirement    | Minimum   | Recommended              |
+| -------------- | --------- | ------------------------ |
+| **Node.js**    | 22+       | 22 LTS                   |
+| **PostgreSQL** | 16        | 16+                      |
+| **pnpm**       | 9+        | Latest                   |
+| **RAM**        | 1 GB      | 2+ GB                    |
+| **Disk**       | 5 GB      | 20+ GB (for media)       |
+| **OS**         | Any Linux | Ubuntu 22.04 / Debian 12 |
 
 ## Installation
 
@@ -49,54 +49,54 @@ All configuration lives in `.env` at the project root.
 
 ### Database
 
-| Variable | Description | Example |
-|---|---|---|
+| Variable       | Description                  | Example                                                  |
+| -------------- | ---------------------------- | -------------------------------------------------------- |
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://forkcart:password@localhost:5432/forkcart` |
 
 ### API Server
 
-| Variable | Description | Default |
-|---|---|---|
-| `API_PORT` | Port for the Hono API | `4000` |
-| `API_HOST` | Bind address | `0.0.0.0` |
-| `API_CORS_ORIGIN` | Allowed CORS origins (comma-separated) | `http://localhost:3000,http://localhost:3001` |
-| `SESSION_SECRET` | Secret for signing sessions/tokens (min 32 chars) | — |
+| Variable          | Description                                       | Default                                       |
+| ----------------- | ------------------------------------------------- | --------------------------------------------- |
+| `API_PORT`        | Port for the Hono API                             | `4000`                                        |
+| `API_HOST`        | Bind address                                      | `0.0.0.0`                                     |
+| `API_CORS_ORIGIN` | Allowed CORS origins (comma-separated)            | `http://localhost:3000,http://localhost:3001` |
+| `SESSION_SECRET`  | Secret for signing sessions/tokens (min 32 chars) | —                                             |
 
 ### Frontend
 
-| Variable | Description | Example |
-|---|---|---|
-| `NEXT_PUBLIC_API_URL` | API URL for the admin panel | `https://api.yourstore.com` |
-| `NEXT_PUBLIC_STOREFRONT_API_URL` | API URL for the storefront | `https://api.yourstore.com` |
+| Variable                         | Description                 | Example                     |
+| -------------------------------- | --------------------------- | --------------------------- |
+| `NEXT_PUBLIC_API_URL`            | API URL for the admin panel | `https://api.yourstore.com` |
+| `NEXT_PUBLIC_STOREFRONT_API_URL` | API URL for the storefront  | `https://api.yourstore.com` |
 
 ### AI Providers (optional)
 
-| Variable | Description |
-|---|---|
-| `OPENAI_API_KEY` | OpenAI API key for AI features |
-| `ANTHROPIC_API_KEY` | Anthropic API key (alternative) |
-| `OLLAMA_BASE_URL` | Ollama server URL for local AI (default: `http://localhost:11434`) |
+| Variable            | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `OPENAI_API_KEY`    | OpenAI API key for AI features                                     |
+| `ANTHROPIC_API_KEY` | Anthropic API key (alternative)                                    |
+| `OLLAMA_BASE_URL`   | Ollama server URL for local AI (default: `http://localhost:11434`) |
 
 ### Stripe (optional)
 
-| Variable | Description |
-|---|---|
-| `STRIPE_SECRET_KEY` | Stripe secret key (`sk_live_...`) |
-| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret (`whsec_...`) |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_live_...`) |
+| Variable                             | Description                                 |
+| ------------------------------------ | ------------------------------------------- |
+| `STRIPE_SECRET_KEY`                  | Stripe secret key (`sk_live_...`)           |
+| `STRIPE_WEBHOOK_SECRET`              | Stripe webhook signing secret (`whsec_...`) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_live_...`)      |
 
 ### Media Storage
 
-| Variable | Description | Default |
-|---|---|---|
-| `MEDIA_STORAGE_PATH` | Local directory for uploads | `./uploads` |
-| `MEDIA_BASE_URL` | Public URL for media files | `http://localhost:4000/uploads` |
+| Variable             | Description                 | Default                         |
+| -------------------- | --------------------------- | ------------------------------- |
+| `MEDIA_STORAGE_PATH` | Local directory for uploads | `./uploads`                     |
+| `MEDIA_BASE_URL`     | Public URL for media files  | `http://localhost:4000/uploads` |
 
 ### Logging
 
-| Variable | Description | Default |
-|---|---|---|
-| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | `info` |
+| Variable    | Description                                      | Default |
+| ----------- | ------------------------------------------------ | ------- |
+| `LOG_LEVEL` | Log verbosity (`debug`, `info`, `warn`, `error`) | `info`  |
 
 ## Production Build
 

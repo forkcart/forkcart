@@ -15,7 +15,7 @@ async function fetchProductImages(productId: string): Promise<Media[]> {
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to load images');
-  const json = await res.json() as { data: Media[] };
+  const json = (await res.json()) as { data: Media[] };
   return json.data;
 }
 
@@ -29,10 +29,10 @@ async function uploadImage(productId: string, file: File, sortOrder: number): Pr
     credentials: 'include',
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: { message?: string } };
+    const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
     throw new Error(err.error?.message ?? `Upload failed: ${res.status}`);
   }
-  const json = await res.json() as { data: Media };
+  const json = (await res.json()) as { data: Media };
   return json.data;
 }
 
@@ -44,7 +44,10 @@ async function deleteImage(productId: string, mediaId: string): Promise<void> {
   if (!res.ok) throw new Error('Failed to delete image');
 }
 
-async function reorderImages(productId: string, items: Array<{ id: string; sortOrder: number }>): Promise<void> {
+async function reorderImages(
+  productId: string,
+  items: Array<{ id: string; sortOrder: number }>,
+): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/images/reorder`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -168,13 +171,9 @@ export function ProductImages({ productId }: ProductImagesProps) {
           />
         </svg>
         <p className="text-sm text-muted-foreground">
-          {uploadMutation.isPending
-            ? 'Uploading…'
-            : 'Drop images here or click to upload'}
+          {uploadMutation.isPending ? 'Uploading…' : 'Drop images here or click to upload'}
         </p>
-        <p className="mt-1 text-xs text-muted-foreground/60">
-          JPG, PNG, WebP, GIF — max 10MB
-        </p>
+        <p className="mt-1 text-xs text-muted-foreground/60">JPG, PNG, WebP, GIF — max 10MB</p>
         <input
           ref={fileInputRef}
           type="file"
@@ -186,9 +185,7 @@ export function ProductImages({ productId }: ProductImagesProps) {
       </div>
 
       {uploadMutation.isError && (
-        <p className="mt-2 text-sm text-destructive">
-          {uploadMutation.error.message}
-        </p>
+        <p className="mt-2 text-sm text-destructive">{uploadMutation.error.message}</p>
       )}
 
       {/* Image Grid */}

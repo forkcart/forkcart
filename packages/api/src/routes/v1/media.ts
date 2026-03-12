@@ -61,7 +61,7 @@ export function createMediaRoutes(mediaService: MediaService) {
 
   /** Reorder media */
   router.put('/reorder', async (c) => {
-    const body = await c.req.json() as { items: Array<{ id: string; sortOrder: number }> };
+    const body = (await c.req.json()) as { items: Array<{ id: string; sortOrder: number }> };
     await mediaService.reorderMedia(body.items);
     return c.json({ success: true });
   });

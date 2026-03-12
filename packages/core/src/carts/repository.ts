@@ -53,10 +53,7 @@ export class CartRepository {
   }
 
   async findCartItem(cartId: string, productId: string, variantId?: string | null) {
-    const conditions = [
-      eq(cartItems.cartId, cartId),
-      eq(cartItems.productId, productId),
-    ];
+    const conditions = [eq(cartItems.cartId, cartId), eq(cartItems.productId, productId)];
 
     if (variantId) {
       conditions.push(eq(cartItems.variantId, variantId));
@@ -117,10 +114,7 @@ export class CartRepository {
   }
 
   async removeItem(itemId: string, cartId: string) {
-    const result = await this.db
-      .delete(cartItems)
-      .where(eq(cartItems.id, itemId))
-      .returning();
+    const result = await this.db.delete(cartItems).where(eq(cartItems.id, itemId)).returning();
 
     await this.touchCart(cartId);
     return result.length > 0;
@@ -157,9 +151,6 @@ export class CartRepository {
   }
 
   private async touchCart(cartId: string) {
-    await this.db
-      .update(carts)
-      .set({ updatedAt: new Date() })
-      .where(eq(carts.id, cartId));
+    await this.db.update(carts).set({ updatedAt: new Date() }).where(eq(carts.id, cartId));
   }
 }

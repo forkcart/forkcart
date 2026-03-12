@@ -108,22 +108,23 @@ export class CartService {
 
     // Inventory check
     if (product.trackInventory) {
-      const availableStock = variant
-        ? variant.inventoryQuantity
-        : product.inventoryQuantity;
+      const availableStock = variant ? variant.inventoryQuantity : product.inventoryQuantity;
 
       if (requestedQuantity > availableStock) {
-        throw new ValidationError(
-          `Only ${availableStock} items available in stock`,
-          { available: availableStock, requested: requestedQuantity },
-        );
+        throw new ValidationError(`Only ${availableStock} items available in stock`, {
+          available: availableStock,
+          requested: requestedQuantity,
+        });
       }
     }
 
     if (existingItem) {
       // Merge: increase quantity
       await this.repo.updateItemQuantity(existingItem.id, requestedQuantity, cartId);
-      logger.info({ cartId, itemId: existingItem.id, quantity: requestedQuantity }, 'Cart item quantity updated (merge)');
+      logger.info(
+        { cartId, itemId: existingItem.id, quantity: requestedQuantity },
+        'Cart item quantity updated (merge)',
+      );
     } else {
       // New item
       const item = await this.repo.addItem({
@@ -141,7 +142,11 @@ export class CartService {
   }
 
   /** Update cart item quantity */
-  async updateItem(cartId: string, itemId: string, input: UpdateCartItemInput): Promise<CartResponse> {
+  async updateItem(
+    cartId: string,
+    itemId: string,
+    input: UpdateCartItemInput,
+  ): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -166,15 +171,13 @@ export class CartService {
       const variant = item.variantId
         ? await this.repo.getVariantWithInventory(item.variantId)
         : null;
-      const availableStock = variant
-        ? variant.inventoryQuantity
-        : product.inventoryQuantity;
+      const availableStock = variant ? variant.inventoryQuantity : product.inventoryQuantity;
 
       if (input.quantity > availableStock) {
-        throw new ValidationError(
-          `Only ${availableStock} items available in stock`,
-          { available: availableStock, requested: input.quantity },
-        );
+        throw new ValidationError(`Only ${availableStock} items available in stock`, {
+          available: availableStock,
+          requested: input.quantity,
+        });
       }
     }
 

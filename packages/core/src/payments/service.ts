@@ -131,7 +131,10 @@ export class PaymentService {
       },
     });
 
-    logger.info({ providerId: provider.id, externalId: result.externalId, amount }, 'PaymentIntent created');
+    logger.info(
+      { providerId: provider.id, externalId: result.externalId, amount },
+      'PaymentIntent created',
+    );
 
     await this.events.emit(PAYMENT_EVENTS.CREATED, {
       provider: provider.id,
@@ -160,7 +163,12 @@ export class PaymentService {
 
     switch (event.type) {
       case 'payment.succeeded': {
-        await this.handlePaymentSucceeded(provider.id, event.externalId, event.amount, event.metadata);
+        await this.handlePaymentSucceeded(
+          provider.id,
+          event.externalId,
+          event.amount,
+          event.metadata,
+        );
         break;
       }
       case 'payment.failed': {
@@ -168,7 +176,10 @@ export class PaymentService {
         break;
       }
       case 'payment.refunded': {
-        logger.info({ providerId: provider.id, externalId: event.externalId }, 'Refund webhook received');
+        logger.info(
+          { providerId: provider.id, externalId: event.externalId },
+          'Refund webhook received',
+        );
         break;
       }
     }
@@ -185,7 +196,10 @@ export class PaymentService {
     const shippingAddressRaw = metadata['shippingAddress'] ?? '{}';
 
     if (!cartId || !customerId) {
-      logger.error({ cartId, customerId, externalId }, 'Missing cartId or customerId in webhook metadata');
+      logger.error(
+        { cartId, customerId, externalId },
+        'Missing cartId or customerId in webhook metadata',
+      );
       return;
     }
 
@@ -198,8 +212,12 @@ export class PaymentService {
     }
 
     const shippingAddress = JSON.parse(shippingAddressRaw) as {
-      firstName: string; lastName: string; addressLine1: string;
-      city: string; postalCode: string; country: string;
+      firstName: string;
+      lastName: string;
+      addressLine1: string;
+      city: string;
+      postalCode: string;
+      country: string;
     };
     const addressResult = await this.customerRepo.createAddress({
       customerId,
@@ -277,11 +295,7 @@ export class PaymentService {
     logger.info({ orderId: order.id, orderNumber, externalId }, 'Order created from webhook');
   }
 
-  private async handlePaymentFailed(
-    providerId: string,
-    externalId: string,
-    errorMessage?: string,
-  ) {
+  private async handlePaymentFailed(providerId: string, externalId: string, errorMessage?: string) {
     logger.warn({ providerId, externalId, error: errorMessage }, 'Payment failed');
 
     const existing = await this.paymentRepo.findByExternalId(externalId);

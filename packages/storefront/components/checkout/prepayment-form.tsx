@@ -40,11 +40,7 @@ export function PrepaymentForm({ onSubmit }: PrepaymentFormProps) {
         disabled={processing}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
       >
-        {processing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Lock className="h-4 w-4" />
-        )}
+        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
         {processing ? 'Creating Order...' : 'Place Order (Prepayment)'}
       </button>
     </form>

@@ -33,10 +33,16 @@ export function Header() {
 
           {/* Desktop Nav */}
           <nav className="hidden items-center gap-8 md:flex">
-            <Link href="/" className="text-sm font-medium text-gray-600 transition hover:text-gray-900">
+            <Link
+              href="/"
+              className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
+            >
               Home
             </Link>
-            <Link href="/category/all" className="text-sm font-medium text-gray-600 transition hover:text-gray-900">
+            <Link
+              href="/category/all"
+              className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
+            >
               Shop
             </Link>
           </nav>
@@ -52,12 +58,19 @@ export function Header() {
                   placeholder="Search products…"
                   className="h-9 w-48 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
                 />
-                <button type="button" onClick={() => setSearchOpen(false)} className="text-gray-400 hover:text-gray-600">
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
                   <X className="h-4 w-4" />
                 </button>
               </form>
             ) : (
-              <button onClick={() => setSearchOpen(true)} className="rounded-md p-2 text-gray-600 hover:bg-gray-100">
+              <button
+                onClick={() => setSearchOpen(true)}
+                className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
+              >
                 <Search className="h-5 w-5" />
               </button>
             )}
@@ -71,7 +84,10 @@ export function Header() {
               )}
             </Link>
 
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden">
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+            >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
@@ -80,10 +96,18 @@ export function Header() {
         {/* Mobile Nav */}
         {mobileOpen && (
           <nav className="border-t pb-4 pt-2 md:hidden">
-            <Link href="/" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-600">
+            <Link
+              href="/"
+              onClick={() => setMobileOpen(false)}
+              className="block py-2 text-sm font-medium text-gray-600"
+            >
               Home
             </Link>
-            <Link href="/category/all" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium text-gray-600">
+            <Link
+              href="/category/all"
+              onClick={() => setMobileOpen(false)}
+              className="block py-2 text-sm font-medium text-gray-600"
+            >
               Shop
             </Link>
           </nav>

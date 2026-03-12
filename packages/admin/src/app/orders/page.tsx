@@ -51,7 +51,10 @@ interface Order {
   statusHistory?: StatusHistoryEntry[];
 }
 
-const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  string,
+  'default' | 'success' | 'warning' | 'destructive' | 'outline'
+> = {
   pending: 'warning',
   confirmed: 'default',
   processing: 'default',
@@ -71,7 +74,15 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
   refunded: [],
 };
 
-const ALL_STATUSES = ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'refunded'];
+const ALL_STATUSES = [
+  'pending',
+  'confirmed',
+  'processing',
+  'shipped',
+  'delivered',
+  'cancelled',
+  'refunded',
+];
 
 function StatusTimeline({ history }: { history: StatusHistoryEntry[] }) {
   return (
@@ -85,7 +96,9 @@ function StatusTimeline({ history }: { history: StatusHistoryEntry[] }) {
             <p className="text-sm font-medium">
               {entry.fromStatus ? (
                 <>
-                  <Badge variant={STATUS_VARIANT[entry.fromStatus] ?? 'default'} className="mr-1">{entry.fromStatus}</Badge>
+                  <Badge variant={STATUS_VARIANT[entry.fromStatus] ?? 'default'} className="mr-1">
+                    {entry.fromStatus}
+                  </Badge>
                   →{' '}
                 </>
               ) : null}
@@ -122,7 +135,12 @@ function OrderDetailPanel({ orderId, onClose }: { orderId: string; onClose: () =
     },
   });
 
-  if (isLoading) return <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Loading…</div>;
+  if (isLoading)
+    return (
+      <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
+        Loading…
+      </div>
+    );
   if (!data) return null;
 
   const order = data.data;
@@ -132,12 +150,16 @@ function OrderDetailPanel({ orderId, onClose }: { orderId: string; onClose: () =
     <div className="rounded-lg border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Order {order.orderNumber}</h2>
-        <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">✕ Close</button>
+        <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">
+          ✕ Close
+        </button>
       </div>
 
       {/* Status + Actions */}
       <div className="mt-4 flex items-center gap-3">
-        <Badge variant={STATUS_VARIANT[order.status] ?? 'default'} className="text-sm">{order.status}</Badge>
+        <Badge variant={STATUS_VARIANT[order.status] ?? 'default'} className="text-sm">
+          {order.status}
+        </Badge>
         {allowedTransitions.length > 0 && (
           <div className="flex gap-2">
             {allowedTransitions.map((s) => (
@@ -190,15 +212,24 @@ function OrderDetailPanel({ orderId, onClose }: { orderId: string; onClose: () =
           <p className="text-sm font-medium">Items</p>
           <div className="mt-2 space-y-2">
             {order.items.map((item) => (
-              <div key={item.id} className="flex items-center justify-between rounded-md border p-3">
+              <div
+                key={item.id}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
                 <div>
                   <p className="text-sm font-medium">{item.productName || 'Product'}</p>
-                  {item.variantName && <p className="text-xs text-muted-foreground">{item.variantName}</p>}
+                  {item.variantName && (
+                    <p className="text-xs text-muted-foreground">{item.variantName}</p>
+                  )}
                   {item.sku && <p className="text-xs text-muted-foreground">SKU: {item.sku}</p>}
                 </div>
                 <div className="text-right">
-                  <p className="text-sm">{item.quantity} × {formatPrice(item.unitPrice, order.currency)}</p>
-                  <p className="text-sm font-medium">{formatPrice(item.totalPrice, order.currency)}</p>
+                  <p className="text-sm">
+                    {item.quantity} × {formatPrice(item.unitPrice, order.currency)}
+                  </p>
+                  <p className="text-sm font-medium">
+                    {formatPrice(item.totalPrice, order.currency)}
+                  </p>
                 </div>
               </div>
             ))}
@@ -240,9 +271,10 @@ export default function OrdersPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['orders', statusFilter, page],
     queryFn: () =>
-      apiClient<{ data: Order[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
-        `/orders?${queryParams.toString()}`,
-      ),
+      apiClient<{
+        data: Order[];
+        pagination: { page: number; limit: number; total: number; totalPages: number };
+      }>(`/orders?${queryParams.toString()}`),
   });
 
   return (
@@ -255,7 +287,10 @@ export default function OrdersPage() {
       {/* Status Filter */}
       <div className="mt-4 flex flex-wrap gap-2">
         <button
-          onClick={() => { setStatusFilter(''); setPage(1); }}
+          onClick={() => {
+            setStatusFilter('');
+            setPage(1);
+          }}
           className={`rounded-md border px-3 py-1.5 text-sm font-medium ${!statusFilter ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
         >
           All
@@ -263,7 +298,10 @@ export default function OrdersPage() {
         {ALL_STATUSES.map((s) => (
           <button
             key={s}
-            onClick={() => { setStatusFilter(s); setPage(1); }}
+            onClick={() => {
+              setStatusFilter(s);
+              setPage(1);
+            }}
             className={`rounded-md border px-3 py-1.5 text-sm font-medium capitalize ${statusFilter === s ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}`}
           >
             {s}
@@ -281,7 +319,11 @@ export default function OrdersPage() {
       {/* Table */}
       <div className="mt-6 rounded-lg border bg-card shadow-sm">
         {isLoading && <div className="p-8 text-center text-muted-foreground">Loading orders…</div>}
-        {error && <div className="p-8 text-center text-destructive">Failed to load orders. Make sure the API is running.</div>}
+        {error && (
+          <div className="p-8 text-center text-destructive">
+            Failed to load orders. Make sure the API is running.
+          </div>
+        )}
         {data && data.data.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">
             No orders found{statusFilter ? ` with status "${statusFilter}"` : ''}.
@@ -313,11 +355,18 @@ export default function OrdersPage() {
                       {new Date(order.createdAt).toLocaleDateString('de-DE')}
                     </td>
                     <td className="p-4">
-                      <Badge variant={STATUS_VARIANT[order.status] ?? 'default'}>{order.status}</Badge>
+                      <Badge variant={STATUS_VARIANT[order.status] ?? 'default'}>
+                        {order.status}
+                      </Badge>
                     </td>
-                    <td className="p-4 text-right font-medium">{formatPrice(order.total, order.currency)}</td>
+                    <td className="p-4 text-right font-medium">
+                      {formatPrice(order.total, order.currency)}
+                    </td>
                     <td className="p-4">
-                      <button onClick={() => setSelectedOrderId(order.id)} className="rounded p-1 hover:bg-muted">
+                      <button
+                        onClick={() => setSelectedOrderId(order.id)}
+                        className="rounded p-1 hover:bg-muted"
+                      >
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </button>
                     </td>
@@ -329,7 +378,8 @@ export default function OrdersPage() {
             {data.pagination.totalPages > 1 && (
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-sm text-muted-foreground">
-                  Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
+                  Page {data.pagination.page} of {data.pagination.totalPages} (
+                  {data.pagination.total} total)
                 </p>
                 <div className="flex gap-2">
                   <button

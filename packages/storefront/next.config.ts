@@ -5,9 +5,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['@forkcart/shared'],
   outputFileTracingRoot: path.join(__dirname, '../../'),
   images: {
-    remotePatterns: [
-      { protocol: 'https', hostname: '**' },
-    ],
+    remotePatterns: [{ protocol: 'https', hostname: '**' }],
   },
 };
 

@@ -12,7 +12,13 @@ interface StripePaymentProps {
   onError: (error: string) => void;
 }
 
-function StripePaymentForm({ onSuccess, onError }: { onSuccess: () => void; onError: (error: string) => void }) {
+function StripePaymentForm({
+  onSuccess,
+  onError,
+}: {
+  onSuccess: () => void;
+  onError: (error: string) => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
   const [processing, setProcessing] = useState(false);
@@ -47,18 +53,19 @@ function StripePaymentForm({ onSuccess, onError }: { onSuccess: () => void; onEr
         disabled={!stripe || processing}
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
       >
-        {processing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Lock className="h-4 w-4" />
-        )}
+        {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
         {processing ? 'Processing...' : 'Pay Now'}
       </button>
     </form>
   );
 }
 
-export function StripePayment({ clientSecret, publishableKey, onSuccess, onError }: StripePaymentProps) {
+export function StripePayment({
+  clientSecret,
+  publishableKey,
+  onSuccess,
+  onError,
+}: StripePaymentProps) {
   const stripePromise = loadStripe(publishableKey);
 
   return (

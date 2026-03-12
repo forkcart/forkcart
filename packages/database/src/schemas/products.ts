@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { categories } from './categories';
 
@@ -36,7 +46,9 @@ export const productVariants = pgTable(
   'product_variants',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
     sku: varchar('sku', { length: 100 }).unique(),
     price: integer('price'),
@@ -61,8 +73,12 @@ export const productAttributes = pgTable('product_attributes', {
 
 /** Junction table for products ↔ categories */
 export const productCategories = pgTable('product_categories', {
-  productId: uuid('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
-  categoryId: uuid('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => products.id, { onDelete: 'cascade' }),
+  categoryId: uuid('category_id')
+    .notNull()
+    .references(() => categories.id, { onDelete: 'cascade' }),
 });
 
 /** Relations */

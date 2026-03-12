@@ -47,22 +47,26 @@ export class PluginLoader {
     if (existing) {
       // Update version if changed
       if (existing.version !== def.version) {
-        await this.db.update(plugins)
+        await this.db
+          .update(plugins)
           .set({ version: def.version, description: def.description, updatedAt: new Date() })
           .where(eq(plugins.id, existing.id));
       }
       return existing.id;
     }
 
-    const [plugin] = await this.db.insert(plugins).values({
-      name: def.name,
-      version: def.version,
-      description: def.description,
-      author: def.author,
-      isActive: false,
-      entryPoint: def.type,
-      metadata: { type: def.type },
-    }).returning();
+    const [plugin] = await this.db
+      .insert(plugins)
+      .values({
+        name: def.name,
+        version: def.version,
+        description: def.description,
+        author: def.author,
+        isActive: false,
+        entryPoint: def.type,
+        metadata: { type: def.type },
+      })
+      .returning();
 
     if (!plugin) throw new Error(`Failed to insert plugin: ${def.name}`);
 
@@ -97,7 +101,10 @@ export class PluginLoader {
     for (const plugin of activePlugins) {
       const def = this.knownPlugins.get(plugin.name);
       if (!def) {
-        logger.warn({ pluginName: plugin.name }, 'Active plugin has no registered definition, skipping');
+        logger.warn(
+          { pluginName: plugin.name },
+          'Active plugin has no registered definition, skipping',
+        );
         continue;
       }
 
@@ -141,9 +148,12 @@ export class PluginLoader {
         isActive: p.isActive,
         settings: p.settings.map((s) => ({
           key: s.key,
-          value: s.key.toLowerCase().includes('secret') || s.key.toLowerCase().includes('key')
-            ? (s.value ? '••••••••' : null)  // mask secrets
-            : s.value,
+          value:
+            s.key.toLowerCase().includes('secret') || s.key.toLowerCase().includes('key')
+              ? s.value
+                ? '••••••••'
+                : null // mask secrets
+              : s.value,
         })),
         requiredSettings: provider?.getRequiredSettings() ?? [],
         installedAt: p.installedAt,
@@ -160,7 +170,8 @@ export class PluginLoader {
 
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
-    await this.db.update(plugins)
+    await this.db
+      .update(plugins)
       .set({ isActive: active, updatedAt: new Date() })
       .where(eq(plugins.id, pluginId));
 
@@ -187,7 +198,10 @@ export class PluginLoader {
   }
 
   /** Update plugin settings */
-  async updatePluginSettings(pluginId: string, newSettings: Record<string, unknown>): Promise<void> {
+  async updatePluginSettings(
+    pluginId: string,
+    newSettings: Record<string, unknown>,
+  ): Promise<void> {
     const plugin = await this.db.query.plugins.findFirst({
       where: eq(plugins.id, pluginId),
       with: { settings: true },
@@ -198,7 +212,8 @@ export class PluginLoader {
     for (const [key, value] of Object.entries(newSettings)) {
       const existing = plugin.settings.find((s) => s.key === key);
       if (existing) {
-        await this.db.update(pluginSettings)
+        await this.db
+          .update(pluginSettings)
           .set({ value: value as Record<string, unknown>, updatedAt: new Date() })
           .where(eq(pluginSettings.id, existing.id));
       } else {

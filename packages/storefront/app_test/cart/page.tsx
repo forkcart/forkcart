@@ -27,7 +27,9 @@ export default function CartPage() {
   return (
     <div className="container-page py-12">
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">Shopping Cart</h1>
-      <p className="mt-1 text-sm text-gray-500">{items.length} item{items.length !== 1 ? 's' : ''}</p>
+      <p className="mt-1 text-sm text-gray-500">
+        {items.length} item{items.length !== 1 ? 's' : ''}
+      </p>
 
       <div className="mt-8 grid gap-12 lg:grid-cols-3">
         {/* Items */}
@@ -44,7 +46,10 @@ export default function CartPage() {
                 <div className="flex flex-1 flex-col">
                   <div className="flex items-start justify-between">
                     <div>
-                      <Link href={`/product/${item.productSlug}`} className="text-sm font-medium text-gray-900 hover:text-accent">
+                      <Link
+                        href={`/product/${item.productSlug}`}
+                        className="text-sm font-medium text-gray-900 hover:text-accent"
+                      >
                         {item.productName}
                       </Link>
                       <p className="mt-0.5 text-sm text-gray-500">

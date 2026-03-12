@@ -135,11 +135,7 @@ export class OrderRepository {
         orderCount: count(),
       })
       .from(orders)
-      .where(
-        and(
-          sql`${orders.status} NOT IN ('cancelled', 'refunded')`,
-        ),
-      );
+      .where(and(sql`${orders.status} NOT IN ('cancelled', 'refunded')`));
 
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);

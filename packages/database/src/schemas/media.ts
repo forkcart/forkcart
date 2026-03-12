@@ -16,7 +16,5 @@ export const media = pgTable(
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [
-    index('media_entity_idx').on(table.entityType, table.entityId),
-  ],
+  (table) => [index('media_entity_idx').on(table.entityType, table.entityId)],
 );

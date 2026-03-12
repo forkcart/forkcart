@@ -57,13 +57,18 @@ export default function PluginsPage() {
       }
       setEditSettings(initial);
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to load plugins' });
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to load plugins',
+      });
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { fetchPlugins(); }, [fetchPlugins]);
+  useEffect(() => {
+    fetchPlugins();
+  }, [fetchPlugins]);
 
   async function handleToggle(pluginId: string, isActive: boolean) {
     try {
@@ -71,10 +76,13 @@ export default function PluginsPage() {
         method: 'PUT',
         body: JSON.stringify({ isActive }),
       });
-      setPlugins((prev) => prev.map((p) => p.id === pluginId ? { ...p, isActive } : p));
+      setPlugins((prev) => prev.map((p) => (p.id === pluginId ? { ...p, isActive } : p)));
       setMessage({ type: 'success', text: `Plugin ${isActive ? 'activated' : 'deactivated'}` });
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to toggle plugin' });
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to toggle plugin',
+      });
     }
   }
 
@@ -104,7 +112,10 @@ export default function PluginsPage() {
       setMessage({ type: 'success', text: 'Settings saved' });
       await fetchPlugins(); // Refresh to get masked values
     } catch (err) {
-      setMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to save settings' });
+      setMessage({
+        type: 'error',
+        text: err instanceof Error ? err.message : 'Failed to save settings',
+      });
     } finally {
       setSaving(null);
     }
@@ -131,12 +142,20 @@ export default function PluginsPage() {
       </div>
 
       {message && (
-        <div className={`mt-4 flex items-center gap-2 rounded-md p-4 text-sm ${
-          message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-        }`}>
-          {message.type === 'success' ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+        <div
+          className={`mt-4 flex items-center gap-2 rounded-md p-4 text-sm ${
+            message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+          }`}
+        >
+          {message.type === 'success' ? (
+            <CheckCircle className="h-4 w-4" />
+          ) : (
+            <XCircle className="h-4 w-4" />
+          )}
           {message.text}
-          <button onClick={() => setMessage(null)} className="ml-auto text-xs underline">dismiss</button>
+          <button onClick={() => setMessage(null)} className="ml-auto text-xs underline">
+            dismiss
+          </button>
         </div>
       )}
 
@@ -153,9 +172,13 @@ export default function PluginsPage() {
                     <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                       v{plugin.version}
                     </span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                      plugin.type === 'payment' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
-                    }`}>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+                        plugin.type === 'payment'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
                       {plugin.type}
                     </span>
                   </div>
@@ -173,9 +196,11 @@ export default function PluginsPage() {
                   plugin.isActive ? 'bg-green-500' : 'bg-gray-300'
                 }`}
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  plugin.isActive ? 'translate-x-6' : 'translate-x-1'
-                }`} />
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    plugin.isActive ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
               </button>
             </div>
 
@@ -200,28 +225,42 @@ export default function PluginsPage() {
                           <Input
                             id={showKey}
                             type={isSecret && !showSecrets[showKey] ? 'password' : 'text'}
-                            placeholder={existingSetting?.value === '••••••••' ? '(configured — enter new value to change)' : setting.placeholder}
+                            placeholder={
+                              existingSetting?.value === '••••••••'
+                                ? '(configured — enter new value to change)'
+                                : setting.placeholder
+                            }
                             value={currentValue}
-                            onChange={(e) => setEditSettings((prev) => ({
-                              ...prev,
-                              [plugin.id]: {
-                                ...prev[plugin.id],
-                                [setting.key]: e.target.value,
-                              },
-                            }))}
+                            onChange={(e) =>
+                              setEditSettings((prev) => ({
+                                ...prev,
+                                [plugin.id]: {
+                                  ...prev[plugin.id],
+                                  [setting.key]: e.target.value,
+                                },
+                              }))
+                            }
                           />
                           {isSecret && (
                             <button
                               type="button"
-                              onClick={() => setShowSecrets((prev) => ({ ...prev, [showKey]: !prev[showKey] }))}
+                              onClick={() =>
+                                setShowSecrets((prev) => ({ ...prev, [showKey]: !prev[showKey] }))
+                              }
                               className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
-                              {showSecrets[showKey] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                              {showSecrets[showKey] ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
                             </button>
                           )}
                         </div>
                         {setting.description && (
-                          <p className="mt-1 text-xs text-muted-foreground">{setting.description}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {setting.description}
+                          </p>
                         )}
                       </div>
                     );
@@ -233,7 +272,11 @@ export default function PluginsPage() {
                   disabled={saving === plugin.id}
                   className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {saving === plugin.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  {saving === plugin.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
                   Save Settings
                 </button>
               </div>

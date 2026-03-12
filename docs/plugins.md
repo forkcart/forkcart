@@ -7,6 +7,7 @@ ForkCart is built around plugins. Payments, shipping, notifications, AI — ever
 A plugin is a self-contained TypeScript package that implements one of ForkCart's provider interfaces. It registers itself with the `PluginLoader`, gets activated through the admin panel, and stores its settings in the database.
 
 **Plugin types:**
+
 - `payment` — Payment providers (Stripe, PayPal, Klarna, etc.)
 - `shipping` — Shipping calculators and carrier integrations
 - `notification` — Email, SMS, push notifications
@@ -43,8 +44,8 @@ Every payment plugin implements the `PaymentProvider` interface from `@forkcart/
 
 ```typescript
 interface PaymentProvider {
-  readonly id: string;           // e.g. 'paypal'
-  readonly displayName: string;  // e.g. 'PayPal'
+  readonly id: string; // e.g. 'paypal'
+  readonly displayName: string; // e.g. 'PayPal'
 
   initialize(settings: Record<string, unknown>): Promise<void>;
   isConfigured(): boolean;
@@ -61,11 +62,11 @@ interface PaymentProvider {
 ```typescript
 // What you return when creating a payment
 interface PaymentIntentResult {
-  clientSecret: string;    // For the frontend to complete payment
-  externalId: string;      // Provider's payment ID
-  amount: number;          // Amount in cents
-  currency: string;        // ISO currency code
-  clientData?: Record<string, unknown>;  // Extra frontend config
+  clientSecret: string; // For the frontend to complete payment
+  externalId: string; // Provider's payment ID
+  amount: number; // Amount in cents
+  currency: string; // ISO currency code
+  clientData?: Record<string, unknown>; // Extra frontend config
 }
 
 // What you return from webhook verification
@@ -95,9 +96,15 @@ Here's a complete (simplified) PayPal plugin to show how little code it takes:
 
 ```typescript
 // packages/plugins/paypal/src/provider.ts
-import type { PaymentProvider, PaymentIntentInput, PaymentIntentResult,
-  PaymentProviderClientConfig, PaymentProviderSettingDef,
-  WebhookEvent, PaymentStatus } from '@forkcart/core';
+import type {
+  PaymentProvider,
+  PaymentIntentInput,
+  PaymentIntentResult,
+  PaymentProviderClientConfig,
+  PaymentProviderSettingDef,
+  WebhookEvent,
+  PaymentStatus,
+} from '@forkcart/core';
 
 export class PayPalProvider implements PaymentProvider {
   readonly id = 'paypal';
@@ -110,7 +117,9 @@ export class PayPalProvider implements PaymentProvider {
     this.clientSecret = (settings['clientSecret'] as string) ?? '';
   }
 
-  isConfigured() { return Boolean(this.clientId && this.clientSecret); }
+  isConfigured() {
+    return Boolean(this.clientId && this.clientSecret);
+  }
 
   getClientConfig(): PaymentProviderClientConfig {
     return {
@@ -131,10 +140,14 @@ export class PayPalProvider implements PaymentProvider {
       },
       body: JSON.stringify({
         intent: 'CAPTURE',
-        purchase_units: [{ amount: {
-          currency_code: input.currency.toUpperCase(),
-          value: (input.amount / 100).toFixed(2),
-        }}],
+        purchase_units: [
+          {
+            amount: {
+              currency_code: input.currency.toUpperCase(),
+              value: (input.amount / 100).toFixed(2),
+            },
+          },
+        ],
       }),
     });
     const order = await response.json();
@@ -149,7 +162,8 @@ export class PayPalProvider implements PaymentProvider {
   async verifyWebhook(rawBody: string, headers: Record<string, string>): Promise<WebhookEvent> {
     const event = JSON.parse(rawBody);
     return {
-      type: event.event_type === 'PAYMENT.CAPTURE.COMPLETED' ? 'payment.succeeded' : 'payment.failed',
+      type:
+        event.event_type === 'PAYMENT.CAPTURE.COMPLETED' ? 'payment.succeeded' : 'payment.failed',
       externalId: event.resource?.id ?? '',
       amount: Math.round(parseFloat(event.resource?.amount?.value ?? '0') * 100),
       currency: event.resource?.amount?.currency_code ?? 'USD',
@@ -199,6 +213,7 @@ pluginLoader.registerDefinition(paypalPlugin);
 ```
 
 That's it. The `PluginLoader` handles:
+
 - Inserting the plugin into the database
 - Loading settings from the DB
 - Calling `initialize()` with those settings
@@ -234,6 +249,7 @@ eventBus.on('payment.succeeded', async (event) => {
 ```
 
 Available events:
+
 - `product.created`, `product.updated`, `product.deleted`
 - `order.created`, `order.status_changed`
 - `payment.created`, `payment.succeeded`, `payment.failed`

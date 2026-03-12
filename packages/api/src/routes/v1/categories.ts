@@ -1,10 +1,6 @@
 import { Hono } from 'hono';
 import type { CategoryService } from '@forkcart/core';
-import {
-  CreateCategorySchema,
-  UpdateCategorySchema,
-  IdParamSchema,
-} from '@forkcart/shared';
+import { CreateCategorySchema, UpdateCategorySchema, IdParamSchema } from '@forkcart/shared';
 
 /** Category CRUD routes */
 export function createCategoryRoutes(categoryService: CategoryService) {

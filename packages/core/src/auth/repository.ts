@@ -27,28 +27,17 @@ export class UserRepository {
   constructor(private readonly db: Database) {}
 
   async findByEmail(email: string): Promise<UserRecord | undefined> {
-    const result = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
+    const result = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
     return result[0] as UserRecord | undefined;
   }
 
   async findById(id: string): Promise<UserRecord | undefined> {
-    const result = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, id))
-      .limit(1);
+    const result = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
     return result[0] as UserRecord | undefined;
   }
 
   async updateLastLogin(id: string): Promise<void> {
-    await this.db
-      .update(users)
-      .set({ lastLoginAt: new Date() })
-      .where(eq(users.id, id));
+    await this.db.update(users).set({ lastLoginAt: new Date() }).where(eq(users.id, id));
   }
 
   async createSession(data: {
@@ -58,10 +47,7 @@ export class UserRepository {
     ipAddress?: string;
     userAgent?: string;
   }): Promise<SessionRecord> {
-    const [session] = await this.db
-      .insert(sessions)
-      .values(data)
-      .returning();
+    const [session] = await this.db.insert(sessions).values(data).returning();
     return session as SessionRecord;
   }
 
@@ -69,25 +55,16 @@ export class UserRepository {
     const result = await this.db
       .select()
       .from(sessions)
-      .where(
-        and(
-          eq(sessions.token, token),
-          gt(sessions.expiresAt, new Date()),
-        ),
-      )
+      .where(and(eq(sessions.token, token), gt(sessions.expiresAt, new Date())))
       .limit(1);
     return result[0] as SessionRecord | undefined;
   }
 
   async deleteSession(token: string): Promise<void> {
-    await this.db
-      .delete(sessions)
-      .where(eq(sessions.token, token));
+    await this.db.delete(sessions).where(eq(sessions.token, token));
   }
 
   async deleteExpiredSessions(): Promise<void> {
-    await this.db
-      .delete(sessions)
-      .where(lt(sessions.expiresAt, new Date()));
+    await this.db.delete(sessions).where(lt(sessions.expiresAt, new Date()));
   }
 }

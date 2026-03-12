@@ -1,7 +1,12 @@
 import { eq, ilike, and, gte, lte, sql, asc, desc, count } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
 import { products, productCategories } from '@forkcart/database/schemas';
-import type { CreateProductInput, UpdateProductInput, ProductFilter, Pagination } from '@forkcart/shared';
+import type {
+  CreateProductInput,
+  UpdateProductInput,
+  ProductFilter,
+  Pagination,
+} from '@forkcart/shared';
 import { calculatePagination } from '@forkcart/shared';
 
 /** Product repository — data access layer using Drizzle ORM */

@@ -43,7 +43,10 @@ interface CustomerDetail extends Customer {
   orders: CustomerOrder[];
 }
 
-const STATUS_VARIANT: Record<string, 'default' | 'success' | 'warning' | 'destructive' | 'outline'> = {
+const STATUS_VARIANT: Record<
+  string,
+  'default' | 'success' | 'warning' | 'destructive' | 'outline'
+> = {
   pending: 'warning',
   confirmed: 'default',
   processing: 'default',
@@ -59,7 +62,12 @@ function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onCl
     queryFn: () => apiClient<{ data: CustomerDetail }>(`/customers/${customerId}`),
   });
 
-  if (isLoading) return <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">Loading…</div>;
+  if (isLoading)
+    return (
+      <div className="rounded-lg border bg-card p-8 text-center text-muted-foreground">
+        Loading…
+      </div>
+    );
   if (!data) return null;
 
   const customer = data.data;
@@ -67,8 +75,12 @@ function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onCl
   return (
     <div className="rounded-lg border bg-card p-6 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{customer.firstName} {customer.lastName}</h2>
-        <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">✕ Close</button>
+        <h2 className="text-lg font-semibold">
+          {customer.firstName} {customer.lastName}
+        </h2>
+        <button onClick={onClose} className="text-sm text-muted-foreground hover:text-foreground">
+          ✕ Close
+        </button>
       </div>
 
       {/* Contact Info */}
@@ -97,7 +109,9 @@ function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onCl
         </div>
         <div>
           <p className="text-xs text-muted-foreground">Customer since</p>
-          <p className="text-sm font-medium">{new Date(customer.createdAt).toLocaleDateString('de-DE')}</p>
+          <p className="text-sm font-medium">
+            {new Date(customer.createdAt).toLocaleDateString('de-DE')}
+          </p>
         </div>
       </div>
 
@@ -108,11 +122,19 @@ function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onCl
           <div className="mt-2 grid gap-2 sm:grid-cols-2">
             {customer.addresses.map((addr) => (
               <div key={addr.id} className="rounded-md border p-3 text-sm">
-                {addr.isDefault && <Badge variant="default" className="mb-1">Default</Badge>}
-                <p className="font-medium">{addr.firstName} {addr.lastName}</p>
+                {addr.isDefault && (
+                  <Badge variant="default" className="mb-1">
+                    Default
+                  </Badge>
+                )}
+                <p className="font-medium">
+                  {addr.firstName} {addr.lastName}
+                </p>
                 <p className="text-muted-foreground">{addr.addressLine1}</p>
                 {addr.addressLine2 && <p className="text-muted-foreground">{addr.addressLine2}</p>}
-                <p className="text-muted-foreground">{addr.postalCode} {addr.city}, {addr.country}</p>
+                <p className="text-muted-foreground">
+                  {addr.postalCode} {addr.city}, {addr.country}
+                </p>
               </div>
             ))}
           </div>
@@ -125,7 +147,10 @@ function CustomerDetailPanel({ customerId, onClose }: { customerId: string; onCl
           <p className="text-sm font-medium">Order History</p>
           <div className="mt-2 space-y-2">
             {customer.orders.map((order) => (
-              <div key={order.id} className="flex items-center justify-between rounded-md border p-3">
+              <div
+                key={order.id}
+                className="flex items-center justify-between rounded-md border p-3"
+              >
                 <div>
                   <p className="text-sm font-medium">{order.orderNumber}</p>
                   <p className="text-xs text-muted-foreground">
@@ -158,9 +183,10 @@ export default function CustomersPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['customers', search, page],
     queryFn: () =>
-      apiClient<{ data: Customer[]; pagination: { page: number; limit: number; total: number; totalPages: number } }>(
-        `/customers?${queryParams.toString()}`,
-      ),
+      apiClient<{
+        data: Customer[];
+        pagination: { page: number; limit: number; total: number; totalPages: number };
+      }>(`/customers?${queryParams.toString()}`),
   });
 
   return (
@@ -177,7 +203,10 @@ export default function CustomersPage() {
           type="text"
           placeholder="Search by email..."
           value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           className="w-full rounded-md border bg-background py-2 pl-9 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
       </div>
@@ -185,13 +214,18 @@ export default function CustomersPage() {
       {/* Detail Panel */}
       {selectedCustomerId && (
         <div className="mt-6">
-          <CustomerDetailPanel customerId={selectedCustomerId} onClose={() => setSelectedCustomerId(null)} />
+          <CustomerDetailPanel
+            customerId={selectedCustomerId}
+            onClose={() => setSelectedCustomerId(null)}
+          />
         </div>
       )}
 
       {/* Table */}
       <div className="mt-6 rounded-lg border bg-card shadow-sm">
-        {isLoading && <div className="p-8 text-center text-muted-foreground">Loading customers…</div>}
+        {isLoading && (
+          <div className="p-8 text-center text-muted-foreground">Loading customers…</div>
+        )}
         {error && <div className="p-8 text-center text-destructive">Failed to load customers.</div>}
         {data && data.data.length === 0 && (
           <div className="p-8 text-center text-muted-foreground">
@@ -214,15 +248,22 @@ export default function CustomersPage() {
               <tbody>
                 {data.data.map((customer) => (
                   <tr key={customer.id} className="border-b last:border-0 hover:bg-muted/50">
-                    <td className="p-4 font-medium">{customer.firstName} {customer.lastName}</td>
+                    <td className="p-4 font-medium">
+                      {customer.firstName} {customer.lastName}
+                    </td>
                     <td className="p-4 text-sm text-muted-foreground">{customer.email}</td>
                     <td className="p-4 text-right text-sm">{customer.orderCount}</td>
-                    <td className="p-4 text-right text-sm font-medium">{formatPrice(customer.totalSpent)}</td>
+                    <td className="p-4 text-right text-sm font-medium">
+                      {formatPrice(customer.totalSpent)}
+                    </td>
                     <td className="p-4 text-sm text-muted-foreground">
                       {new Date(customer.createdAt).toLocaleDateString('de-DE')}
                     </td>
                     <td className="p-4">
-                      <button onClick={() => setSelectedCustomerId(customer.id)} className="rounded p-1 hover:bg-muted">
+                      <button
+                        onClick={() => setSelectedCustomerId(customer.id)}
+                        className="rounded p-1 hover:bg-muted"
+                      >
                         <Eye className="h-4 w-4 text-muted-foreground" />
                       </button>
                     </td>
@@ -233,7 +274,8 @@ export default function CustomersPage() {
             {data.pagination.totalPages > 1 && (
               <div className="flex items-center justify-between border-t p-4">
                 <p className="text-sm text-muted-foreground">
-                  Page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total)
+                  Page {data.pagination.page} of {data.pagination.totalPages} (
+                  {data.pagination.total} total)
                 </p>
                 <div className="flex gap-2">
                   <button

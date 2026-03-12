@@ -23,8 +23,12 @@ export const cartItems = pgTable(
   'cart_items',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    cartId: uuid('cart_id').notNull().references(() => carts.id, { onDelete: 'cascade' }),
-    productId: uuid('product_id').notNull().references(() => products.id),
+    cartId: uuid('cart_id')
+      .notNull()
+      .references(() => carts.id, { onDelete: 'cascade' }),
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id),
     variantId: uuid('variant_id').references(() => productVariants.id),
     quantity: integer('quantity').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

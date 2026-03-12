@@ -18,24 +18,24 @@ forkcart/
 
 ## Tech Stack
 
-| Layer | Technologie |
-|-------|------------|
-| **API** | Hono (lightweight, fast) |
-| **Admin** | Next.js 15, React Query, Tailwind, shadcn/ui |
-| **Storefront** | Next.js 15, SSR, Tailwind |
-| **DB** | PostgreSQL 16 + Drizzle ORM |
-| **AI** | OpenAI / Anthropic / Ollama (pluggable) |
-| **Monorepo** | pnpm workspaces + Turborepo |
-| **Runtime** | Node.js 22 |
+| Layer          | Technologie                                  |
+| -------------- | -------------------------------------------- |
+| **API**        | Hono (lightweight, fast)                     |
+| **Admin**      | Next.js 15, React Query, Tailwind, shadcn/ui |
+| **Storefront** | Next.js 15, SSR, Tailwind                    |
+| **DB**         | PostgreSQL 16 + Drizzle ORM                  |
+| **AI**         | OpenAI / Anthropic / Ollama (pluggable)      |
+| **Monorepo**   | pnpm workspaces + Turborepo                  |
+| **Runtime**    | Node.js 22                                   |
 
 ## Server & URLs
 
-| Service | Intern | Extern |
-|---------|--------|--------|
-| API | localhost:4000 | https://forkcart-api.heynyx.dev |
-| Admin | localhost:3001 | https://forkcart-admin.heynyx.dev |
-| Storefront | localhost:3000 | https://forkcart.heynyx.dev |
-| PostgreSQL | localhost:5432 | nur lokal |
+| Service    | Intern         | Extern                            |
+| ---------- | -------------- | --------------------------------- |
+| API        | localhost:4000 | https://forkcart-api.heynyx.dev   |
+| Admin      | localhost:3001 | https://forkcart-admin.heynyx.dev |
+| Storefront | localhost:3000 | https://forkcart.heynyx.dev       |
+| PostgreSQL | localhost:5432 | nur lokal                         |
 
 **Caddy** = Reverse Proxy mit Auto-SSL für alle Subdomains.
 
@@ -67,6 +67,7 @@ plugins               → Plugin-Registry (name, version, isActive)
 **⚠️ PREISE SIND IN CENTS!** `price: 2999` = €29,99
 
 ### Migrationen
+
 - Tool: `drizzle-kit generate` → `pnpm migrate`
 - Dateien: `packages/database/drizzle/`
 - **NIE** Tabellen direkt ändern — immer Schema editieren → Migration generieren
@@ -82,22 +83,26 @@ Request → Hono Route → Service → Repository → Drizzle → PostgreSQL
 ### Packages und ihre Rollen
 
 **`packages/core/`** — Business Logic (KEIN HTTP, KEINE DB-Details)
+
 - `services/` → Business Rules (ProductService, CategoryService, etc.)
 - `repositories/` → Interfaces + Implementierungen für DB-Zugriff
 - `events/` → Domain Events (product.created, order.placed, etc.)
 - `plugins/` → EventBus für lose Kopplung
 
 **`packages/api/`** — HTTP Layer
+
 - `routes/v1/` → REST Endpoints (Hono Router)
 - `middleware/` → Auth, Error Handling, Validation
 - Dependency Injection: Routes bekommen Services, nicht direkt DB
 
 **`packages/database/`** — Persistenz
+
 - `schemas/` → Drizzle Table Definitions
 - `seeds/` → Test/Demo-Daten
 - `connection.ts` → DB Connection Pool
 
 **`packages/shared/`** — Cross-Package Types
+
 - `types/` → TypeScript Interfaces
 - `schemas/` → Zod Validation Schemas
 - `utils/` → Formatierung, Helpers
@@ -113,6 +118,7 @@ DELETE /api/v1/{resource}/:id      → Delete
 ```
 
 Response-Format:
+
 ```json
 {
   "data": [...],
@@ -121,7 +127,8 @@ Response-Format:
 ```
 
 ### Admin API-Client
-- `packages/admin/src/lib/api-client.ts` 
+
+- `packages/admin/src/lib/api-client.ts`
 - Basis-URL: `NEXT_PUBLIC_API_URL` (env)
 - Prefixed alle Pfade mit `/api/v1`
 - React Query für Caching + Mutations
@@ -129,6 +136,7 @@ Response-Format:
 ## Konventionen für Bienen 🐝
 
 ### DO ✅
+
 - Immer in der richtigen Package arbeiten (Business Logic → core, HTTP → api, UI → admin/storefront)
 - Preise in Cents speichern, nur im Frontend formatieren
 - Neue Tabellen: Schema in `packages/database/src/schemas/` → re-export in `index.ts`
@@ -138,6 +146,7 @@ Response-Format:
 - TypeScript strict mode — no `any`
 
 ### DON'T ❌
+
 - KEINE direkte DB-Zugriffe in Routes (immer über Service → Repository)
 - KEINE Business Logic in API Routes
 - KEINE hardcodierten URLs (immer env vars)
@@ -159,6 +168,7 @@ Response-Format:
 10. **Build** → `cd packages/admin && npx next build` (NICHT vergessen!)
 
 ### Nach Änderungen am Admin
+
 ```bash
 cd packages/admin
 npx next build          # PFLICHT! Dev mode ist 25x langsamer

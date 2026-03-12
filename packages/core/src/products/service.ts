@@ -1,4 +1,9 @@
-import type { CreateProductInput, UpdateProductInput, ProductFilter, Pagination } from '@forkcart/shared';
+import type {
+  CreateProductInput,
+  UpdateProductInput,
+  ProductFilter,
+  Pagination,
+} from '@forkcart/shared';
 import { NotFoundError, ConflictError, ValidationError } from '@forkcart/shared';
 import type { ProductRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';

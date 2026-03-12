@@ -25,7 +25,9 @@ export function SortFilter() {
 
   return (
     <div className="flex items-center gap-2">
-      <label htmlFor="sort" className="text-sm text-gray-500">Sort by</label>
+      <label htmlFor="sort" className="text-sm text-gray-500">
+        Sort by
+      </label>
       <select
         id="sort"
         value={current}
@@ -33,7 +35,9 @@ export function SortFilter() {
         className="h-9 rounded-md border bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
       >
         {SORT_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
         ))}
       </select>
     </div>

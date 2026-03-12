@@ -102,14 +102,14 @@ Plugins are activated/deactivated at runtime. Settings are stored in the databas
 
 ## 🆚 Why ForkCart?
 
-| | ForkCart | Shopify | Medusa | Saleor |
-|---|---|---|---|---|
-| **Open Source** | ✅ MIT | ❌ | ✅ | ✅ |
-| **AI-native** | ✅ Built-in | 💰 Apps | ❌ DIY | ❌ DIY |
-| **Plugin System** | ✅ Interface-based | 🔒 App Store | 🟡 Modules | 🟡 Apps |
-| **Self-hosted** | ✅ | ❌ | ✅ | ✅ |
-| **Vendor Lock-in** | ❌ None | 🔒 Full | 🟡 Some | 🟡 Some |
-| **TypeScript** | ✅ End-to-end | ❌ Ruby/Liquid | ✅ | ✅ Python |
+|                    | ForkCart           | Shopify        | Medusa     | Saleor    |
+| ------------------ | ------------------ | -------------- | ---------- | --------- |
+| **Open Source**    | ✅ MIT             | ❌             | ✅         | ✅        |
+| **AI-native**      | ✅ Built-in        | 💰 Apps        | ❌ DIY     | ❌ DIY    |
+| **Plugin System**  | ✅ Interface-based | 🔒 App Store   | 🟡 Modules | 🟡 Apps   |
+| **Self-hosted**    | ✅                 | ❌             | ✅         | ✅        |
+| **Vendor Lock-in** | ❌ None            | 🔒 Full        | 🟡 Some    | 🟡 Some   |
+| **TypeScript**     | ✅ End-to-end      | ❌ Ruby/Liquid | ✅         | ✅ Python |
 
 ## 📸 Screenshots
 

@@ -67,11 +67,7 @@ export class MediaRepository {
   }
 
   async update(id: string, input: UpdateMediaInput) {
-    const [result] = await this.db
-      .update(media)
-      .set(input)
-      .where(eq(media.id, id))
-      .returning();
+    const [result] = await this.db.update(media).set(input).where(eq(media.id, id)).returning();
     return result ?? null;
   }
 

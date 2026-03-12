@@ -1,10 +1,6 @@
 import { Hono } from 'hono';
 import type { CartService } from '@forkcart/core';
-import {
-  AddCartItemSchema,
-  UpdateCartItemSchema,
-  IdParamSchema,
-} from '@forkcart/shared';
+import { AddCartItemSchema, UpdateCartItemSchema, IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
 
 const CreateCartSchema = z.object({

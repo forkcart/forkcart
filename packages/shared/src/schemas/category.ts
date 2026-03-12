@@ -3,9 +3,13 @@ import { z } from 'zod';
 /** Create category input */
 export const CreateCategorySchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
-    message: 'Slug must be lowercase alphanumeric with hyphens',
-  }),
+  slug: z
+    .string()
+    .min(1)
+    .max(255)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+      message: 'Slug must be lowercase alphanumeric with hyphens',
+    }),
   description: z.string().max(5000).optional(),
   parentId: z.string().uuid().nullable().default(null),
   sortOrder: z.number().int().default(0),

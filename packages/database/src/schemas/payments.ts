@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, integer, timestamp, jsonb, index } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  timestamp,
+  jsonb,
+  index,
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { orders } from './orders';
 
@@ -6,7 +15,9 @@ export const payments = pgTable(
   'payments',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    orderId: uuid('order_id').notNull().references(() => orders.id),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id),
     provider: varchar('provider', { length: 50 }).notNull(),
     status: varchar('status', { length: 20 }).notNull().default('pending'),
     amount: integer('amount').notNull(),
@@ -26,7 +37,9 @@ export const paymentTransactions = pgTable(
   'payment_transactions',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    paymentId: uuid('payment_id').notNull().references(() => payments.id, { onDelete: 'cascade' }),
+    paymentId: uuid('payment_id')
+      .notNull()
+      .references(() => payments.id, { onDelete: 'cascade' }),
     type: varchar('type', { length: 20 }).notNull(),
     amount: integer('amount').notNull(),
     status: varchar('status', { length: 20 }).notNull(),
