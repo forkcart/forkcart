@@ -1,10 +1,10 @@
 import type { AIProvider, ChatMessage, ChatOptions, ChatResponse } from '../types';
 
-/** OpenAI provider — uses the REST API directly */
-export class OpenAIProvider implements AIProvider {
-  readonly id = 'openai' as const;
-  readonly name = 'OpenAI';
-  readonly defaultModel = 'gpt-4o-mini';
+/** OpenRouter provider — OpenAI-compatible API with custom base URL */
+export class OpenRouterProvider implements AIProvider {
+  readonly id = 'openrouter' as const;
+  readonly name = 'OpenRouter';
+  readonly defaultModel = 'anthropic/claude-sonnet-4-20250514';
 
   constructor(
     private readonly apiKey: string,
@@ -18,11 +18,13 @@ export class OpenAIProvider implements AIProvider {
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
     const model = options?.model ?? this.modelOverride ?? this.defaultModel;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this.apiKey}`,
+        'HTTP-Referer': 'https://forkcart.dev',
+        'X-Title': 'ForkCart',
       },
       body: JSON.stringify({
         model,
@@ -34,7 +36,7 @@ export class OpenAIProvider implements AIProvider {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`OpenAI API error (${response.status}): ${error}`);
+      throw new Error(`OpenRouter API error (${response.status}): ${error}`);
     }
 
     const data = (await response.json()) as {
@@ -44,14 +46,14 @@ export class OpenAIProvider implements AIProvider {
     };
 
     const choice = data.choices[0];
-    if (!choice) throw new Error('No response from OpenAI');
+    if (!choice) throw new Error('No response from OpenRouter');
 
     return {
       content: choice.message.content,
       model: data.model,
       usage: {
-        inputTokens: data.usage.prompt_tokens,
-        outputTokens: data.usage.completion_tokens,
+        inputTokens: data.usage?.prompt_tokens ?? 0,
+        outputTokens: data.usage?.completion_tokens ?? 0,
       },
     };
   }

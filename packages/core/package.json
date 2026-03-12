@@ -21,6 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@forkcart/ai": "workspace:*",
     "@forkcart/database": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "bcryptjs": "^3.0.3",

@@ -7,14 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
+import { ProductAIButtons } from './product-ai';
 
 interface ProductFormProps {
   initialData?: Product;
+  productId?: string;
   onSubmit: (values: Record<string, unknown>) => void;
   isSubmitting: boolean;
 }
 
-export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductFormProps) {
+export function ProductForm({ initialData, productId, onSubmit, isSubmitting }: ProductFormProps) {
   const [name, setName] = useState(initialData?.name ?? '');
   const [slug, setSlug] = useState(initialData?.slug ?? '');
   const [description, setDescription] = useState(initialData?.description ?? '');
@@ -101,6 +103,18 @@ export function ProductForm({ initialData, onSubmit, isSubmitting }: ProductForm
               rows={5}
               className="mt-1.5"
             />
+            {productId && (
+              <div className="mt-2">
+                <ProductAIButtons
+                  productId={productId}
+                  currentDescription={description || undefined}
+                  onDescriptionGenerated={(d) => setDescription(d)}
+                  onSEOGenerated={() => {
+                    // SEO fields not yet on form — could extend later
+                  }}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
