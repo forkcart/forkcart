@@ -5,6 +5,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { resolve, relative } from 'node:path';
 import type { Database } from '@forkcart/database';
+import { AIProviderRegistry } from '@forkcart/ai';
 import {
   ProductRepository,
   ProductService,
@@ -26,6 +27,9 @@ import {
   AuthService,
   ShippingRepository,
   ShippingService,
+  ChatSessionRepository,
+  ChatbotSettingsRepository,
+  ChatbotService,
   EventBus,
   PluginLoader,
   EmailProviderRegistry,
@@ -35,7 +39,10 @@ import {
   TaxRepository,
   TaxService,
   VatValidator,
+  SearchRepository,
+  SearchService,
 } from '@forkcart/core';
+import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
 import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
 import { errorHandler } from './middleware/error-handler';
@@ -52,9 +59,13 @@ import { createPaymentRoutes, createWebhookRoute } from './routes/v1/payments';
 import { createPluginRoutes } from './routes/v1/plugins';
 import { createEmailRoutes } from './routes/v1/emails';
 import { createShippingRoutes } from './routes/v1/shipping';
+import { createChatRoutes, createChatAdminRoutes } from './routes/v1/chat';
 import { createTaxRoutes } from './routes/v1/tax';
 import { createCustomerAuthRoutes, createCartAssignRoute } from './routes/v1/customer-auth';
 import { createStorefrontCustomerRoutes } from './routes/v1/storefront-customers';
+import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search';
+import { createAIRoutes } from './routes/v1/ai';
+import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 
 /** Create the Hono application with all routes and middleware */
 export async function createApp(db: Database) {
@@ -128,6 +139,14 @@ export async function createApp(db: Database) {
 
   const shippingService = new ShippingService({ shippingRepository, eventBus });
 
+  // Search system
+  const searchRepository = new SearchRepository(db);
+  const searchService = new SearchService({
+    searchRepository,
+    eventBus,
+    aiService: null, // AI provider injected externally when configured
+  });
+
   // Tax system
   const taxRepository = new TaxRepository(db);
   const vatValidator = new VatValidator();
@@ -174,6 +193,68 @@ export async function createApp(db: Database) {
   // Register email event listeners (order confirmation, shipping, welcome)
   registerEmailEventListeners(eventBus, emailService);
 
+  // Initialize AI provider registry (new system — settings from DB)
+  const aiProviderRegistry = new AIProviderRegistry();
+  const aiSettingsRepository = new AISettingsRepository(db);
+  const storedAISettings = await aiSettingsRepository.get();
+  if (storedAISettings) {
+    aiProviderRegistry.configure(storedAISettings);
+  }
+  const productAIService = new ProductAIService({ aiRegistry: aiProviderRegistry });
+
+  // SEO service (works without AI, enhanced when AI is available)
+  const seoRepository = new SeoRepository(db);
+  const seoService = new SeoService({
+    seoRepository,
+    eventBus,
+    aiProvider: null, // TODO: wire AI provider when registry supports generateText
+    baseUrl: process.env['STOREFRONT_URL'] ?? 'http://localhost:3000',
+  });
+
+  // Legacy AI service for chatbot (env-based config — will be migrated later)
+  const aiConfig = buildAIConfig();
+  let aiService: import('@forkcart/ai').AIService | null = null;
+  if (aiConfig) {
+    try {
+      const { AIService } = await import('@forkcart/ai');
+      aiService = new AIService(aiConfig);
+    } catch {
+      // AI not available — chatbot will be disabled
+    }
+  }
+
+  // Initialize chatbot
+  const chatSessionRepository = new ChatSessionRepository(db);
+  const chatbotSettingsRepository = new ChatbotSettingsRepository(db);
+  const chatbotService = new ChatbotService({
+    chatSessionRepository,
+    chatbotSettingsRepository,
+    aiService,
+    eventBus,
+    getContext: async () => {
+      const productList = await productRepository.findMany(
+        { status: 'active', sortBy: 'name', sortDirection: 'asc' },
+        { page: 1, limit: 50 },
+      );
+      const shippingList = await shippingRepository.findActive();
+      return {
+        shopName: process.env['SHOP_NAME'] ?? 'ForkCart Shop',
+        products: productList.data.slice(0, 50).map((p) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          price: p.price,
+          inStock: p.status === 'active',
+        })),
+        shippingMethods: shippingList.map((s) => ({
+          name: s.name,
+          price: s.price,
+          estimatedDays: s.estimatedDays ?? undefined,
+        })),
+      };
+    },
+  });
+
   // Auth middleware — protects all routes except /health and /auth/login
   app.use('*', createAuthMiddleware(authService));
 
@@ -192,7 +273,16 @@ export async function createApp(db: Database) {
   v1.route('/plugins', createPluginRoutes(pluginLoader));
   v1.route('/emails', createEmailRoutes(emailService));
   v1.route('/shipping', createShippingRoutes(shippingService));
+  v1.route('/chat', createChatRoutes(chatbotService));
+  v1.route('/chat/admin', createChatAdminRoutes(chatbotService));
   v1.route('/tax', createTaxRoutes(taxService));
+  v1.route('/search', createSearchRoutes(searchService));
+  v1.route('/search', createSearchAdminRoutes(searchService));
+  v1.route(
+    '/ai',
+    createAIRoutes(aiProviderRegistry, aiSettingsRepository, productAIService, productService),
+  );
+  v1.route('/seo', createSeoRoutes(seoService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(
@@ -202,8 +292,43 @@ export async function createApp(db: Database) {
 
   app.route('/api/v1', v1);
 
+  // Public SEO routes (sitemap.xml, robots.txt) — no auth required
+  const publicSeoRoutes = createPublicSeoRoutes(seoService);
+  app.route('/', publicSeoRoutes);
+
   // 404 fallback
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 
   return app;
+}
+
+/** Build AI config from environment variables (returns null if no provider configured) */
+function buildAIConfig(): AIConfig | null {
+  const openaiKey = process.env['OPENAI_API_KEY'];
+  const anthropicKey = process.env['ANTHROPIC_API_KEY'];
+  const ollamaUrl = process.env['OLLAMA_BASE_URL'];
+
+  const providers: AIConfig['providers'] = {};
+  let defaultProvider: AIConfig['defaultProvider'] | null = null;
+
+  if (openaiKey) {
+    providers.openai = { apiKey: openaiKey, model: process.env['OPENAI_MODEL'] };
+    defaultProvider = 'openai';
+  }
+  if (anthropicKey) {
+    providers.anthropic = { apiKey: anthropicKey, model: process.env['ANTHROPIC_MODEL'] };
+    if (!defaultProvider) defaultProvider = 'anthropic';
+  }
+  if (ollamaUrl && ollamaUrl !== 'http://localhost:11434') {
+    providers.ollama = { baseUrl: ollamaUrl, model: process.env['OLLAMA_MODEL'] };
+    if (!defaultProvider) defaultProvider = 'ollama';
+  }
+
+  if (!defaultProvider) return null;
+
+  return {
+    defaultProvider,
+    providers,
+    cache: { enabled: false, ttlSeconds: 0 },
+  };
 }
