@@ -15,6 +15,27 @@
       "when": 1741813560000,
       "tag": "0001_shipping-update",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1741900000000,
+      "tag": "0002_email-logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1741950000000,
+      "tag": "0003_customer-auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1741999999000,
+      "tag": "0004_tax-system",
+      "breakpoints": true
     }
   ]
 }

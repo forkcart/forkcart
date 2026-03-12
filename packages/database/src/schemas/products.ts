@@ -11,6 +11,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { categories } from './categories';
+import { taxClasses } from './tax';
 
 export const products = pgTable(
   'products',
@@ -30,6 +31,7 @@ export const products = pgTable(
     inventoryQuantity: integer('inventory_quantity').notNull().default(0),
     weight: integer('weight'),
     weightUnit: varchar('weight_unit', { length: 5 }).notNull().default('g'),
+    taxClassId: uuid('tax_class_id').references(() => taxClasses.id),
     metadata: jsonb('metadata'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
