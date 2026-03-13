@@ -13,18 +13,16 @@ export function createProductRoutes(
   productService: ProductService,
   mediaService?: MediaService,
   productTranslationService?: ProductTranslationService,
+  translationService?: { getDefaultLocale(): Promise<string> },
 ) {
   const router = new Hono();
 
-  /** Resolve locale — ONLY from explicit ?locale= query param.
-   *  Never auto-detect from Accept-Language (admin would get translated data). */
+  /** Resolve locale from ?locale= query param. Returns null only if no param given. */
   function resolveLocale(c: { req: { query: (k: string) => string | undefined } }): string | null {
-    const queryLocale = c.req.query('locale');
-    if (queryLocale && queryLocale !== 'en') return queryLocale;
-    return null;
+    return c.req.query('locale') ?? null;
   }
 
-  /** Merge translation fields over product (non-null fields override) */
+  /** Merge translation fields over product (non-null fields override, empty string is valid) */
   function mergeTranslation<T extends Record<string, unknown>>(
     product: T,
     translation: {
@@ -37,14 +35,18 @@ export function createProductRoutes(
   ): T {
     if (!translation) return product;
     const merged = { ...product };
-    if (translation.name) merged['name' as keyof T] = translation.name as T[keyof T];
-    if (translation.description)
-      merged['description' as keyof T] = translation.description as T[keyof T];
-    if (translation.shortDescription)
-      merged['shortDescription' as keyof T] = translation.shortDescription as T[keyof T];
-    if (translation.metaTitle) merged['metaTitle' as keyof T] = translation.metaTitle as T[keyof T];
-    if (translation.metaDescription)
-      merged['metaDescription' as keyof T] = translation.metaDescription as T[keyof T];
+    const fields = [
+      'name',
+      'description',
+      'shortDescription',
+      'metaTitle',
+      'metaDescription',
+    ] as const;
+    for (const field of fields) {
+      if (translation[field] !== null && translation[field] !== undefined) {
+        merged[field as keyof T] = translation[field] as T[keyof T];
+      }
+    }
     return merged;
   }
 
@@ -123,6 +125,20 @@ export function createProductRoutes(
     const input = CreateProductSchema.parse(body);
 
     const product = await productService.create(input);
+
+    // Auto-create translation for the default locale
+    if (productTranslationService && translationService) {
+      const defaultLocale = await translationService.getDefaultLocale();
+      await productTranslationService.upsert(product.id, defaultLocale, {
+        name: input.name,
+        description: input.description ?? null,
+        shortDescription: input.shortDescription ?? null,
+        metaTitle: ((input as Record<string, unknown>).metaTitle as string | null) ?? null,
+        metaDescription:
+          ((input as Record<string, unknown>).metaDescription as string | null) ?? null,
+      });
+    }
+
     return c.json({ data: product }, 201);
   });
 

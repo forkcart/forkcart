@@ -67,14 +67,14 @@ export default function ProductDetailPage() {
     if (!tr) return base;
     return {
       ...base,
-      name: tr.name || base.name,
-      description: tr.description || base.description,
-      shortDescription: tr.shortDescription || base.shortDescription,
+      name: tr.name ?? base.name,
+      description: tr.description ?? base.description,
+      shortDescription: tr.shortDescription ?? base.shortDescription,
       metaTitle:
-        (tr.metaTitle as string) || ((base as Record<string, unknown>).metaTitle as string) || '',
+        (tr.metaTitle as string) ?? ((base as Record<string, unknown>).metaTitle as string) ?? '',
       metaDescription:
-        (tr.metaDescription as string) ||
-        ((base as Record<string, unknown>).metaDescription as string) ||
+        (tr.metaDescription as string) ??
+        ((base as Record<string, unknown>).metaDescription as string) ??
         '',
     } as Product;
   }, [data, defaultTranslation]);
@@ -82,9 +82,11 @@ export default function ProductDetailPage() {
   const saveMutation = useMutation({
     mutationFn: async (values: Record<string, unknown>) => {
       if (isNew) {
+        // Create sends everything — API auto-creates default locale translation
         return apiClient('/products', { method: 'POST', body: JSON.stringify(values) });
       }
-      // Save structural fields to product, content fields to default locale translation
+
+      // Separate content fields from structural fields
       const contentFields = {
         name: values.name,
         description: values.description,
@@ -92,8 +94,12 @@ export default function ProductDetailPage() {
         metaTitle: values.metaTitle,
         metaDescription: values.metaDescription,
       };
+
+      // Structural fields go to products table (keep name for fallback/internal use)
+      const structuralValues = { ...values };
+
       await Promise.all([
-        apiClient(`/products/${id}`, { method: 'PUT', body: JSON.stringify(values) }),
+        apiClient(`/products/${id}`, { method: 'PUT', body: JSON.stringify(structuralValues) }),
         apiClient(`/products/${id}/translations/${defaultLocale}`, {
           method: 'PUT',
           body: JSON.stringify(contentFields),

@@ -333,7 +333,12 @@ export async function createApp(db: Database) {
   v1.route('/auth', createAuthRoutes(authService));
   v1.route(
     '/products',
-    createProductRoutes(productService, mediaService, productTranslationService),
+    createProductRoutes(
+      productService,
+      mediaService,
+      productTranslationService,
+      translationService,
+    ),
   );
   v1.route('/categories', createCategoryRoutes(categoryService));
   v1.route('/orders', createOrderRoutes(orderService));
