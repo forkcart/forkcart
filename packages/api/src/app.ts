@@ -5,8 +5,7 @@ import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { resolve, relative } from 'node:path';
 import type { Database } from '@forkcart/database';
-import { AIProviderRegistry, AIService } from '@forkcart/ai';
-import type { AIConfig } from '@forkcart/ai';
+import { AIProviderRegistry } from '@forkcart/ai';
 import {
   ProductRepository,
   ProductService,
@@ -212,24 +211,13 @@ export async function createApp(db: Database) {
     baseUrl: process.env['STOREFRONT_URL'] ?? 'http://localhost:3000',
   });
 
-  // Legacy AI service for chatbot (env-based config — will be migrated later)
-  const aiConfig = buildAIConfig();
-  let aiService: AIService | null = null;
-  if (aiConfig) {
-    try {
-      aiService = new AIService(aiConfig);
-    } catch {
-      // AI not available — chatbot will be disabled
-    }
-  }
-
-  // Initialize chatbot
+  // Initialize chatbot (uses the same AI registry as product AI features)
   const chatSessionRepository = new ChatSessionRepository(db);
   const chatbotSettingsRepository = new ChatbotSettingsRepository(db);
   const chatbotService = new ChatbotService({
     chatSessionRepository,
     chatbotSettingsRepository,
-    aiService,
+    aiProvider: aiProviderRegistry.getConfiguredProvider(),
     eventBus,
     getContext: async () => {
       const productList = await productRepository.findMany(
@@ -300,35 +288,4 @@ export async function createApp(db: Database) {
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 
   return app;
-}
-
-/** Build AI config from environment variables (returns null if no provider configured) */
-function buildAIConfig(): AIConfig | null {
-  const openaiKey = process.env['OPENAI_API_KEY'];
-  const anthropicKey = process.env['ANTHROPIC_API_KEY'];
-  const ollamaUrl = process.env['OLLAMA_BASE_URL'];
-
-  const providers: import('@forkcart/ai').AIConfig['providers'] = {};
-  let defaultProvider: import('@forkcart/ai').AIConfig['defaultProvider'] | null = null;
-
-  if (openaiKey) {
-    providers.openai = { apiKey: openaiKey, model: process.env['OPENAI_MODEL'] };
-    defaultProvider = 'openai';
-  }
-  if (anthropicKey) {
-    providers.anthropic = { apiKey: anthropicKey, model: process.env['ANTHROPIC_MODEL'] };
-    if (!defaultProvider) defaultProvider = 'anthropic';
-  }
-  if (ollamaUrl && ollamaUrl !== 'http://localhost:11434') {
-    providers.ollama = { baseUrl: ollamaUrl, model: process.env['OLLAMA_MODEL'] };
-    if (!defaultProvider) defaultProvider = 'ollama';
-  }
-
-  if (!defaultProvider) return null;
-
-  return {
-    defaultProvider,
-    providers,
-    cache: { enabled: false, ttlSeconds: 0 },
-  } satisfies import('@forkcart/ai').AIConfig;
 }

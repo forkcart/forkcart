@@ -12,7 +12,3 @@ export { OpenAIProvider } from './providers/openai';
 export { AnthropicProvider } from './providers/anthropic';
 export { GeminiProvider } from './providers/gemini';
 export { OpenRouterProvider } from './providers/openrouter';
-
-// Legacy exports for backward compatibility (ChatbotService, SearchService)
-export { AIService } from './legacy';
-export type { AIConfig, TextGenerationOptions, TextGenerationResult } from './legacy';
