@@ -16,15 +16,11 @@ export function createProductRoutes(
 ) {
   const router = new Hono();
 
-  /** Resolve locale from query param or Accept-Language header */
-  function resolveLocale(c: {
-    req: { query: (k: string) => string | undefined };
-    get: (k: string) => string;
-  }): string | null {
+  /** Resolve locale — ONLY from explicit ?locale= query param.
+   *  Never auto-detect from Accept-Language (admin would get translated data). */
+  function resolveLocale(c: { req: { query: (k: string) => string | undefined } }): string | null {
     const queryLocale = c.req.query('locale');
     if (queryLocale && queryLocale !== 'en') return queryLocale;
-    const ctxLocale = c.get('locale') as string | undefined;
-    if (ctxLocale && ctxLocale !== 'en') return ctxLocale;
     return null;
   }
 
