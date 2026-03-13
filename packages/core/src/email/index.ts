@@ -10,4 +10,5 @@ export type {
   EmailSendResult,
   EmailProviderSettingDef,
 } from './provider';
+export { LogEmailProvider } from './providers/log-provider';
 export * from './templates/index';

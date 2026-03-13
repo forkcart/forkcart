@@ -27,6 +27,7 @@
     "pino-pretty": "^13.0.0",
     "zod": "^3.24.0",
     "@forkcart/plugin-mailgun": "workspace:*",
+    "@forkcart/plugin-smtp": "workspace:*",
     "@forkcart/i18n": "workspace:*"
   },
   "devDependencies": {
