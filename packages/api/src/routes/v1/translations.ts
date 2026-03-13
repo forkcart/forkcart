@@ -56,6 +56,13 @@ export function createTranslationRoutes(translationService: TranslationService) 
     return c.json({ data: lang }, 201);
   });
 
+  /** Set a language as the store default */
+  router.post('/:locale/set-default', async (c) => {
+    const locale = c.req.param('locale');
+    await translationService.setDefaultLanguage(locale);
+    return c.json({ data: { success: true, defaultLocale: locale } });
+  });
+
   /** Delete a language */
   router.delete('/:locale', async (c) => {
     const locale = c.req.param('locale');
@@ -131,6 +138,7 @@ export function createPublicTranslationRoutes(translationService: TranslationSer
         locale: l.locale,
         name: l.name,
         nativeName: l.nativeName,
+        isDefault: l.isDefault ?? false,
       }));
     c.header('Cache-Control', 'public, max-age=300');
     return c.json({ data: enabled });
