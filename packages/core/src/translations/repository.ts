@@ -7,6 +7,7 @@ export interface LanguageRow {
   name: string;
   nativeName: string | null;
   enabled: boolean;
+  isDefault: boolean;
   completionPct: string;
   createdAt: Date;
 }
@@ -62,6 +63,12 @@ export class TranslationRepository {
 
   async deleteLanguage(locale: string): Promise<void> {
     await this.db.delete(languages).where(eq(languages.locale, locale));
+  }
+
+  /** Set one language as default, clearing isDefault on all others */
+  async setDefaultLanguage(locale: string): Promise<void> {
+    await this.db.update(languages).set({ isDefault: false });
+    await this.db.update(languages).set({ isDefault: true }).where(eq(languages.locale, locale));
   }
 
   // ── Translations ──────────────────────────────────────────────────

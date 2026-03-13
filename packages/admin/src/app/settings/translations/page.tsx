@@ -27,6 +27,7 @@ interface LanguageInfo {
   name: string;
   nativeName: string;
   enabled: boolean;
+  isDefault?: boolean;
   completionPct: number;
   totalKeys: number;
   translatedKeys: number;
@@ -152,8 +153,18 @@ export default function TranslationsPage() {
               key={lang.locale}
               lang={lang}
               onClick={() => setSelectedLocale(lang.locale)}
+              onSetDefault={
+                !lang.isDefault
+                  ? async () => {
+                      await apiClient(`/translations/${lang.locale}/set-default`, {
+                        method: 'POST',
+                      });
+                      fetchLanguages();
+                    }
+                  : undefined
+              }
               onDelete={
-                lang.locale !== 'en'
+                lang.locale !== 'en' && !lang.isDefault
                   ? async () => {
                       if (!confirm(`Delete ${lang.name} (${lang.locale})?`)) return;
                       await apiClient(`/translations/${lang.locale}`, { method: 'DELETE' });
@@ -185,10 +196,12 @@ export default function TranslationsPage() {
 function LanguageCard({
   lang,
   onClick,
+  onSetDefault,
   onDelete,
 }: {
   lang: LanguageInfo;
   onClick: () => void;
+  onSetDefault?: () => void;
   onDelete?: () => void;
 }) {
   const pct = Math.round(lang.completionPct);
@@ -200,23 +213,44 @@ function LanguageCard({
       onClick={onClick}
       className="group relative cursor-pointer rounded-lg border bg-card p-5 shadow-sm transition hover:border-primary/30 hover:shadow-md"
     >
-      {onDelete && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          className="absolute right-3 top-3 rounded p-1 text-muted-foreground opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
-          title="Delete language"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      )}
+      <div className="absolute right-3 top-3 flex items-center gap-1">
+        {onSetDefault && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onSetDefault();
+            }}
+            className="rounded px-2 py-0.5 text-xs text-muted-foreground opacity-0 transition hover:bg-blue-50 hover:text-blue-600 group-hover:opacity-100"
+            title="Set as default language"
+          >
+            Set Default
+          </button>
+        )}
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="rounded p-1 text-muted-foreground opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100"
+            title="Delete language"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
+      </div>
 
       <div className="flex items-center gap-3">
         <span className="text-2xl">{flag}</span>
         <div>
-          <p className="font-semibold">{lang.nativeName || lang.name}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-semibold">{lang.nativeName || lang.name}</p>
+            {lang.isDefault && (
+              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                Default
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">{lang.locale}</p>
         </div>
       </div>

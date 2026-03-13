@@ -45,6 +45,7 @@ export interface LanguageInfo {
   name: string;
   nativeName: string;
   enabled: boolean;
+  isDefault: boolean;
   completionPct: number;
   totalKeys: number;
   translatedKeys: number;
@@ -117,6 +118,7 @@ export class TranslationService {
         name: lang.name,
         nativeName: lang.nativeName ?? lang.name,
         enabled: lang.enabled,
+        isDefault: lang.isDefault ?? false,
         completionPct: Math.round(pct * 100) / 100,
         totalKeys,
         translatedKeys: translated,
@@ -142,6 +144,7 @@ export class TranslationService {
       name: displayName,
       nativeName,
       enabled: true,
+      isDefault: false,
       completionPct: 0,
       totalKeys: refKeys.length,
       translatedKeys: 0,
@@ -152,6 +155,12 @@ export class TranslationService {
     if (locale === 'en') throw new Error('Cannot delete the default English language');
     await this.repo.deleteLanguage(locale);
     logger.info({ locale }, 'Language deleted');
+  }
+
+  /** Set a language as the store default (clears isDefault on all others) */
+  async setDefaultLanguage(locale: string): Promise<void> {
+    await this.repo.setDefaultLanguage(locale);
+    logger.info({ locale }, 'Default language set');
   }
 
   // ── Translation CRUD ──────────────────────────────────────────────

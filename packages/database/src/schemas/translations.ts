@@ -16,6 +16,7 @@ export const languages = pgTable('languages', {
   name: varchar('name', { length: 100 }).notNull(),
   nativeName: varchar('native_name', { length: 100 }),
   enabled: boolean('enabled').notNull().default(true),
+  isDefault: boolean('is_default').notNull().default(false),
   completionPct: decimal('completion_pct', { precision: 5, scale: 2 }).notNull().default('0'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
