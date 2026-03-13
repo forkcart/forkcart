@@ -26,6 +26,9 @@ export async function getProducts(params?: {
   sortDirection?: string;
   page?: number;
   limit?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  status?: string;
 }): Promise<PaginatedResponse<Product>> {
   const query = new URLSearchParams();
   if (params?.categoryId) query.set('categoryId', params.categoryId);
@@ -34,6 +37,9 @@ export async function getProducts(params?: {
   if (params?.sortDirection) query.set('sortDirection', params.sortDirection);
   if (params?.page) query.set('page', String(params.page));
   if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.minPrice !== undefined) query.set('minPrice', String(params.minPrice));
+  if (params?.maxPrice !== undefined) query.set('maxPrice', String(params.maxPrice));
+  if (params?.status) query.set('status', params.status);
 
   const qs = query.toString();
   return fetchApi<PaginatedResponse<Product>>(`/products${qs ? `?${qs}` : ''}`);
@@ -46,6 +52,15 @@ export async function getProductBySlug(slug: string): Promise<Product> {
 
 export async function getCategories(): Promise<Category[]> {
   const res = await fetchApi<ApiResponse<Category[]>>('/categories');
+  return res.data;
+}
+
+export interface CategoryWithCount extends Category {
+  productCount: number;
+}
+
+export async function getCategoriesWithCounts(): Promise<CategoryWithCount[]> {
+  const res = await fetchApi<ApiResponse<CategoryWithCount[]>>('/categories?withCounts=true');
   return res.data;
 }
 
