@@ -33,9 +33,9 @@ export interface BulletPoints {
 }
 
 const SYSTEM_PROMPT =
-  'Du bist ein E-Commerce Copywriter. Schreibe überzeugende, SEO-optimierte Produktbeschreibungen auf Deutsch. ' +
-  'Schreibe in einem professionellen aber nahbaren Ton. ' +
-  'Formatiere den Text als HTML mit <p>-Tags für Absätze. Verwende KEIN Markdown.';
+  'You are an e-commerce copywriter. Write compelling, SEO-optimized product descriptions. ' +
+  'Write in a professional yet approachable tone. ' +
+  'Format the text as HTML with <p> tags for paragraphs. Do NOT use Markdown.';
 
 /**
  * AI service for generating product content.
@@ -53,21 +53,21 @@ export class ProductAIService {
     const provider = this.getProvider();
     const priceFormatted = `${(product.price / 100).toFixed(2)} ${product.currency}`;
 
-    let prompt = `Schreibe eine ansprechende Produktbeschreibung für: "${product.name}"`;
-    prompt += `\nPreis: ${priceFormatted}`;
+    let prompt = `Write a compelling product description for: "${product.name}"`;
+    prompt += `\nPrice: ${priceFormatted}`;
     if (product.categoryNames?.length) {
-      prompt += `\nKategorie: ${product.categoryNames.join(' > ')}`;
+      prompt += `\nCategory: ${product.categoryNames.join(' > ')}`;
     }
     if (product.attributes && Object.keys(product.attributes).length > 0) {
-      prompt += '\nEigenschaften:';
+      prompt += '\nAttributes:';
       for (const [key, value] of Object.entries(product.attributes)) {
         prompt += `\n- ${key}: ${value}`;
       }
     }
     if (product.shortDescription) {
-      prompt += `\nKurzbeschreibung: ${product.shortDescription}`;
+      prompt += `\nShort description: ${product.shortDescription}`;
     }
-    prompt += '\n\nSchreibe 2-3 Absätze. Formatiere als HTML mit <p>-Tags.';
+    prompt += '\n\nWrite 2-3 paragraphs. Format as HTML with <p> tags.';
 
     const messages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },
@@ -84,16 +84,16 @@ export class ProductAIService {
     const provider = this.getProvider();
 
     const prompt =
-      `Generiere SEO-Metadaten für das Produkt "${product.name}".` +
-      (product.description ? `\nBeschreibung: ${product.description.slice(0, 500)}` : '') +
-      '\n\nAntworte NUR mit JSON in diesem Format (keine Erklärung):' +
-      '\n{"title": "max 60 Zeichen", "description": "max 155 Zeichen", "keywords": ["keyword1", "keyword2", ...]}';
+      `Generate SEO metadata for the product "${product.name}".` +
+      (product.description ? `\nDescription: ${product.description.slice(0, 500)}` : '') +
+      '\n\nRespond ONLY with JSON in this format (no explanation):' +
+      '\n{"title": "max 60 characters", "description": "max 155 characters", "keywords": ["keyword1", "keyword2", ...]}';
 
     const messages: ChatMessage[] = [
       {
         role: 'system',
         content:
-          'Du bist ein SEO-Spezialist für E-Commerce. Antworte ausschließlich mit validem JSON.',
+          'You are an SEO specialist for e-commerce. Respond exclusively with valid JSON.',
       },
       { role: 'user', content: prompt },
     ];
@@ -125,15 +125,15 @@ export class ProductAIService {
     const provider = this.getProvider();
 
     const prompt =
-      `Erstelle 3-5 überzeugende Selling Points (Bullet Points) für: "${product.name}"` +
-      (product.description ? `\nBeschreibung: ${product.description.slice(0, 500)}` : '') +
-      '\n\nAntworte NUR mit JSON: {"points": ["Punkt 1", "Punkt 2", ...]}';
+      `Create 3-5 compelling selling points (bullet points) for: "${product.name}"` +
+      (product.description ? `\nDescription: ${product.description.slice(0, 500)}` : '') +
+      '\n\nRespond ONLY with JSON: {"points": ["Point 1", "Point 2", ...]}';
 
     const messages: ChatMessage[] = [
       {
         role: 'system',
         content:
-          'Du bist ein E-Commerce Copywriter. Schreibe kurze, prägnante Selling Points. Antworte nur mit JSON.',
+          'You are an e-commerce copywriter. Write short, punchy selling points. Respond only with JSON.',
       },
       { role: 'user', content: prompt },
     ];
@@ -158,10 +158,10 @@ export class ProductAIService {
     const provider = this.getProvider();
 
     const prompt =
-      `Verbessere die folgende Produktbeschreibung für "${product.name}":` +
+      `Improve the following product description for "${product.name}":` +
       `\n\n${currentDescription}` +
-      '\n\nMach den Text überzeugender, SEO-optimierter und besser lesbar.' +
-      ' Behalte die Kernaussagen bei. Formatiere als HTML mit <p>-Tags.';
+      '\n\nMake the text more compelling, SEO-optimized, and easier to read.' +
+      ' Keep the key messages intact. Format as HTML with <p> tags.';
 
     const messages: ChatMessage[] = [
       { role: 'system', content: SYSTEM_PROMPT },

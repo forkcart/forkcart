@@ -30,11 +30,11 @@ interface FormData {
 }
 
 const COUNTRY_OPTIONS = [
-  { value: 'DE', label: 'Deutschland' },
-  { value: 'AT', label: 'Österreich' },
-  { value: 'CH', label: 'Schweiz' },
-  { value: 'EU', label: 'EU-Länder' },
-  { value: 'WORLDWIDE', label: 'Weltweit' },
+  { value: 'DE', label: 'Germany' },
+  { value: 'AT', label: 'Austria' },
+  { value: 'CH', label: 'Switzerland' },
+  { value: 'EU', label: 'EU Countries' },
+  { value: 'WORLDWIDE', label: 'Worldwide' },
 ];
 
 const emptyForm: FormData = {
@@ -192,12 +192,12 @@ export default function ShippingPage() {
             <thead>
               <tr className="border-b text-left text-sm text-muted-foreground">
                 <th className="p-4 font-medium">Name</th>
-                <th className="p-4 font-medium">Preis</th>
-                <th className="p-4 font-medium">Lieferzeit</th>
-                <th className="p-4 font-medium">Länder</th>
-                <th className="p-4 font-medium">Kostenlos ab</th>
+                <th className="p-4 font-medium">Price</th>
+                <th className="p-4 font-medium">Delivery Time</th>
+                <th className="p-4 font-medium">Countries</th>
+                <th className="p-4 font-medium">Free Above</th>
                 <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Aktionen</th>
+                <th className="p-4 font-medium">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -211,7 +211,7 @@ export default function ShippingPage() {
                   </td>
                   <td className="p-4">{formatPrice(method.price)}</td>
                   <td className="p-4">
-                    {method.estimatedDays ? `${method.estimatedDays} Tage` : '—'}
+                    {method.estimatedDays ? `${method.estimatedDays} days` : '—'}
                   </td>
                   <td className="p-4">
                     <div className="flex flex-wrap gap-1">
@@ -234,7 +234,7 @@ export default function ShippingPage() {
                           : 'bg-gray-100 text-gray-800'
                       }`}
                     >
-                      {method.isActive ? 'Aktiv' : 'Inaktiv'}
+                      {method.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td className="p-4">
@@ -285,12 +285,12 @@ export default function ShippingPage() {
                   value={form.name}
                   onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                   className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
-                  placeholder="z.B. Standardversand"
+                  placeholder="e.g. Standard Shipping"
                 />
               </div>
 
               <div>
-                <label className="text-sm font-medium">Beschreibung</label>
+                <label className="text-sm font-medium">Description</label>
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
@@ -301,7 +301,7 @@ export default function ShippingPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Preis (€)</label>
+                  <label className="text-sm font-medium">Price (€)</label>
                   <input
                     required
                     value={form.price}
@@ -311,7 +311,7 @@ export default function ShippingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Lieferzeit (Tage)</label>
+                  <label className="text-sm font-medium">Delivery Time (days)</label>
                   <input
                     value={form.estimatedDays}
                     onChange={(e) => setForm((f) => ({ ...f, estimatedDays: e.target.value }))}
@@ -323,7 +323,7 @@ export default function ShippingPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-sm font-medium">Mindestbestellwert (€)</label>
+                  <label className="text-sm font-medium">Minimum Order Value (€)</label>
                   <input
                     value={form.minOrderValue}
                     onChange={(e) => setForm((f) => ({ ...f, minOrderValue: e.target.value }))}
@@ -332,18 +332,18 @@ export default function ShippingPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Kostenlos ab (€)</label>
+                  <label className="text-sm font-medium">Free Above (€)</label>
                   <input
                     value={form.freeAbove}
                     onChange={(e) => setForm((f) => ({ ...f, freeAbove: e.target.value }))}
                     className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
-                    placeholder="z.B. 49,00"
+                    placeholder="e.g. 49.00"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-sm font-medium">Länder</label>
+                <label className="text-sm font-medium">Countries</label>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {COUNTRY_OPTIONS.map((opt) => (
                     <button
@@ -371,7 +371,7 @@ export default function ShippingPage() {
                   className="h-4 w-4 rounded border-gray-300"
                 />
                 <label htmlFor="isActive" className="text-sm font-medium">
-                  Aktiv
+                  Active
                 </label>
               </div>
 
@@ -381,7 +381,7 @@ export default function ShippingPage() {
                   onClick={closeModal}
                   className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
                 >
-                  Abbrechen
+                  Cancel
                 </button>
                 <button
                   type="submit"

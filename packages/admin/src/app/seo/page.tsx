@@ -77,7 +77,7 @@ export default function SeoPage() {
                 }
                 className="w-full rounded-md border px-3 py-2 text-sm"
                 rows={3}
-                placeholder="{productName} - {shortDescription}. Jetzt bestellen."
+                placeholder="{productName} - {shortDescription}. Order now."
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 Variables: {'{productName}'}, {'{shortDescription}'}, {'{shopName}'}

@@ -7,27 +7,27 @@ export interface OrderDeliveredData {
 
 export function orderDeliveredHtml(data: OrderDeliveredData): string {
   const content = `
-    <h1>Deine Bestellung wurde zugestellt! ✅</h1>
-    <p>Hallo ${data.customerName},</p>
-    <p>deine Bestellung <strong>${data.orderNumber}</strong> wurde erfolgreich zugestellt.</p>
+    <h1>Your Order Has Been Delivered! ✅</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>Your order <strong>${data.orderNumber}</strong> has been successfully delivered.</p>
 
-    <p>Wir hoffen, du bist zufrieden mit deiner Bestellung! Falls es Probleme gibt oder du Fragen hast, antworte einfach auf diese E-Mail.</p>
+    <p>We hope you're happy with your order! If there are any issues or you have questions, simply reply to this email.</p>
 
     <hr class="divider">
-    <p style="font-size:13px;color:#6b7280;">Vielen Dank für deinen Einkauf bei uns!</p>
+    <p style="font-size:13px;color:#6b7280;">Thank you for shopping with us!</p>
   `;
 
-  return baseLayout(content, `Bestellung ${data.orderNumber} zugestellt`);
+  return baseLayout(content, `Order ${data.orderNumber} delivered`);
 }
 
 export function orderDeliveredText(data: OrderDeliveredData): string {
-  return `ZUSTELLUNG BESTÄTIGT
+  return `DELIVERY CONFIRMED
 
-Hallo ${data.customerName},
+Hi ${data.customerName},
 
-deine Bestellung ${data.orderNumber} wurde erfolgreich zugestellt.
+Your order ${data.orderNumber} has been successfully delivered.
 
-Wir hoffen, du bist zufrieden! Falls es Probleme gibt, antworte einfach auf diese E-Mail.
+We hope you're happy with your purchase! If there are any issues, simply reply to this email.
 
 — ForkCart`;
 }

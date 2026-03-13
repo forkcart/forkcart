@@ -9,39 +9,39 @@ export function welcomeHtml(data: WelcomeData): string {
   const shop = data.shopName ?? 'ForkCart';
 
   const content = `
-    <h1>Willkommen bei ${shop}! 👋</h1>
-    <p>Hallo ${data.customerName},</p>
-    <p>schön, dass du dabei bist! Dein Konto wurde erfolgreich erstellt.</p>
+    <h1>Welcome to ${shop}! 👋</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>Great to have you on board! Your account has been successfully created.</p>
 
-    <p>Du kannst jetzt:</p>
+    <p>You can now:</p>
     <ul style="color:#4a4a68;font-size:15px;line-height:2;">
-      <li>Bestellungen aufgeben und verfolgen</li>
-      <li>Deine Adressen verwalten</li>
-      <li>Deine Bestellhistorie einsehen</li>
+      <li>Place and track orders</li>
+      <li>Manage your addresses</li>
+      <li>View your order history</li>
     </ul>
 
     <hr class="divider">
-    <p>Viel Spaß beim Stöbern!</p>
+    <p>Happy shopping!</p>
   `;
 
-  return baseLayout(content, `Willkommen bei ${shop}!`);
+  return baseLayout(content, `Welcome to ${shop}!`);
 }
 
 export function welcomeText(data: WelcomeData): string {
   const shop = data.shopName ?? 'ForkCart';
 
-  return `WILLKOMMEN BEI ${shop.toUpperCase()}!
+  return `WELCOME TO ${shop.toUpperCase()}!
 
-Hallo ${data.customerName},
+Hi ${data.customerName},
 
-schön, dass du dabei bist! Dein Konto wurde erfolgreich erstellt.
+Great to have you on board! Your account has been successfully created.
 
-Du kannst jetzt:
-- Bestellungen aufgeben und verfolgen
-- Deine Adressen verwalten
-- Deine Bestellhistorie einsehen
+You can now:
+- Place and track orders
+- Manage your addresses
+- View your order history
 
-Viel Spaß beim Stöbern!
+Happy shopping!
 
 — ${shop}`;
 }
