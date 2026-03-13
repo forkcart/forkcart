@@ -7,10 +7,28 @@ import { formatPrice } from '@forkcart/shared';
 import { apiClient } from '@/lib/api-client';
 import type { Product } from '@forkcart/shared';
 
+interface LanguageInfo {
+  locale: string;
+  isDefault?: boolean;
+}
+
 export default function ProductsPage() {
+  // Get default locale first, then fetch products with that locale overlay
+  const { data: langData } = useQuery({
+    queryKey: ['languages'],
+    queryFn: () => apiClient<{ data: LanguageInfo[] }>('/translations'),
+  });
+  const defaultLocale =
+    langData?.data?.find((l) => l.isDefault)?.locale ??
+    langData?.data?.find((l) => l.locale === 'en')?.locale;
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => apiClient<{ data: Product[]; pagination: { total: number } }>('/products'),
+    queryKey: ['products', defaultLocale],
+    queryFn: () =>
+      apiClient<{ data: Product[]; pagination: { total: number } }>(
+        `/products${defaultLocale ? `?locale=${defaultLocale}` : ''}`,
+      ),
+    enabled: !!langData,
   });
 
   return (

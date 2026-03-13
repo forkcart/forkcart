@@ -48,10 +48,7 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
 
   // Fetch localized product content when locale changes
   useEffect(() => {
-    if (locale === 'en') {
-      setProduct(initialProduct);
-      return;
-    }
+    // Always fetch with locale param — the API resolves translations for any language
     fetch(`${API_URL}/api/v1/products/${initialProduct.slug}?locale=${locale}`)
       .then((r) => (r.ok ? (r.json() as Promise<{ data: ProductData }>) : null))
       .then((data) => {
