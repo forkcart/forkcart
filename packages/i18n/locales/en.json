@@ -39,7 +39,7 @@
   },
   "product": {
     "addToCart": "Add to Cart",
-    "added": "Added!",
+    "added": "Added to cart",
     "outOfStock": "Out of Stock",
     "inStock": "In Stock",
     "price": "Price",
@@ -53,7 +53,7 @@
     "share": "Share",
     "details": "Product Details",
     "notFound": "Product not found",
-    "notFoundSubtext": "The product you're looking for doesn't exist or has been removed."
+    "notFoundSubtext": "This product does not exist or has been removed"
   },
   "cart": {
     "title": "Shopping Cart",
@@ -96,72 +96,70 @@
     "orderSuccess": "Your order has been placed successfully!",
     "orderNumber": "Order #{number}",
     "backToShop": "Back to Shop",
-    "backToHome": "Back to Home",
+    "backToHome": "Back to home",
     "secureCheckout": "Secure Checkout",
     "step": "Step {current} of {total}",
-    "nothingToCheckout": "Nothing to checkout",
-    "browseProducts": "Browse Products",
-    "orderConfirmed": "Order confirmed!",
-    "confirmationEmail": "Thank you for your purchase. You'll receive a confirmation email at",
-    "continueToShipping": "Continue to Shipping",
-    "continueToPayment": "Continue to Payment",
-    "backToAddress": "Back to Address",
-    "backToShipping": "Back to Shipping Method",
-    "noShippingMethods": "No shipping methods available for your country.",
-    "estimatedDays": "Est. {days} days",
-    "free": "Free!",
+    "nothingToCheckout": "Your cart is empty",
+    "browseProducts": "Browse products",
+    "orderConfirmed": "Order confirmed",
+    "confirmationEmail": "A confirmation has been sent to {email}",
+    "continueToShipping": "Continue to shipping",
+    "continueToPayment": "Continue to payment",
+    "backToAddress": "Back to address",
+    "backToShipping": "Back to shipping",
+    "noShippingMethods": "No shipping methods available",
+    "estimatedDays": "{min}-{max} business days",
+    "free": "Free",
     "freeAbove": "Free above {amount}",
-    "paymentSecure": "Your payment is secure and encrypted",
-    "qty": "Qty: {count}",
-    "paymentSuccessful": "Payment successful!",
-    "confirmationEmailShort": "Thank you for your purchase. You'll receive a confirmation email shortly.",
-    "payNow": "Pay Now",
+    "paymentSecure": "Secure payment with SSL encryption",
+    "qty": "Qty",
+    "paymentSuccessful": "Payment successful",
+    "confirmationEmailShort": "Confirmation email sent",
+    "payNow": "Pay now",
     "paymentFailed": "Payment failed",
     "prepayment": {
-      "title": "Prepayment / Bank Transfer",
-      "description": "Your order will be created and you'll receive bank transfer details via email. The order ships once payment is received.",
-      "placeOrder": "Place Order (Prepayment)",
-      "creating": "Creating Order..."
+      "title": "Bank transfer",
+      "description": "Please transfer the amount after receiving the order confirmation",
+      "placeOrder": "Place order",
+      "creating": "Creating order..."
     }
   },
   "account": {
     "title": "My Account",
     "orders": "My Orders",
-    "addresses": "My Addresses",
+    "addresses": {
+      "add": "Add new address",
+      "edit": "Edit address",
+      "new": "New address",
+      "update": "Update address",
+      "noAddresses": "No saved addresses",
+      "setDefault": "Set as default",
+      "deleteConfirm": "Delete this address?",
+      "addressLine2": "Address Line 2",
+      "saveFailed": "Could not save address"
+    },
     "settings": "Settings",
-    "profile": "Profile",
+    "profile": {
+      "updated": "Profile updated",
+      "saveChanges": "Save changes",
+      "updateFailed": "Could not update profile",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmNewPassword": "Confirm new password",
+      "passwordChanged": "Password changed successfully",
+      "passwordFailed": "Could not change password"
+    },
     "noOrders": "You haven't placed any orders yet",
     "orderStatus": "Order Status",
     "viewOrder": "View Order",
     "personalInfo": "Personal Information",
     "changePassword": "Change Password",
-    "welcomeBack": "Welcome back, {name}!",
+    "welcomeBack": "Welcome back",
     "signOut": "Sign out",
-    "ordersSpent": "{count} orders · {amount} € spent",
-    "manageAddresses": "Manage your shipping addresses",
-    "startShopping": "Start Shopping",
-    "backToAccount": "Back to Account",
-    "addresses": {
-      "add": "Add Address",
-      "edit": "Edit Address",
-      "new": "New Address",
-      "update": "Update",
-      "noAddresses": "No addresses saved yet",
-      "setDefault": "Set as default address",
-      "deleteConfirm": "Delete this address?",
-      "addressLine2": "Address Line 2",
-      "saveFailed": "Failed to save address"
-    },
-    "profile": {
-      "updated": "Profile updated",
-      "saveChanges": "Save Changes",
-      "updateFailed": "Failed to update profile",
-      "currentPassword": "Current Password",
-      "newPassword": "New Password",
-      "confirmNewPassword": "Confirm New Password",
-      "passwordChanged": "Password changed",
-      "passwordFailed": "Failed to change password"
-    }
+    "ordersSpent": "Total spent",
+    "manageAddresses": "Manage addresses",
+    "startShopping": "Start shopping",
+    "backToAccount": "Back to account"
   },
   "auth": {
     "loginTitle": "Sign in",
@@ -177,7 +175,7 @@
     "hasAccount": "Already have an account?",
     "invalidCredentials": "Invalid email or password",
     "passwordMismatch": "Passwords do not match",
-    "passwordMinLength": "Password must be at least 8 characters",
+    "passwordMinLength": "At least 8 characters",
     "registrationFailed": "Registration failed"
   },
   "chat": {
@@ -220,56 +218,56 @@
     "placeholder": "Search products...",
     "noResults": "No products found for \"{query}\"",
     "resultsCount": "{count} results for \"{query}\"",
-    "typeToSearch": "Type something to search our products.",
+    "typeToSearch": "Type to search...",
     "popularSearches": "Popular searches",
-    "didYouMean": "Did you mean?",
-    "aiEnhanced": "AI-enhanced",
+    "didYouMean": "Did you mean",
+    "aiEnhanced": "AI-enhanced search",
     "sort": {
       "relevance": "Relevance",
-      "priceLowHigh": "Price: Low → High",
-      "priceHighLow": "Price: High → Low",
-      "nameAZ": "Name: A → Z",
-      "nameZA": "Name: Z → A",
-      "newest": "Newest first"
+      "priceLowHigh": "Price (low-high)",
+      "priceHighLow": "Price (high-low)",
+      "nameAZ": "Name (A-Z)",
+      "nameZA": "Name (Z-A)",
+      "newest": "Newest"
     },
     "filters": {
       "sortBy": "Sort by",
       "category": "Category",
       "allCategories": "All categories",
       "priceRange": "Price range",
-      "apply": "Apply",
+      "apply": "Apply filters",
       "min": "Min",
       "max": "Max"
     }
   },
   "category": {
-    "productCount": "{count} product(s)",
-    "noProducts": "No products found in this category.",
+    "productCount": "{count} products",
+    "noProducts": "No products in this category",
     "allProducts": "All Products",
     "sort": {
-      "label": "Sort by",
-      "newest": "Newest",
-      "priceLowHigh": "Price: Low to High",
-      "priceHighLow": "Price: High to Low",
-      "nameAZ": "Name: A–Z"
+      "label": "Sort",
+      "newest": "Newest first",
+      "priceLowHigh": "Price (low-high)",
+      "priceHighLow": "Price (high-low)",
+      "nameAZ": "Name (A-Z)"
     }
   },
   "home": {
     "hero": {
-      "title": "Modern shopping,",
-      "titleAccent": "beautifully simple",
-      "subtitle": "Discover curated products crafted with care. Free shipping on orders over €50.",
-      "shopNow": "Shop Now"
+      "title": "Welcome to",
+      "titleAccent": "ForkCart",
+      "subtitle": "Discover our collection",
+      "shopNow": "Shop now"
     },
-    "shopByCategory": "Shop by Category",
-    "browse": "Browse",
-    "featuredProducts": "Featured Products",
+    "shopByCategory": "Shop by category",
+    "browse": "All products",
+    "featuredProducts": "Featured products",
     "viewAll": "View all",
-    "noProducts": "Products will appear here once you add them in the admin panel.",
+    "noProducts": "No products yet",
     "cta": {
-      "title": "Ready to get started?",
-      "subtitle": "ForkCart is open source and free forever. Self-host it or use our cloud.",
-      "github": "View on GitHub"
+      "title": "Open Source",
+      "subtitle": "Check out the source code",
+      "github": "GitHub"
     }
   },
   "footer": {
@@ -283,8 +281,8 @@
     "terms": "Terms of Service",
     "imprint": "Imprint",
     "newsletter": "Newsletter",
-    "newsletterSubtext": "Get updates on new products and sales.",
-    "emailPlaceholder": "your@email.com",
+    "newsletterSubtext": "Get updates on new products and offers",
+    "emailPlaceholder": "Email address",
     "subscribe": "Subscribe",
     "copyright": "© {year} {shopName}. Powered by open source."
   },
