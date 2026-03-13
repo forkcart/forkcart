@@ -1,4 +1,3 @@
-import type { AIService, TextGenerationOptions } from '@forkcart/ai';
 import type { ChatMessage, ChatProductRef } from '@forkcart/database/schemas';
 import type { ChatSessionRepository, ChatbotSettingsRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';
@@ -40,10 +39,18 @@ export interface ChatContext {
   faqEntries?: Array<{ question: string; answer: string }>;
 }
 
+/** Minimal AI provider interface for the chatbot (text generation only) */
+export interface ChatbotAIProvider {
+  chat(
+    messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    options?: { maxTokens?: number; temperature?: number },
+  ): Promise<{ content: string }>;
+}
+
 export interface ChatbotServiceDeps {
   chatSessionRepository: ChatSessionRepository;
   chatbotSettingsRepository: ChatbotSettingsRepository;
-  aiService: AIService | null;
+  aiProvider: ChatbotAIProvider | null;
   eventBus: EventBus;
   getContext: () => Promise<ChatContext>;
 }
@@ -67,19 +74,19 @@ function checkRateLimit(sessionId: string): boolean {
 
 /**
  * Chatbot service — manages AI-powered customer chat.
- * Uses the shared AIService from packages/ai/.
+ * Uses any AI provider that implements ChatbotAIProvider (via AIProviderRegistry).
  */
 export class ChatbotService {
   private readonly sessions: ChatSessionRepository;
   private readonly settings: ChatbotSettingsRepository;
-  private readonly ai: AIService | null;
+  private readonly ai: ChatbotAIProvider | null;
   private readonly events: EventBus;
   private readonly getContext: () => Promise<ChatContext>;
 
   constructor(deps: ChatbotServiceDeps) {
     this.sessions = deps.chatSessionRepository;
     this.settings = deps.chatbotSettingsRepository;
-    this.ai = deps.aiService;
+    this.ai = deps.aiProvider;
     this.events = deps.eventBus;
     this.getContext = deps.getContext;
   }
@@ -163,25 +170,21 @@ export class ChatbotService {
     // Build system prompt with context
     const systemPrompt = buildSystemPrompt(settings.systemPrompt, context);
 
-    // Build message history for AI
-    const existingMessages = (session.messages as ChatMessage[]).slice(-20); // last 20 for context
-    const aiMessages = existingMessages
-      .map((m) => `${m.role === 'user' ? 'Customer' : 'Assistant'}: ${m.content}`)
-      .join('\n');
+    // Build message history for AI (proper chat messages)
+    const existingMessages = (session.messages as ChatMessage[]).slice(-20);
+    const aiChatMessages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+    ];
+    for (const m of existingMessages) {
+      aiChatMessages.push({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content });
+    }
+    aiChatMessages.push({ role: 'user', content: sanitizedMessage });
 
-    const prompt = aiMessages
-      ? `${aiMessages}\nCustomer: ${sanitizedMessage}\nAssistant:`
-      : `Customer: ${sanitizedMessage}\nAssistant:`;
-
-    const options: TextGenerationOptions = {
-      systemPrompt,
-      prompt,
+    const result = await this.ai!.chat(aiChatMessages, {
       maxTokens: 500,
       temperature: 0.7,
-    };
-
-    const result = await this.ai!.generateText(options);
-    const reply = result.text.trim();
+    });
+    const reply = result.content.trim();
 
     // Extract product recommendations from reply
     const products = extractProductRefs(reply, context.products);
@@ -219,16 +222,23 @@ export class ChatbotService {
     if (!(await this.isAvailable())) return [];
 
     const context = await this.getContext();
-    const result = await this.ai!.generateText({
-      systemPrompt:
-        'You are a product recommendation engine. Given a customer query and product catalog, return ONLY a JSON array of product names that match. Example: ["Product A", "Product B"]. Return empty array if nothing matches.',
-      prompt: `Products: ${context.products.map((p) => `${p.name} (${p.category ?? 'uncategorized'}, ${p.inStock ? 'in stock' : 'out of stock'})`).join(', ')}\n\nCustomer query: "${query}"`,
-      maxTokens: 200,
-      temperature: 0.3,
-    });
+    const result = await this.ai!.chat(
+      [
+        {
+          role: 'system',
+          content:
+            'You are a product recommendation engine. Given a customer query and product catalog, return ONLY a JSON array of product names that match. Example: ["Product A", "Product B"]. Return empty array if nothing matches.',
+        },
+        {
+          role: 'user',
+          content: `Products: ${context.products.map((p) => `${p.name} (${p.category ?? 'uncategorized'}, ${p.inStock ? 'in stock' : 'out of stock'})`).join(', ')}\n\nCustomer query: "${query}"`,
+        },
+      ],
+      { maxTokens: 200, temperature: 0.3 },
+    );
 
     try {
-      const names = JSON.parse(result.text) as string[];
+      const names = JSON.parse(result.content) as string[];
       return context.products
         .filter((p) => names.some((n) => p.name.toLowerCase().includes(n.toLowerCase())))
         .map((p) => ({
