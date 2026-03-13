@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
 import { useAuth } from '@/components/auth/auth-provider';
@@ -47,9 +48,55 @@ interface ShippingMethodOption {
 
 type CheckoutStep = 'address' | 'shipping' | 'payment' | 'success';
 
-export default function CheckoutPage() {
+export default function CheckoutPageWrapper() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+      <CheckoutPage />
+    </Suspense>
+  );
+}
+
+function CheckoutPage() {
   const { items, subtotal, clearCart, serverCartId } = useCart();
   const { customer, token } = useAuth();
+  const searchParams = useSearchParams();
+  const cartIdFromUrl = searchParams.get('cartId');
+  const [quickCartItems, setQuickCartItems] = useState<Array<{
+    id: string;
+    productId: string;
+    productName: string;
+    productSlug: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }> | null>(null);
+  const [quickCartSubtotal, setQuickCartSubtotal] = useState(0);
+
+  // Load quick-cart from URL param if present
+  useEffect(() => {
+    if (!cartIdFromUrl) return;
+    fetch(`${API_URL}/api/v1/carts/${cartIdFromUrl}`)
+      .then((r) => {
+        if (!r.ok) throw new Error('Cart not found');
+        return r.json();
+      })
+      .then((data: { data: { items: typeof quickCartItems; subtotal: number } }) => {
+        if (data.data?.items?.length) {
+          setQuickCartItems(data.data.items);
+          setQuickCartSubtotal(data.data.subtotal);
+        }
+      })
+      .catch(() => {
+        // Invalid cart — fall through to normal cart
+        setQuickCartItems(null);
+      });
+  }, [cartIdFromUrl]);
+
+  // Use quick-cart data when available, otherwise regular cart
+  const effectiveItems = quickCartItems ?? items;
+  const effectiveSubtotal = quickCartItems ? quickCartSubtotal : subtotal;
+  const effectiveCartId = cartIdFromUrl ?? serverCartId;
+
   const [step, setStep] = useState<CheckoutStep>('address');
   const [shipping, setShipping] = useState<ShippingData>({
     firstName: '',
@@ -131,8 +178,8 @@ export default function CheckoutPage() {
       });
   }, []);
 
-  // Empty cart guard
-  if (items.length === 0 && step !== 'success') {
+  // Empty cart guard (skip while loading quick-cart)
+  if (effectiveItems.length === 0 && step !== 'success' && !cartIdFromUrl) {
     return (
       <div className="container-page py-24 text-center">
         <h1 className="text-2xl font-bold text-gray-900">Nothing to checkout</h1>
@@ -214,7 +261,7 @@ export default function CheckoutPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cartId: serverCartId,
+            cartId: effectiveCartId,
             providerId: selectedProvider,
             customer: {
               email: shipping.email,
@@ -267,7 +314,7 @@ export default function CheckoutPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          cartId: serverCartId,
+          cartId: effectiveCartId,
           customerEmail: shipping.email,
           shippingAddress: {
             firstName: shipping.firstName,
@@ -613,7 +660,7 @@ export default function CheckoutPage() {
           <div className="sticky top-24 rounded-lg bg-gray-50 p-6">
             <h2 className="text-lg font-semibold text-gray-900">Order Summary</h2>
             <div className="mt-4 divide-y">
-              {items.map((item) => (
+              {effectiveItems.map((item) => (
                 <div key={item.id} className="flex justify-between py-3 text-sm">
                   <div>
                     <p className="font-medium text-gray-900">{item.productName}</p>
@@ -626,7 +673,7 @@ export default function CheckoutPage() {
             <div className="mt-4 space-y-2 border-t pt-4">
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Subtotal</span>
-                <span className="font-medium">{formatPrice(subtotal)}</span>
+                <span className="font-medium">{formatPrice(effectiveSubtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Shipping</span>
@@ -640,7 +687,7 @@ export default function CheckoutPage() {
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-semibold">Total</span>
-                <span className="text-lg font-bold">{formatPrice(subtotal + shippingCost)}</span>
+                <span className="text-lg font-bold">{formatPrice(effectiveSubtotal + shippingCost)}</span>
               </div>
             </div>
 
