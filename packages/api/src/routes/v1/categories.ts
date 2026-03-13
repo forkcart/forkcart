@@ -6,11 +6,22 @@ import { CreateCategorySchema, UpdateCategorySchema, IdParamSchema } from '@fork
 export function createCategoryRoutes(categoryService: CategoryService) {
   const router = new Hono();
 
-  /** List all categories */
+  /** List all categories (with optional product counts) */
   router.get('/', async (c) => {
     const activeOnly = c.req.query('active') === 'true';
-    const categories = await categoryService.listAll(activeOnly);
-    return c.json({ data: categories });
+    const withCounts = c.req.query('withCounts') === 'true';
+    const allCategories = await categoryService.listAll(activeOnly);
+
+    if (withCounts) {
+      const countsMap = await categoryService.getProductCounts();
+      const enriched = allCategories.map((cat) => ({
+        ...cat,
+        productCount: countsMap.get(cat.id) ?? 0,
+      }));
+      return c.json({ data: enriched });
+    }
+
+    return c.json({ data: allCategories });
   });
 
   /** Get category tree (root categories with nested children) */

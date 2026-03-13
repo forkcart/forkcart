@@ -229,6 +229,16 @@
       "sortBy": "Sortieren nach"
     },
     "popularSearches": "Beliebte Suchen",
+    "trending": "Trending Produkte",
+    "trendingProducts": "Trending Produkte",
+    "instantResults": "Ergebnisse",
+    "viewAllResults": "Alle {count} Ergebnisse anzeigen",
+    "searchProducts": "Produkte suchen…",
+    "closeSearch": "Suche schließen",
+    "noInstantResults": "Keine Ergebnisse für \"{query}\"",
+    "pressEsc": "ESC zum Schließen",
+    "openSearch": "Suche öffnen (⌘K)",
+    "discount": "-{percent}%",
     "sort": {
       "nameAZ": "Name (A-Z)",
       "nameZA": "Name (Z-A)",

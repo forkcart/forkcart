@@ -18,6 +18,16 @@ const SuggestionQuerySchema = z.object({
   q: z.string().min(1).max(200),
 });
 
+const InstantQuerySchema = z.object({
+  q: z.string().min(1).max(200),
+});
+
+const TrackSchema = z.object({
+  productId: z.string().uuid(),
+  eventType: z.enum(['view', 'click', 'cart_add', 'purchase']),
+  sessionId: z.string().optional(),
+});
+
 const AnalyticsQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(365).default(30),
 });
@@ -97,6 +107,41 @@ export function createSearchAdminRoutes(searchService: SearchService) {
     const params = ZeroResultsQuerySchema.parse(query);
     const results = await searchService.getZeroResultSearches(params.limit, params.days);
     return c.json({ data: results });
+  });
+
+  return router;
+}
+
+/** Public search routes (no auth required) — mounted at /api/v1/public/search */
+export function createPublicSearchRoutes(searchService: SearchService) {
+  const router = new Hono();
+
+  /** Instant search — fast, lightweight results for overlay */
+  router.get('/instant', async (c) => {
+    const query = c.req.query();
+    const params = InstantQuerySchema.parse(query);
+    const results = await searchService.instantSearch(params.q);
+    return c.json({ data: results });
+  });
+
+  /** Popular search terms */
+  router.get('/popular', async (c) => {
+    const popular = await searchService.getPopularSearches(10);
+    return c.json({ data: popular });
+  });
+
+  /** Trending products */
+  router.get('/trending', async (c) => {
+    const trending = await searchService.getTrendingProducts(10);
+    return c.json({ data: trending });
+  });
+
+  /** Track product impressions (view, click, cart_add) */
+  router.post('/track', async (c) => {
+    const body = await c.req.json();
+    const params = TrackSchema.parse(body);
+    await searchService.trackImpression(params);
+    return c.json({ ok: true });
   });
 
   return router;

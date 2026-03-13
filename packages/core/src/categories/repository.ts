@@ -1,6 +1,6 @@
 import { eq, and, sql, count, asc } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
-import { categories } from '@forkcart/database/schemas';
+import { categories, productCategories } from '@forkcart/database/schemas';
 import type { CreateCategoryInput, UpdateCategoryInput } from '@forkcart/shared';
 
 /** Category repository — data access layer */
@@ -80,6 +80,23 @@ export class CategoryRepository {
       .where(and(...conditions));
 
     return (result[0]?.count ?? 0) > 0;
+  }
+
+  /** Count products per category, returns Map<categoryId, count> */
+  async getProductCounts(): Promise<Map<string, number>> {
+    const rows = await this.db
+      .select({
+        categoryId: productCategories.categoryId,
+        count: count(),
+      })
+      .from(productCategories)
+      .groupBy(productCategories.categoryId);
+
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      map.set(row.categoryId, row.count);
+    }
+    return map;
   }
 
   async hasChildren(id: string): Promise<boolean> {

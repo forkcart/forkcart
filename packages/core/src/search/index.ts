@@ -1,5 +1,6 @@
 export { SearchService } from './service';
 export { SearchRepository } from './repository';
+export { RankingService } from './ranking';
 export { SEARCH_EVENTS } from './events';
 export type {
   SearchServiceDeps,
@@ -7,6 +8,7 @@ export type {
   SearchResponse,
   SearchMode,
   SemanticSearchProvider,
+  InstantSearchResult,
 } from './service';
 export type {
   SearchResult,
@@ -15,3 +17,4 @@ export type {
   ZeroResultSearch,
   SearchAnalytics,
 } from './repository';
+export type { TrendingProduct, ProductScore } from './ranking';

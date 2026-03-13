@@ -41,6 +41,7 @@ import {
   VatValidator,
   SearchRepository,
   SearchService,
+  RankingService,
   TranslationRepository,
   TranslationService,
   ProductTranslationRepository,
@@ -71,7 +72,11 @@ import { createChatRoutes, createChatAdminRoutes } from './routes/v1/chat';
 import { createTaxRoutes } from './routes/v1/tax';
 import { createCustomerAuthRoutes, createCartAssignRoute } from './routes/v1/customer-auth';
 import { createStorefrontCustomerRoutes } from './routes/v1/storefront-customers';
-import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search';
+import {
+  createSearchRoutes,
+  createSearchAdminRoutes,
+  createPublicSearchRoutes,
+} from './routes/v1/search';
 import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
@@ -223,8 +228,10 @@ export async function createApp(db: Database) {
 
   // Search system
   const searchRepository = new SearchRepository(db);
+  const rankingService = new RankingService(db);
   const searchService = new SearchService({
     searchRepository,
+    rankingService,
     eventBus,
     aiService: null, // AI provider injected externally when configured
   });
@@ -396,6 +403,9 @@ export async function createApp(db: Database) {
 
   // Public coupon routes (no auth)
   app.route('/api/v1/public/coupons', createPublicCouponRoutes(couponService));
+
+  // Public search routes (no auth — instant search, popular, trending, tracking)
+  app.route('/api/v1/public/search', createPublicSearchRoutes(searchService));
 
   app.route('/api/v1', v1);
 

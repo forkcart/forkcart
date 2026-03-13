@@ -1,4 +1,4 @@
-import { eq, ilike, and, gte, lte, sql, asc, desc, count } from 'drizzle-orm';
+import { eq, ilike, and, gte, lte, sql, asc, desc, count, inArray } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
 import { products, productCategories } from '@forkcart/database/schemas';
 import type {
@@ -35,6 +35,15 @@ export class ProductRepository {
     return result ?? null;
   }
 
+  /** Get product IDs that belong to a given category */
+  private async getProductIdsByCategory(categoryId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ productId: productCategories.productId })
+      .from(productCategories)
+      .where(eq(productCategories.categoryId, categoryId));
+    return rows.map((r) => r.productId);
+  }
+
   async findMany(filter: ProductFilter, pagination: Pagination) {
     const conditions = [];
 
@@ -43,7 +52,9 @@ export class ProductRepository {
     }
 
     if (filter.search) {
-      conditions.push(ilike(products.name, `%${filter.search}%`));
+      conditions.push(
+        sql`(${ilike(products.name, `%${filter.search}%`)} OR ${ilike(products.sku, `%${filter.search}%`)})`,
+      );
     }
 
     if (filter.minPrice !== undefined) {
@@ -52,6 +63,18 @@ export class ProductRepository {
 
     if (filter.maxPrice !== undefined) {
       conditions.push(lte(products.price, filter.maxPrice));
+    }
+
+    // Category filter: find product IDs in the category, then filter
+    if (filter.categoryId) {
+      const productIds = await this.getProductIdsByCategory(filter.categoryId);
+      if (productIds.length === 0) {
+        return {
+          data: [],
+          pagination: calculatePagination(0, pagination.page, pagination.limit),
+        };
+      }
+      conditions.push(inArray(products.id, productIds));
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
