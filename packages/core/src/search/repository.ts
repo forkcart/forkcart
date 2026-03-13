@@ -1,6 +1,12 @@
 import { eq, sql, desc, and, gte, lte, count, ilike, or } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
-import { searchQueries, products, productCategories, categories } from '@forkcart/database/schemas';
+import {
+  searchQueries,
+  products,
+  productCategories,
+  categories,
+  productTranslations,
+} from '@forkcart/database/schemas';
 
 export interface SearchResult {
   id: string;
@@ -83,7 +89,7 @@ export class SearchRepository {
       .map((w) => `${w}:*`)
       .join(' & ');
 
-    // Weighted ts_vector: name=A, sku=B, description=C
+    // Weighted ts_vector: name=A, sku=B, description=C (includes translations)
     const tsVector = sql`(
       setweight(to_tsvector('german', coalesce(${products.name}, '')), 'A') ||
       setweight(to_tsvector('german', coalesce(${products.sku}, '')), 'B') ||
@@ -92,19 +98,32 @@ export class SearchRepository {
 
     const tsQuery = sql`to_tsquery('german', ${tsQueryWords})`;
 
-    // Rank by ts_rank + ILIKE boost
+    // Check if query matches any translation (name or description)
+    const translationMatch = sql`EXISTS (
+      SELECT 1 FROM ${productTranslations} pt
+      WHERE pt.product_id = ${products.id}
+      AND (
+        pt.name ILIKE ${'%' + queryText + '%'}
+        OR pt.description ILIKE ${'%' + queryText + '%'}
+        OR pt.short_description ILIKE ${'%' + queryText + '%'}
+      )
+    )`;
+
+    // Rank by ts_rank + ILIKE boost (including translations)
     const rankExpr = sql<number>`(
       ts_rank(${tsVector}, ${tsQuery}) +
       CASE WHEN ${products.name} ILIKE ${'%' + queryText + '%'} THEN 0.5 ELSE 0 END +
-      CASE WHEN ${products.sku} ILIKE ${'%' + queryText + '%'} THEN 0.3 ELSE 0 END
+      CASE WHEN ${products.sku} ILIKE ${'%' + queryText + '%'} THEN 0.3 ELSE 0 END +
+      CASE WHEN ${translationMatch} THEN 0.5 ELSE 0 END
     )`.as('rank');
 
-    // Combine full-text match OR ILIKE fallback (for partial/typo matches)
+    // Combine full-text match OR ILIKE fallback OR translation match
     const textCondition = or(
       sql`${tsVector} @@ ${tsQuery}`,
       ilike(products.name, `%${queryText}%`),
       ilike(products.description, `%${queryText}%`),
       ilike(products.sku, `%${queryText}%`),
+      translationMatch,
     );
 
     // Build additional filters
