@@ -234,6 +234,8 @@ export async function createApp(db: Database) {
     rankingService,
     eventBus,
     aiService: null, // AI provider injected externally when configured
+    mediaBaseUrl: baseUrl.replace(/\/uploads\/?$/, ''),
+    db,
   });
 
   // Tax system
