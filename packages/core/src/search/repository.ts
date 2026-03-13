@@ -270,6 +270,7 @@ export class SearchRepository {
     sessionId?: string;
     customerId?: string;
     searchMode?: string;
+    clickedProductId?: string;
   }): Promise<void> {
     await this.db.insert(searchQueries).values({
       query: params.query,
@@ -277,6 +278,7 @@ export class SearchRepository {
       sessionId: params.sessionId ?? null,
       customerId: params.customerId ?? null,
       searchMode: params.searchMode ?? 'basic',
+      clickedProductId: params.clickedProductId ?? null,
     });
   }
 

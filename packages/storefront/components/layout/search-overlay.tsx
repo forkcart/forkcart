@@ -97,7 +97,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   }
 
   function navigateToProduct(slug: string, productId: string) {
-    trackImpression({ productId, eventType: 'click' });
+    trackImpression({ productId, eventType: 'click', query: query.trim() || undefined });
     router.push(`/product/${slug}`);
     onClose();
   }

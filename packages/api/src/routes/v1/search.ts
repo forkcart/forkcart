@@ -26,6 +26,7 @@ const TrackSchema = z.object({
   productId: z.string().uuid(),
   eventType: z.enum(['view', 'click', 'cart_add', 'purchase']),
   sessionId: z.string().optional(),
+  query: z.string().max(200).optional(),
 });
 
 const AnalyticsQuerySchema = z.object({
@@ -136,11 +137,21 @@ export function createPublicSearchRoutes(searchService: SearchService) {
     return c.json({ data: trending });
   });
 
-  /** Track product impressions (view, click, cart_add) */
+  /** Track product impressions (view, click, cart_add) + optional search query log */
   router.post('/track', async (c) => {
     const body = await c.req.json();
     const params = TrackSchema.parse(body);
     await searchService.trackImpression(params);
+
+    // If a query was provided (user clicked a product from search), log it as a completed search
+    if (params.query?.trim() && params.eventType === 'click') {
+      await searchService.logSearchWithClick(
+        params.query.trim(),
+        params.productId,
+        params.sessionId,
+      );
+    }
+
     return c.json({ ok: true });
   });
 
