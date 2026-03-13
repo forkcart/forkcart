@@ -40,11 +40,32 @@ interface TranslationKey {
 }
 
 const FLAG_MAP: Record<string, string> = {
-  en: '🇬🇧', de: '🇩🇪', fr: '🇫🇷', es: '🇪🇸', it: '🇮🇹', nl: '🇳🇱',
-  pt: '🇵🇹', pl: '🇵🇱', cs: '🇨🇿', ja: '🇯🇵', zh: '🇨🇳', ko: '🇰🇷',
-  ar: '🇸🇦', ru: '🇷🇺', tr: '🇹🇷', sv: '🇸🇪', da: '🇩🇰', fi: '🇫🇮',
-  no: '🇳🇴', hu: '🇭🇺', ro: '🇷🇴', uk: '🇺🇦', el: '🇬🇷', th: '🇹🇭',
-  vi: '🇻🇳', hi: '🇮🇳',
+  en: '🇬🇧',
+  de: '🇩🇪',
+  fr: '🇫🇷',
+  es: '🇪🇸',
+  it: '🇮🇹',
+  nl: '🇳🇱',
+  pt: '🇵🇹',
+  pl: '🇵🇱',
+  cs: '🇨🇿',
+  ja: '🇯🇵',
+  zh: '🇨🇳',
+  ko: '🇰🇷',
+  ar: '🇸🇦',
+  ru: '🇷🇺',
+  tr: '🇹🇷',
+  sv: '🇸🇪',
+  da: '🇩🇰',
+  fi: '🇫🇮',
+  no: '🇳🇴',
+  hu: '🇭🇺',
+  ro: '🇷🇴',
+  uk: '🇺🇦',
+  el: '🇬🇷',
+  th: '🇹🇭',
+  vi: '🇻🇳',
+  hi: '🇮🇳',
 };
 
 // ── Main Page ────────────────────────────────────────────────────────
@@ -89,17 +110,12 @@ export default function TranslationsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link
-            href="/settings"
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
-          >
+          <Link href="/settings" className="rounded-lg p-2 text-muted-foreground hover:bg-muted">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div>
             <h1 className="text-3xl font-bold">Translation Manager</h1>
-            <p className="mt-1 text-muted-foreground">
-              Manage languages and translate your store
-            </p>
+            <p className="mt-1 text-muted-foreground">Manage languages and translate your store</p>
           </div>
         </div>
         <button
@@ -236,13 +252,7 @@ function LanguageCard({
 
 // ── Add Language Dialog ──────────────────────────────────────────────
 
-function AddLanguageDialog({
-  onClose,
-  onCreated,
-}: {
-  onClose: () => void;
-  onCreated: () => void;
-}) {
+function AddLanguageDialog({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [locale, setLocale] = useState('');
   const [name, setName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -309,9 +319,7 @@ function AddLanguageDialog({
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex justify-end gap-3">
             <button
@@ -354,6 +362,8 @@ function TranslationEditor({
   const [searchQuery, setSearchQuery] = useState('');
   const [nsFilter, setNsFilter] = useState('');
   const [changes, setChanges] = useState<Record<string, string>>({});
+  const [aiTranslating, setAiTranslating] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
 
   const lang = languages.find((l) => l.locale === locale);
   const flag = FLAG_MAP[locale] ?? '🌐';
@@ -477,6 +487,35 @@ function TranslationEditor({
     input.click();
   }
 
+  async function handleAITranslate() {
+    if (locale === 'en') return;
+    setAiTranslating(true);
+    setAiResult(null);
+    try {
+      const res = await apiClient<{ data: { translated: Record<string, string>; count: number } }>(
+        `/translations/${locale}/auto-translate`,
+        { method: 'POST' },
+      );
+      if (res.data.count === 0) {
+        setAiResult('All keys are already translated! ✓');
+      } else {
+        setAiResult(`Translated ${res.data.count} keys with AI ✓`);
+        // Reload keys
+        const reloaded = await apiClient<{ data: { locale: string; keys: TranslationKey[] } }>(
+          `/translations/${locale}`,
+        );
+        setKeys(reloaded.data.keys);
+        setChanges({});
+      }
+      setTimeout(() => setAiResult(null), 5000);
+    } catch (err) {
+      setAiResult(err instanceof Error ? `Error: ${err.message}` : 'AI translation failed');
+      setTimeout(() => setAiResult(null), 5000);
+    } finally {
+      setAiTranslating(false);
+    }
+  }
+
   return (
     <div>
       {/* Header */}
@@ -511,6 +550,23 @@ function TranslationEditor({
             <Upload className="h-4 w-4" />
             Import
           </button>
+          {locale !== 'en' && missingCount > 0 && (
+            <button
+              onClick={handleAITranslate}
+              disabled={aiTranslating}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-50 dark:border-violet-800 dark:bg-violet-950 dark:text-violet-300 dark:hover:bg-violet-900"
+            >
+              {aiTranslating ? <Loader2 className="h-4 w-4 animate-spin" /> : <span>🤖</span>}
+              {aiTranslating ? 'Translating...' : `AI Translate (${missingCount})`}
+            </button>
+          )}
+          {aiResult && (
+            <span
+              className={`text-sm ${aiResult.startsWith('Error') ? 'text-red-600' : 'text-green-600'}`}
+            >
+              {aiResult}
+            </span>
+          )}
           <button
             onClick={handleSave}
             disabled={changesCount === 0 || saving}

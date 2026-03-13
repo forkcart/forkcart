@@ -256,6 +256,12 @@ export async function createApp(db: Database) {
   }
   const productAIService = new ProductAIService({ aiRegistry: aiProviderRegistry });
 
+  // Wire AI provider to translation service for auto-translate
+  const configuredAI = aiProviderRegistry.getConfiguredProvider();
+  if (configuredAI) {
+    translationService.setAIProvider(configuredAI);
+  }
+
   // SEO service (works without AI, enhanced when AI is available)
   const seoRepository = new SeoRepository(db);
   const seoService = new SeoService({
