@@ -122,6 +122,9 @@ importers:
       '@forkcart/database':
         specifier: workspace:*
         version: link:../database
+      '@forkcart/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@forkcart/plugin-mailgun':
         specifier: workspace:*
         version: link:../plugins/mailgun

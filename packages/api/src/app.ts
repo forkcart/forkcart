@@ -3,7 +3,7 @@ import { cors } from 'hono/cors';
 import { logger as honoLogger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
-import { resolve, relative } from 'node:path';
+import { resolve, relative, join } from 'node:path';
 import type { Database } from '@forkcart/database';
 import { AIProviderRegistry } from '@forkcart/ai';
 import {
@@ -69,6 +69,8 @@ import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search'
 import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
+import { flattenTranslations } from '@forkcart/i18n';
+import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
 
 /** Create the Hono application with all routes and middleware */
@@ -100,7 +102,10 @@ export async function createApp(db: Database) {
         })
         .sort((a, b) => b.q - a.q);
       for (const { lang } of langs) {
-        if (supported.includes(lang)) { locale = lang; break; }
+        if (supported.includes(lang)) {
+          locale = lang;
+          break;
+        }
       }
     }
     c.set('locale', locale);
@@ -166,9 +171,26 @@ export async function createApp(db: Database) {
 
   // i18n translations
   const translationRepository = new TranslationRepository(db);
+  // Load i18n JSON file defaults
+  const i18nFileDefaults: Record<string, Record<string, string>> = {};
+  try {
+    const localesDir = resolve(new URL('.', import.meta.url).pathname, '../../i18n/locales');
+    const files = readdirSync(localesDir).filter(
+      (f) => f.endsWith('.json') && !f.startsWith('admin-'),
+    );
+    for (const file of files) {
+      const locale = file.replace('.json', '');
+      const raw = JSON.parse(readFileSync(join(localesDir, file), 'utf-8'));
+      i18nFileDefaults[locale] = flattenTranslations(raw);
+    }
+    console.log(`[i18n] Loaded defaults for: ${Object.keys(i18nFileDefaults).join(', ')}`);
+  } catch (err) {
+    console.warn('[i18n] Could not load locale files — translation manager will show 0 keys', err);
+  }
+
   const translationService = new TranslationService({
     translationRepository,
-    fileDefaults: {}, // Will be populated by JSON file defaults at startup
+    fileDefaults: i18nFileDefaults,
   });
 
   // Search system
