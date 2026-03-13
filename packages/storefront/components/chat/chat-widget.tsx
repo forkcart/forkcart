@@ -88,9 +88,9 @@ export function ChatWidget() {
       });
 
       if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: { message: 'Fehler' } }));
+        const err = await res.json().catch(() => ({ error: { message: 'Error' } }));
         throw new Error(
-          (err as { error: { message: string } }).error?.message ?? 'Fehler beim Senden',
+          (err as { error: { message: string } }).error?.message ?? 'Failed to send message',
         );
       }
 
@@ -115,7 +115,7 @@ export function ChatWidget() {
     } catch (err) {
       const errorMsg: ChatMessage = {
         role: 'assistant',
-        content: 'Entschuldigung, es ist ein Fehler aufgetreten. Bitte versuche es erneut.',
+        content: 'Sorry, something went wrong. Please try again.',
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -133,7 +133,7 @@ export function ChatWidget() {
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-          aria-label="Chat öffnen"
+          aria-label="Open chat"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -173,14 +173,14 @@ export function ChatWidget() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-semibold">Kundenberatung</p>
+                <p className="text-sm font-semibold">Customer Support</p>
                 <p className="text-xs text-white/70">Powered by AI</p>
               </div>
             </div>
             <button
               onClick={() => setOpen(false)}
               className="rounded p-1 hover:bg-white/10"
-              aria-label="Chat schließen"
+              aria-label="Close chat"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -302,7 +302,7 @@ export function ChatWidget() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Nachricht schreiben..."
+                placeholder="Type a message..."
                 className="flex-1 rounded-xl border bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
                 maxLength={2000}
                 disabled={loading}
@@ -311,7 +311,7 @@ export function ChatWidget() {
                 type="submit"
                 disabled={!input.trim() || loading}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white transition-opacity disabled:opacity-30"
-                aria-label="Nachricht senden"
+                aria-label="Send message"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

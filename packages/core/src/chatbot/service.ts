@@ -7,18 +7,18 @@ import { AppError } from '@forkcart/shared';
 
 const logger = createLogger('chatbot-service');
 
-const DEFAULT_SYSTEM_PROMPT = `Du bist der freundliche Kundenberater von {shopName}.
-Du hilfst Kunden bei:
-- Produktfragen und Empfehlungen
-- Bestellstatus
-- Versand und Lieferung
-- Retouren und Rückgabe
+const DEFAULT_SYSTEM_PROMPT = `You are the friendly customer assistant of {shopName}.
+You help customers with:
+- Product questions and recommendations
+- Order status
+- Shipping and delivery
+- Returns and refunds
 
-Antworte kurz, freundlich und hilfreich. Wenn du etwas nicht weißt,
-leite an den Support weiter. Empfehle passende Produkte wenn möglich.
-Antworte in der Sprache des Kunden.`;
+Keep your answers short, friendly and helpful. If you don't know something,
+refer to customer support. Recommend matching products when possible.
+Always reply in the customer's language.`;
 
-const DEFAULT_WELCOME_MESSAGE = 'Hallo! 👋 Wie kann ich dir helfen?';
+const DEFAULT_WELCOME_MESSAGE = 'Hi there! 👋 How can I help you?';
 
 /** Context injected into the chatbot system prompt */
 export interface ChatContext {
