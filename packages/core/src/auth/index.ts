@@ -1,4 +1,10 @@
 export { UserRepository } from './repository';
 export { AuthService, AuthError } from './service';
-export type { AuthUser, LoginResult, JwtPayload } from './service';
-export type { UserRecord, SessionRecord } from './repository';
+export type {
+  AuthUser,
+  LoginResult,
+  JwtPayload,
+  CreateUserInput,
+  UpdateUserInput,
+} from './service';
+export type { UserRecord, SessionRecord, SafeUserRecord } from './repository';

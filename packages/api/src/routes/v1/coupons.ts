@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { CouponService } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 const CreateCouponSchema = z.object({
   code: z.string().min(1).max(50),
@@ -42,14 +43,14 @@ const ApplyCouponSchema = z.object({
 export function createCouponRoutes(couponService: CouponService) {
   const router = new Hono();
 
-  /** List all coupons */
-  router.get('/', async (c) => {
+  /** List all coupons (admin + superadmin only) */
+  router.get('/', requireRole('admin', 'superadmin'), async (c) => {
     const data = await couponService.list();
     return c.json({ data });
   });
 
-  /** Create coupon */
-  router.post('/', async (c) => {
+  /** Create coupon (admin + superadmin only) */
+  router.post('/', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateCouponSchema.parse(body);
     const coupon = await couponService.create({
@@ -60,8 +61,8 @@ export function createCouponRoutes(couponService: CouponService) {
     return c.json({ data: coupon }, 201);
   });
 
-  /** Update coupon */
-  router.put('/:id', async (c) => {
+  /** Update coupon (admin + superadmin only) */
+  router.put('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
     const input = UpdateCouponSchema.parse(body);
@@ -83,8 +84,8 @@ export function createCouponRoutes(couponService: CouponService) {
     return c.json({ data: coupon });
   });
 
-  /** Delete coupon */
-  router.delete('/:id', async (c) => {
+  /** Delete coupon (admin + superadmin only) */
+  router.delete('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     await couponService.delete(id);
     return c.json({ success: true });

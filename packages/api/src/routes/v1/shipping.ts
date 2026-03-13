@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { ShippingService } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 const CreateShippingMethodSchema = z.object({
   name: z.string().min(1).max(255),
@@ -63,16 +64,16 @@ export function createShippingRoutes(shippingService: ShippingService) {
     return c.json({ data: methods });
   });
 
-  /** Create shipping method (Admin) */
-  router.post('/methods', async (c) => {
+  /** Create shipping method (admin + superadmin only) */
+  router.post('/methods', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateShippingMethodSchema.parse(body);
     const method = await shippingService.create(input);
     return c.json({ data: method }, 201);
   });
 
-  /** Update shipping method (Admin) */
-  router.put('/methods/:id', async (c) => {
+  /** Update shipping method (admin + superadmin only) */
+  router.put('/methods/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
     const input = UpdateShippingMethodSchema.parse(body);
@@ -80,8 +81,8 @@ export function createShippingRoutes(shippingService: ShippingService) {
     return c.json({ data: method });
   });
 
-  /** Delete shipping method (Admin) */
-  router.delete('/methods/:id', async (c) => {
+  /** Delete shipping method (admin + superadmin only) */
+  router.delete('/methods/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     await shippingService.delete(id);
     return c.json({ success: true });

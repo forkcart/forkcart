@@ -12,6 +12,7 @@ import {
   TaxCalculationRequestSchema,
   VatValidationRequestSchema,
 } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 /** Tax management routes (Admin + Public) */
 export function createTaxRoutes(taxService: TaxService) {
@@ -29,22 +30,24 @@ export function createTaxRoutes(taxService: TaxService) {
     return c.json({ data: cls });
   });
 
-  router.post('/classes', async (c) => {
+  router.post('/classes', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateTaxClassSchema.parse(body);
     const cls = await taxService.createClass(input);
     return c.json({ data: cls }, 201);
   });
 
-  router.put('/classes/:id', async (c) => {
+  router.put('/classes/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
     const body = await c.req.json();
     const input = UpdateTaxClassSchema.parse(body);
-    const cls = await taxService.updateClass(c.req.param('id'), input);
+    const cls = await taxService.updateClass(id, input);
     return c.json({ data: cls });
   });
 
-  router.delete('/classes/:id', async (c) => {
-    await taxService.deleteClass(c.req.param('id'));
+  router.delete('/classes/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
+    await taxService.deleteClass(id);
     return c.json({ success: true });
   });
 
@@ -60,22 +63,24 @@ export function createTaxRoutes(taxService: TaxService) {
     return c.json({ data: zone });
   });
 
-  router.post('/zones', async (c) => {
+  router.post('/zones', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateTaxZoneSchema.parse(body);
     const zone = await taxService.createZone(input);
     return c.json({ data: zone }, 201);
   });
 
-  router.put('/zones/:id', async (c) => {
+  router.put('/zones/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
     const body = await c.req.json();
     const input = UpdateTaxZoneSchema.parse(body);
-    const zone = await taxService.updateZone(c.req.param('id'), input);
+    const zone = await taxService.updateZone(id, input);
     return c.json({ data: zone });
   });
 
-  router.delete('/zones/:id', async (c) => {
-    await taxService.deleteZone(c.req.param('id'));
+  router.delete('/zones/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
+    await taxService.deleteZone(id);
     return c.json({ success: true });
   });
 
@@ -93,22 +98,24 @@ export function createTaxRoutes(taxService: TaxService) {
     return c.json({ data: rule });
   });
 
-  router.post('/rules', async (c) => {
+  router.post('/rules', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateTaxRuleSchema.parse(body);
     const rule = await taxService.createRule(input);
     return c.json({ data: rule }, 201);
   });
 
-  router.put('/rules/:id', async (c) => {
+  router.put('/rules/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
     const body = await c.req.json();
     const input = UpdateTaxRuleSchema.parse(body);
-    const rule = await taxService.updateRule(c.req.param('id'), input);
+    const rule = await taxService.updateRule(id, input);
     return c.json({ data: rule });
   });
 
-  router.delete('/rules/:id', async (c) => {
-    await taxService.deleteRule(c.req.param('id'));
+  router.delete('/rules/:id', requireRole('admin', 'superadmin'), async (c) => {
+    const id = c.req.param('id') as string;
+    await taxService.deleteRule(id);
     return c.json({ success: true });
   });
 
@@ -119,7 +126,7 @@ export function createTaxRoutes(taxService: TaxService) {
     return c.json({ data: settings });
   });
 
-  router.put('/settings', async (c) => {
+  router.put('/settings', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = TaxSettingsSchema.parse(body);
     const settings = await taxService.updateSettings(input);
