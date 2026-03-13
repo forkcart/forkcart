@@ -61,6 +61,16 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Product listing & detail are public (storefront needs them)
+    if (path.startsWith('/api/v1/products') && c.req.method === 'GET') {
+      return next();
+    }
+
+    // Category listing & detail are public (storefront navigation)
+    if (path.startsWith('/api/v1/categories') && c.req.method === 'GET') {
+      return next();
+    }
+
     const authHeader = c.req.header('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return c.json(
