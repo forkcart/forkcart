@@ -1,5 +1,7 @@
 export type Locale = string;
-export type TranslationDict = Record<string, string | TranslationDict>;
+export interface TranslationDict {
+  [key: string]: string | TranslationDict;
+}
 export type FlatTranslations = Record<string, string>;
 
 /** Flatten nested translation objects: { cart: { empty: "..." } } → { "cart.empty": "..." } */

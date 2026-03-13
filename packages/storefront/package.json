@@ -11,6 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "@stripe/react-stripe-js": "^5.6.1",
     "@stripe/stripe-js": "^8.9.0",

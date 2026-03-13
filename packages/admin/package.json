@@ -11,6 +11,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.0",
     "class-variance-authority": "^0.7.0",

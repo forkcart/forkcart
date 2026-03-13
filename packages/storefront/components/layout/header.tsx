@@ -6,6 +6,7 @@ import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/cart/cart-provider';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useTranslation, LanguageSwitcher } from '@forkcart/i18n/react';
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -14,6 +15,7 @@ export function Header() {
   const router = useRouter();
   const { itemCount } = useCart();
   const { customer } = useAuth();
+  const { t } = useTranslation();
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -39,13 +41,13 @@ export function Header() {
               href="/"
               className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
             >
-              Home
+              {t('nav.home')}
             </Link>
             <Link
               href="/category/all"
               className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
             >
-              Shop
+              {t('nav.shop')}
             </Link>
           </nav>
 
@@ -57,7 +59,7 @@ export function Header() {
                   autoFocus
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search products…"
+                  placeholder={t('nav.searchPlaceholder')}
                   className="h-9 w-48 rounded-md border px-3 text-sm outline-none focus:ring-2 focus:ring-accent"
                 />
                 <button
@@ -76,6 +78,8 @@ export function Header() {
                 <Search className="h-5 w-5" />
               </button>
             )}
+
+            <LanguageSwitcher className="hidden rounded-md border bg-transparent px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 md:block" />
 
             <Link
               href={customer ? '/account' : '/account/login'}
@@ -110,15 +114,18 @@ export function Header() {
               onClick={() => setMobileOpen(false)}
               className="block py-2 text-sm font-medium text-gray-600"
             >
-              Home
+              {t('nav.home')}
             </Link>
             <Link
               href="/category/all"
               onClick={() => setMobileOpen(false)}
               className="block py-2 text-sm font-medium text-gray-600"
             >
-              Shop
+              {t('nav.shop')}
             </Link>
+            <div className="pt-2">
+              <LanguageSwitcher className="w-full rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
+            </div>
           </nav>
         )}
       </div>
