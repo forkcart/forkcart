@@ -3,6 +3,7 @@ import {
   useContext,
   useState,
   useCallback,
+  useMemo,
   useEffect,
   useRef,
   type ReactNode,
@@ -102,7 +103,8 @@ export function I18nProvider({
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('forkcart_locale');
-      if (stored && supportedLocales.includes(stored)) return stored;
+      // Allow stored locale even if not yet in supportedLocales (API locales load async)
+      if (stored) return stored;
       const browserLang = navigator.language.split('-')[0]!;
       if (supportedLocales.includes(browserLang)) return browserLang;
     }
@@ -111,6 +113,27 @@ export function I18nProvider({
 
   // Dynamic API overrides (flat keys from DB)
   const [apiOverrides, setApiOverrides] = useState<Record<string, FlatTranslations>>({});
+  // Dynamic locales from API (merged with static supportedLocales)
+  const [apiLocales, setApiLocales] = useState<string[]>([]);
+
+  // Fetch available languages from API on mount
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+    fetch(apiBaseUrl)
+      .then((res) => (res.ok ? (res.json() as Promise<{ data: Array<{ locale: string }> }>) : null))
+      .then((data) => {
+        if (data?.data) {
+          setApiLocales(data.data.map((l) => l.locale));
+        }
+      })
+      .catch(() => {});
+  }, [apiBaseUrl]);
+
+  // Merge static + API locales (deduplicated, stable order)
+  const allLocales = useMemo(() => {
+    const set = new Set([...supportedLocales, ...apiLocales]);
+    return Array.from(set);
+  }, [supportedLocales, apiLocales]);
 
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
@@ -174,7 +197,7 @@ export function I18nProvider({
   );
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t, supportedLocales }}>
+    <I18nContext.Provider value={{ locale, setLocale, t, supportedLocales: allLocales }}>
       {children}
     </I18nContext.Provider>
   );
