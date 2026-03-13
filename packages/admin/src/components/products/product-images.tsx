@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Media } from '@forkcart/shared';
+import { getToken } from '@/lib/auth';
 
 const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
 
@@ -10,9 +11,16 @@ interface ProductImagesProps {
   productId: string;
 }
 
+function authHeaders(extra?: Record<string, string>): Record<string, string> {
+  const token = getToken();
+  const headers: Record<string, string> = { ...extra };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
 async function fetchProductImages(productId: string): Promise<Media[]> {
   const res = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/images`, {
-    credentials: 'include',
+    headers: authHeaders(),
   });
   if (!res.ok) throw new Error('Failed to load images');
   const json = (await res.json()) as { data: Media[] };
@@ -25,8 +33,8 @@ async function uploadImage(productId: string, file: File, sortOrder: number): Pr
   form.append('sortOrder', String(sortOrder));
   const res = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/images`, {
     method: 'POST',
+    headers: authHeaders(),
     body: form,
-    credentials: 'include',
   });
   if (!res.ok) {
     const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
@@ -39,7 +47,7 @@ async function uploadImage(productId: string, file: File, sortOrder: number): Pr
 async function deleteImage(productId: string, mediaId: string): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/images/${mediaId}`, {
     method: 'DELETE',
-    credentials: 'include',
+    headers: authHeaders(),
   });
   if (!res.ok) throw new Error('Failed to delete image');
 }
@@ -50,9 +58,8 @@ async function reorderImages(
 ): Promise<void> {
   const res = await fetch(`${API_BASE_URL}/api/v1/products/${productId}/images/reorder`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ items }),
-    credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to reorder');
 }
