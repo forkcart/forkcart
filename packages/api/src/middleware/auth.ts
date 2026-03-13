@@ -37,6 +37,11 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Public translation routes (storefront language switcher & i18n)
+    if (path.startsWith('/api/v1/public/translations')) {
+      return next();
+    }
+
     // Public search routes (search, suggestions, popular)
     if (
       path.startsWith('/api/v1/search') &&

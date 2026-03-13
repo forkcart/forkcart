@@ -339,14 +339,14 @@ export async function createApp(db: Database) {
     createStorefrontCustomerRoutes(customerAuthService, customerRepository, orderRepository),
   );
 
+  // Public translations API (no auth — must be mounted BEFORE /api/v1 to avoid auth middleware)
+  app.route('/api/v1/public/translations', createPublicTranslationRoutes(translationService));
+
   app.route('/api/v1', v1);
 
   // Public SEO routes (sitemap.xml, robots.txt) — no auth required
   const publicSeoRoutes = createPublicSeoRoutes(seoService);
   app.route('/', publicSeoRoutes);
-
-  // Public translations API (no auth — storefront fetches these)
-  app.route('/api/v1/public/translations', createPublicTranslationRoutes(translationService));
 
   // 404 fallback
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
