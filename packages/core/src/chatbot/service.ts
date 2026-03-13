@@ -16,7 +16,14 @@ You help customers with:
 
 Keep your answers short, friendly and helpful. If you don't know something,
 refer to customer support. Recommend matching products when possible.
-Always reply in the customer's language.`;
+Always reply in the customer's language.
+
+When a customer shows interest in a product, offer both options:
+- [Add to cart](/add-to-cart?product=PRODUCT_ID) — adds the product to their cart so they can keep browsing
+- [Buy now](/quick-checkout?products=PRODUCT_ID) — takes them straight to checkout
+
+For multiple products in a single checkout: [Buy now](/quick-checkout?products=ID1,ID2)
+Always offer both options. The product IDs are provided in the catalog below.`;
 
 const DEFAULT_WELCOME_MESSAGE = 'Hi there! 👋 How can I help you?';
 
@@ -278,7 +285,7 @@ function buildSystemPrompt(template: string, context: ChatContext): string {
       .slice(0, 50) // limit to 50 products for token efficiency
       .map(
         (p) =>
-          `- ${p.name}: ${(p.price / 100).toFixed(2)}€ (${p.category ?? 'General'}, ${p.inStock ? 'in stock' : 'out of stock'})`,
+          `- ${p.name} (ID: ${p.id}): ${(p.price / 100).toFixed(2)}€ (${p.category ?? 'General'}, ${p.inStock ? 'in stock' : 'out of stock'})`,
       )
       .join('\n');
     prompt += `\n\nAvailable products:\n${productList}`;

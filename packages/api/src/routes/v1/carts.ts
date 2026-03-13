@@ -8,9 +8,61 @@ const CreateCartSchema = z.object({
   customerId: z.string().uuid().optional(),
 });
 
+const QuickCartSchema = z.object({
+  items: z.array(z.object({
+    productId: z.string().uuid(),
+    quantity: z.number().int().min(1).default(1),
+    variantId: z.string().uuid().optional(),
+  })).min(1).max(10),
+  sessionId: z.string().optional(),
+});
+
 /** Cart API routes */
 export function createCartRoutes(cartService: CartService) {
   const router = new Hono();
+
+  /** Quick-cart: create a cart with items in one step and return checkout URL */
+  router.post('/quick', async (c) => {
+    const body = await c.req.json();
+    const input = QuickCartSchema.parse(body);
+
+    const cart = await cartService.create({
+      sessionId: input.sessionId ?? `quick_${Date.now()}`,
+    });
+
+    const errors: Array<{ productId: string; error: string }> = [];
+
+    for (const item of input.items) {
+      try {
+        await cartService.addItem(cart.id, {
+          productId: item.productId,
+          quantity: item.quantity,
+          variantId: item.variantId,
+        });
+      } catch (err) {
+        errors.push({
+          productId: item.productId,
+          error: err instanceof Error ? err.message : 'Failed to add item',
+        });
+      }
+    }
+
+    const updatedCart = await cartService.getById(cart.id);
+
+    if (updatedCart.items.length === 0) {
+      return c.json({
+        error: { message: 'No valid products could be added to cart', details: errors },
+      }, 400);
+    }
+
+    return c.json({
+      data: {
+        ...updatedCart,
+        checkoutUrl: `/checkout?cartId=${cart.id}`,
+        ...(errors.length > 0 ? { warnings: errors } : {}),
+      },
+    }, 201);
+  });
 
   /** Create a new cart */
   router.post('/', async (c) => {

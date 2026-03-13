@@ -19,6 +19,237 @@ interface ChatProductRef {
   imageUrl?: string;
 }
 
+// ── Cart helpers (shared with cart-provider via localStorage) ──────────
+
+function getOrCreateCartId(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('forkcart_cart_id');
+}
+
+function getSessionId(): string {
+  if (typeof window === 'undefined') return '';
+  let sid = localStorage.getItem('forkcart_session_id');
+  if (!sid) {
+    sid = crypto.randomUUID();
+    localStorage.setItem('forkcart_session_id', sid);
+  }
+  return sid;
+}
+
+async function ensureCart(): Promise<string> {
+  const existing = getOrCreateCartId();
+  if (existing) return existing;
+
+  const res = await fetch(`${API_URL}/api/v1/carts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: getSessionId() }),
+  });
+  const data = (await res.json()) as { data: { id: string } };
+  const id = data.data.id;
+  localStorage.setItem('forkcart_cart_id', id);
+  return id;
+}
+
+// ── Markdown-link parser for action buttons ───────────────────────────
+
+interface ParsedSegment {
+  type: 'text' | 'add-to-cart' | 'buy-now';
+  text: string;
+  productIds?: string;
+}
+
+/** Parse assistant message content into text segments + action buttons */
+function parseMessageContent(content: string): ParsedSegment[] {
+  // Matches both [text](/add-to-cart?product=ID) and [text](/quick-checkout?products=IDs)
+  const linkRegex = /\[([^\]]+)\]\(\/(add-to-cart\?product=|quick-checkout\?products=)([^)]+)\)/g;
+
+  const segments: ParsedSegment[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = linkRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      segments.push({ type: 'text', text: content.slice(lastIndex, match.index) });
+    }
+
+    const linkText = match[1]!;
+    const action = match[2]!;
+    const ids = match[3]!;
+
+    segments.push({
+      type: action.startsWith('add-to-cart') ? 'add-to-cart' : 'buy-now',
+      text: linkText,
+      productIds: ids,
+    });
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < content.length) {
+    segments.push({ type: 'text', text: content.slice(lastIndex) });
+  }
+
+  return segments;
+}
+
+// ── Action button components ──────────────────────────────────────────
+
+function AddToCartButton({
+  productId,
+  label,
+  onAdded,
+}: {
+  productId: string;
+  label: string;
+  onAdded: (msg: string) => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
+
+  async function handleClick() {
+    if (busy || done) return;
+    setBusy(true);
+    try {
+      const cartId = await ensureCart();
+      const res = await fetch(`${API_URL}/api/v1/carts/${cartId}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, quantity: 1 }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: { message?: string } }).error?.message ?? 'Failed to add',
+        );
+      }
+      setDone(true);
+      // Dispatch storage event so CartProvider picks up the change
+      window.dispatchEvent(new Event('forkcart:cart-updated'));
+      onAdded('Added to cart! ✓');
+    } catch (err) {
+      onAdded(`Could not add to cart: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy || done}
+      className={`my-1 mr-2 inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+        done
+          ? 'border-green-300 bg-green-50 text-green-700'
+          : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+      } disabled:opacity-60`}
+    >
+      {done ? (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+          Added
+        </>
+      ) : busy ? (
+        <>
+          <svg className="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+          Adding…
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
+
+function BuyNowButton({ productIds, label }: { productIds: string; label: string }) {
+  const [busy, setBusy] = useState(false);
+
+  async function handleClick() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const items = productIds.split(',').map((id) => ({ productId: id.trim(), quantity: 1 }));
+      const res = await fetch(`${API_URL}/api/v1/carts/quick`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: { message?: string } }).error?.message ?? 'Checkout failed',
+        );
+      }
+      const data = (await res.json()) as { data: { checkoutUrl: string } };
+      if (data.data.checkoutUrl) {
+        window.location.href = data.data.checkoutUrl;
+      }
+    } catch {
+      // Silently fail — user can retry
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={busy}
+      className="my-1 mr-2 inline-flex items-center gap-1.5 rounded-lg bg-black px-3 py-1.5 text-xs font-medium text-white transition hover:bg-gray-800 disabled:opacity-60"
+    >
+      {busy ? (
+        <>
+          <svg className="h-3.5 w-3.5 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+          Redirecting…
+        </>
+      ) : (
+        <>
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" /></svg>
+          {label}
+        </>
+      )}
+    </button>
+  );
+}
+
+// ── Render message content with inline action buttons ─────────────────
+
+function AssistantMessageContent({
+  content,
+  onSystemMessage,
+}: {
+  content: string;
+  onSystemMessage: (msg: string) => void;
+}) {
+  const segments = parseMessageContent(content);
+
+  return (
+    <div className="whitespace-pre-wrap">
+      {segments.map((seg, i) => {
+        if (seg.type === 'text') {
+          return <span key={i}>{seg.text}</span>;
+        }
+        if (seg.type === 'add-to-cart') {
+          return (
+            <AddToCartButton
+              key={i}
+              productId={seg.productIds!}
+              label={seg.text}
+              onAdded={onSystemMessage}
+            />
+          );
+        }
+        // buy-now
+        return <BuyNowButton key={i} productIds={seg.productIds!} label={seg.text} />;
+      })}
+    </div>
+  );
+}
+
+// ── Main widget ───────────────────────────────────────────────────────
+
 /** Floating chat widget — only renders when AI is configured */
 export function ChatWidget() {
   const [available, setAvailable] = useState(false);
@@ -65,6 +296,18 @@ export function ChatWidget() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  /** Append a system-style message (e.g. "Added to cart! ✓") */
+  const addSystemMessage = useCallback((text: string) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'assistant',
+        content: text,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }, []);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -222,7 +465,14 @@ export function ChatWidget() {
                         : 'rounded-bl-md bg-gray-100 text-gray-900'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                    {msg.role === 'assistant' ? (
+                      <AssistantMessageContent
+                        content={msg.content}
+                        onSystemMessage={addSystemMessage}
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap">{msg.content}</p>
+                    )}
                   </div>
 
                   {/* Product cards */}
