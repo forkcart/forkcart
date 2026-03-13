@@ -1,7 +1,15 @@
 import { cn } from '@/lib/utils';
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: 'default' | 'success' | 'warning' | 'destructive' | 'outline';
+  variant?:
+    | 'default'
+    | 'success'
+    | 'warning'
+    | 'destructive'
+    | 'outline'
+    | 'purple'
+    | 'blue'
+    | 'green';
 }
 
 const variantStyles: Record<NonNullable<BadgeProps['variant']>, string> = {
@@ -10,6 +18,9 @@ const variantStyles: Record<NonNullable<BadgeProps['variant']>, string> = {
   warning: 'bg-yellow-100 text-yellow-800',
   destructive: 'bg-red-100 text-red-800',
   outline: 'border border-input bg-background text-foreground',
+  purple: 'bg-purple-100 text-purple-800',
+  blue: 'bg-blue-100 text-blue-800',
+  green: 'bg-green-100 text-green-800',
 };
 
 export function Badge({ variant = 'default', className, ...props }: BadgeProps) {

@@ -13,25 +13,38 @@ import {
   LogOut,
   Store,
   Tag,
+  UserCog,
+  type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { removeToken } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
+import { useAuth, type AdminRole } from '@/lib/auth-context';
 
-const NAV_ITEMS = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  /** If set, only these roles see the item. If undefined, everyone sees it. */
+  roles?: AdminRole[];
+}
+
+const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
-  { href: '/coupons', label: 'Coupons', icon: Tag },
-  { href: '/plugins', label: 'Plugins', icon: Puzzle },
-  { href: '/settings', label: 'Settings', icon: Settings },
-] as const;
+  { href: '/coupons', label: 'Coupons', icon: Tag, roles: ['admin', 'superadmin'] },
+  { href: '/plugins', label: 'Plugins', icon: Puzzle, roles: ['admin', 'superadmin'] },
+  { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'superadmin'] },
+  { href: '/users', label: 'Users', icon: UserCog, roles: ['superadmin'] },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { user, hasRole } = useAuth();
 
   async function handleLogout() {
     try {
@@ -43,6 +56,8 @@ export function Sidebar() {
     router.push('/login');
   }
 
+  const visibleItems = NAV_ITEMS.filter((item) => !item.roles || (user && hasRole(...item.roles)));
+
   return (
     <aside className="flex w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center gap-2 border-b px-6">
@@ -51,7 +66,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {visibleItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
@@ -72,6 +87,20 @@ export function Sidebar() {
       </nav>
 
       <div className="border-t p-3">
+        {user && (
+          <Link
+            href="/account"
+            className={cn(
+              'mb-1 flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+              pathname === '/account'
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            <UserCog className="h-4 w-4" />
+            {user.firstName} {user.lastName}
+          </Link>
+        )}
         <button
           onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

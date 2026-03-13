@@ -83,6 +83,8 @@ import { createTranslationRoutes, createPublicTranslationRoutes } from './routes
 import { createProductTranslationRoutes } from './routes/v1/product-translations';
 import { createCacheRoutes } from './routes/v1/cache';
 import { createCouponRoutes, createPublicCouponRoutes } from './routes/v1/coupons';
+import { createUserRoutes } from './routes/v1/users';
+import { requireRole } from './middleware/permissions';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -358,6 +360,15 @@ export async function createApp(db: Database) {
 
   // Mount v1 routes
   const v1 = new Hono();
+
+  // ─── Role-based access control ──────────────────────────────────────────────
+  // Plugins, emails, AI, settings, search analytics → admin + superadmin
+  v1.use('/plugins/*', requireRole('admin', 'superadmin'));
+  v1.use('/emails/*', requireRole('admin', 'superadmin'));
+  v1.use('/ai/*', requireRole('admin', 'superadmin'));
+  v1.use('/search/analytics/*', requireRole('admin', 'superadmin'));
+  v1.use('/search/zero-results', requireRole('admin', 'superadmin'));
+
   v1.route('/auth', createAuthRoutes(authService));
   v1.route(
     '/products',
@@ -392,6 +403,7 @@ export async function createApp(db: Database) {
   v1.route('/translations', createTranslationRoutes(translationService));
   v1.route('/cache', createCacheRoutes());
   v1.route('/coupons', createCouponRoutes(couponService));
+  v1.route('/users', createUserRoutes(authService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));

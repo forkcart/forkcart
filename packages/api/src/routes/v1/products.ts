@@ -7,6 +7,7 @@ import {
   PaginationSchema,
   IdParamSchema,
 } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 /** Product CRUD routes */
 export function createProductRoutes(
@@ -152,8 +153,8 @@ export function createProductRoutes(
     return c.json({ data: product });
   });
 
-  /** Delete product */
-  router.delete('/:id', async (c) => {
+  /** Delete product (admin + superadmin only) */
+  router.delete('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     await productService.delete(id);
     return c.json({ success: true }, 200);

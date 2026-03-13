@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { CategoryService } from '@forkcart/core';
 import { CreateCategorySchema, UpdateCategorySchema, IdParamSchema } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 /** Category CRUD routes */
 export function createCategoryRoutes(categoryService: CategoryService) {
@@ -61,8 +62,8 @@ export function createCategoryRoutes(categoryService: CategoryService) {
     return c.json({ data: category });
   });
 
-  /** Delete category */
-  router.delete('/:id', async (c) => {
+  /** Delete category (admin + superadmin only) */
+  router.delete('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     await categoryService.delete(id);
     return c.json({ success: true }, 200);
