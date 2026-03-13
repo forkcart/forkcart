@@ -5,6 +5,7 @@ import { Footer } from '@/components/layout/footer';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { AuthProvider } from '@/components/auth/auth-provider';
 import { ChatWidget } from '@/components/chat/chat-widget';
+import { I18nWrapper } from '@/components/i18n/i18n-provider-wrapper';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -27,14 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className={`${inter.className} flex min-h-screen flex-col`}>
-        <AuthProvider>
-          <CartProvider>
-            <Header />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <ChatWidget />
-          </CartProvider>
-        </AuthProvider>
+        <I18nWrapper>
+          <AuthProvider>
+            <CartProvider>
+              <Header />
+              <main className="flex-1">{children}</main>
+              <Footer />
+              <ChatWidget />
+            </CartProvider>
+          </AuthProvider>
+        </I18nWrapper>
       </body>
     </html>
   );

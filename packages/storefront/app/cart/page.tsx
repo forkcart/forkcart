@@ -4,21 +4,23 @@ import Link from 'next/link';
 import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
+  const { t } = useTranslation();
 
   if (items.length === 0) {
     return (
       <div className="container-page py-24 text-center">
         <ShoppingBag className="mx-auto h-12 w-12 text-gray-300" />
-        <h1 className="mt-4 text-2xl font-bold text-gray-900">Your cart is empty</h1>
-        <p className="mt-2 text-gray-500">Looks like you haven&apos;t added anything yet.</p>
+        <h1 className="mt-4 text-2xl font-bold text-gray-900">{t('cart.empty')}</h1>
+        <p className="mt-2 text-gray-500">{t('cart.emptySubtext')}</p>
         <Link
           href="/category/all"
           className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
         >
-          Continue Shopping
+          {t('cart.continueShopping')}
         </Link>
       </div>
     );
@@ -26,9 +28,9 @@ export default function CartPage() {
 
   return (
     <div className="container-page py-12">
-      <h1 className="text-3xl font-bold tracking-tight text-gray-900">Shopping Cart</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('cart.title')}</h1>
       <p className="mt-1 text-sm text-gray-500">
-        {items.length} item{items.length !== 1 ? 's' : ''}
+        {t('cart.itemCount', { count: items.length })}
       </p>
 
       <div className="mt-8 grid gap-12 lg:grid-cols-3">
@@ -53,7 +55,7 @@ export default function CartPage() {
                         {item.productName}
                       </Link>
                       <p className="mt-0.5 text-sm text-gray-500">
-                        {formatPrice(item.unitPrice)} each
+                        {formatPrice(item.unitPrice)} {t('cart.each')}
                       </p>
                     </div>
                     <p className="text-sm font-semibold text-gray-900">
@@ -80,6 +82,7 @@ export default function CartPage() {
                     <button
                       onClick={() => removeItem(item.id)}
                       className="text-gray-400 hover:text-red-500"
+                      title={t('cart.remove')}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -93,19 +96,19 @@ export default function CartPage() {
         {/* Summary */}
         <div>
           <div className="rounded-lg bg-gray-50 p-6">
-            <h2 className="text-lg font-semibold text-gray-900">Order Summary</h2>
+            <h2 className="text-lg font-semibold text-gray-900">{t('cart.orderSummary')}</h2>
             <div className="mt-4 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotal</span>
+                <span className="text-gray-500">{t('cart.subtotal')}</span>
                 <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Shipping</span>
-                <span className="text-gray-500">Calculated at checkout</span>
+                <span className="text-gray-500">{t('cart.shipping')}</span>
+                <span className="text-gray-500">{t('cart.shippingCalculated')}</span>
               </div>
               <div className="border-t pt-3">
                 <div className="flex justify-between">
-                  <span className="text-base font-semibold">Total</span>
+                  <span className="text-base font-semibold">{t('cart.total')}</span>
                   <span className="text-base font-bold">{formatPrice(subtotal)}</span>
                 </div>
               </div>
@@ -115,14 +118,14 @@ export default function CartPage() {
               href="/checkout"
               className="mt-6 block w-full rounded-lg bg-gray-900 py-3 text-center text-sm font-medium text-white transition hover:bg-gray-800"
             >
-              Proceed to Checkout
+              {t('cart.checkout')}
             </Link>
 
             <Link
               href="/category/all"
               className="mt-3 block text-center text-sm text-gray-500 hover:text-gray-900"
             >
-              Continue Shopping
+              {t('cart.continueShopping')}
             </Link>
           </div>
         </div>

@@ -41,6 +41,8 @@ import {
   VatValidator,
   SearchRepository,
   SearchService,
+  TranslationRepository,
+  TranslationService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
@@ -66,6 +68,7 @@ import { createStorefrontCustomerRoutes } from './routes/v1/storefront-customers
 import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search';
 import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
+import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
 
 /** Create the Hono application with all routes and middleware */
 export async function createApp(db: Database) {
@@ -138,6 +141,13 @@ export async function createApp(db: Database) {
   });
 
   const shippingService = new ShippingService({ shippingRepository, eventBus });
+
+  // i18n translations
+  const translationRepository = new TranslationRepository(db);
+  const translationService = new TranslationService({
+    translationRepository,
+    fileDefaults: {}, // Will be populated by JSON file defaults at startup
+  });
 
   // Search system
   const searchRepository = new SearchRepository(db);
@@ -271,6 +281,7 @@ export async function createApp(db: Database) {
     createAIRoutes(aiProviderRegistry, aiSettingsRepository, productAIService, productService),
   );
   v1.route('/seo', createSeoRoutes(seoService));
+  v1.route('/translations', createTranslationRoutes(translationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(
@@ -283,6 +294,9 @@ export async function createApp(db: Database) {
   // Public SEO routes (sitemap.xml, robots.txt) — no auth required
   const publicSeoRoutes = createPublicSeoRoutes(seoService);
   app.route('/', publicSeoRoutes);
+
+  // Public translations API (no auth — storefront fetches these)
+  app.route('/api/v1/public/translations', createPublicTranslationRoutes(translationService));
 
   // 404 fallback
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));

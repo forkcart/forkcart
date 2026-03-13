@@ -20,8 +20,9 @@
     "./locales/admin-de": "./locales/admin-de.json"
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "node scripts/build-locales.js && tsc",
+    "generate": "node scripts/build-locales.js",
+    "dev": "node scripts/build-locales.js && tsc --watch",
     "clean": "rm -rf dist"
   },
   "peerDependencies": {

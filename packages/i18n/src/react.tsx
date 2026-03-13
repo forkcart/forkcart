@@ -8,7 +8,7 @@ import {
 } from './index';
 
 // Native language names for the switcher
-const LOCALE_NAMES: Record<string, string> = {
+export const LOCALE_NAMES: Record<string, string> = {
   en: 'English',
   de: 'Deutsch',
   fr: 'Français',
@@ -21,9 +21,23 @@ const LOCALE_NAMES: Record<string, string> = {
   ja: '日本語',
   zh: '中文',
   ko: '한국어',
+  ar: 'العربية',
+  ru: 'Русский',
+  tr: 'Türkçe',
+  sv: 'Svenska',
+  da: 'Dansk',
+  fi: 'Suomi',
+  no: 'Norsk',
+  hu: 'Magyar',
+  ro: 'Română',
+  uk: 'Українська',
+  el: 'Ελληνικά',
+  th: 'ไทย',
+  vi: 'Tiếng Việt',
+  hi: 'हिन्दी',
 };
 
-const LOCALE_FLAGS: Record<string, string> = {
+export const LOCALE_FLAGS: Record<string, string> = {
   en: '🇬🇧',
   de: '🇩🇪',
   fr: '🇫🇷',
@@ -36,6 +50,20 @@ const LOCALE_FLAGS: Record<string, string> = {
   ja: '🇯🇵',
   zh: '🇨🇳',
   ko: '🇰🇷',
+  ar: '🇸🇦',
+  ru: '🇷🇺',
+  tr: '🇹🇷',
+  sv: '🇸🇪',
+  da: '🇩🇰',
+  fi: '🇫🇮',
+  no: '🇳🇴',
+  hu: '🇭🇺',
+  ro: '🇷🇴',
+  uk: '🇺🇦',
+  el: '🇬🇷',
+  th: '🇹🇭',
+  vi: '🇻🇳',
+  hi: '🇮🇳',
 };
 
 interface I18nContextValue {
@@ -130,7 +158,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     >
       {supportedLocales.map((loc) => (
         <option key={loc} value={loc}>
-          {LOCALE_FLAGS[loc] ?? ''} {LOCALE_NAMES[loc] ?? loc}
+          {LOCALE_FLAGS[loc] ?? '🌐'} {LOCALE_NAMES[loc] ?? loc.toUpperCase()}
         </option>
       ))}
     </select>

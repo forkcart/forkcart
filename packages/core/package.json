@@ -23,6 +23,7 @@
   "dependencies": {
     "@forkcart/ai": "workspace:*",
     "@forkcart/database": "workspace:*",
+    "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.38.0",

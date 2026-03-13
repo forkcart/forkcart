@@ -42,6 +42,9 @@ importers:
 
   packages/admin:
     dependencies:
+      '@forkcart/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@forkcart/shared':
         specifier: workspace:*
         version: link:../shared
@@ -165,6 +168,9 @@ importers:
       '@forkcart/database':
         specifier: workspace:*
         version: link:../database
+      '@forkcart/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@forkcart/shared':
         specifier: workspace:*
         version: link:../shared
@@ -225,6 +231,18 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9(@types/node@22.19.15)
 
+  packages/i18n:
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/plugins/mailgun:
     dependencies:
       '@forkcart/core':
@@ -263,6 +281,9 @@ importers:
 
   packages/storefront:
     dependencies:
+      '@forkcart/i18n':
+        specifier: workspace:*
+        version: link:../i18n
       '@forkcart/shared':
         specifier: workspace:*
         version: link:../shared
