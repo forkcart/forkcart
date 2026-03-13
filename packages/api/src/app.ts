@@ -43,6 +43,8 @@ import {
   SearchService,
   TranslationRepository,
   TranslationService,
+  ProductTranslationRepository,
+  ProductTranslationService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
@@ -69,6 +71,7 @@ import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search'
 import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
+import { createProductTranslationRoutes } from './routes/v1/product-translations';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -169,6 +172,23 @@ export async function createApp(db: Database) {
 
   const shippingService = new ShippingService({ shippingRepository, eventBus });
 
+  // Product translations
+  const productTranslationRepository = new ProductTranslationRepository(db);
+  const productTranslationService = new ProductTranslationService({
+    productTranslationRepository,
+    getProduct: async (id: string) => {
+      const p = await productRepository.findById(id);
+      if (!p) return null;
+      return {
+        name: p.name,
+        description: p.description,
+        shortDescription: p.shortDescription,
+        metaTitle: p.metaTitle,
+        metaDescription: p.metaDescription,
+      };
+    },
+  });
+
   // i18n translations
   const translationRepository = new TranslationRepository(db);
   // Load i18n JSON file defaults
@@ -260,6 +280,7 @@ export async function createApp(db: Database) {
   const configuredAI = aiProviderRegistry.getConfiguredProvider();
   if (configuredAI) {
     translationService.setAIProvider(configuredAI);
+    productTranslationService.setAIProvider(configuredAI);
   }
 
   // SEO service (works without AI, enhanced when AI is available)
@@ -309,7 +330,10 @@ export async function createApp(db: Database) {
   // Mount v1 routes
   const v1 = new Hono();
   v1.route('/auth', createAuthRoutes(authService));
-  v1.route('/products', createProductRoutes(productService, mediaService));
+  v1.route(
+    '/products',
+    createProductRoutes(productService, mediaService, productTranslationService),
+  );
   v1.route('/categories', createCategoryRoutes(categoryService));
   v1.route('/orders', createOrderRoutes(orderService));
   v1.route('/customers', createCustomerRoutes(customerService));
@@ -332,6 +356,7 @@ export async function createApp(db: Database) {
   );
   v1.route('/seo', createSeoRoutes(seoService));
   v1.route('/translations', createTranslationRoutes(translationService));
+  v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(

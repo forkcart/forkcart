@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { ProductService, MediaService } from '@forkcart/core';
+import type { ProductService, MediaService, ProductTranslationService } from '@forkcart/core';
 import {
   CreateProductSchema,
   UpdateProductSchema,
@@ -9,8 +9,48 @@ import {
 } from '@forkcart/shared';
 
 /** Product CRUD routes */
-export function createProductRoutes(productService: ProductService, mediaService?: MediaService) {
+export function createProductRoutes(
+  productService: ProductService,
+  mediaService?: MediaService,
+  productTranslationService?: ProductTranslationService,
+) {
   const router = new Hono();
+
+  /** Resolve locale from query param or Accept-Language header */
+  function resolveLocale(c: {
+    req: { query: (k: string) => string | undefined };
+    get: (k: string) => string;
+  }): string | null {
+    const queryLocale = c.req.query('locale');
+    if (queryLocale && queryLocale !== 'en') return queryLocale;
+    const ctxLocale = c.get('locale') as string | undefined;
+    if (ctxLocale && ctxLocale !== 'en') return ctxLocale;
+    return null;
+  }
+
+  /** Merge translation fields over product (non-null fields override) */
+  function mergeTranslation<T extends Record<string, unknown>>(
+    product: T,
+    translation: {
+      name: string | null;
+      description: string | null;
+      shortDescription: string | null;
+      metaTitle: string | null;
+      metaDescription: string | null;
+    } | null,
+  ): T {
+    if (!translation) return product;
+    const merged = { ...product };
+    if (translation.name) merged['name' as keyof T] = translation.name as T[keyof T];
+    if (translation.description)
+      merged['description' as keyof T] = translation.description as T[keyof T];
+    if (translation.shortDescription)
+      merged['shortDescription' as keyof T] = translation.shortDescription as T[keyof T];
+    if (translation.metaTitle) merged['metaTitle' as keyof T] = translation.metaTitle as T[keyof T];
+    if (translation.metaDescription)
+      merged['metaDescription' as keyof T] = translation.metaDescription as T[keyof T];
+    return merged;
+  }
 
   /** List products with filtering and pagination */
   router.get('/', async (c) => {
@@ -19,22 +59,35 @@ export function createProductRoutes(productService: ProductService, mediaService
     const pagination = PaginationSchema.parse(query);
 
     const result = await productService.list(filter, pagination);
+    const locale = resolveLocale(c);
 
-    // Attach images to each product
-    if (mediaService && result.data?.length) {
-      const productsWithImages = await Promise.all(
+    // Attach images and merge translations
+    if (result.data?.length) {
+      const enriched = await Promise.all(
         result.data.map(async (p: { id: string }) => {
-          const media = await mediaService.getByEntity('product', p.id);
-          const images = media.map((m) => ({
-            id: m.id,
-            url: m.url,
-            alt: m.alt,
-            sortOrder: m.sortOrder,
-          }));
-          return { ...p, images };
+          let product = { ...p };
+
+          // Images
+          if (mediaService) {
+            const media = await mediaService.getByEntity('product', p.id);
+            (product as Record<string, unknown>)['images'] = media.map((m) => ({
+              id: m.id,
+              url: m.url,
+              alt: m.alt,
+              sortOrder: m.sortOrder,
+            }));
+          }
+
+          // Translation overlay
+          if (locale && productTranslationService) {
+            const translation = await productTranslationService.getTranslation(p.id, locale);
+            product = mergeTranslation(product, translation);
+          }
+
+          return product;
         }),
       );
-      return c.json({ ...result, data: productsWithImages });
+      return c.json({ ...result, data: enriched });
     }
 
     return c.json(result);
@@ -56,7 +109,16 @@ export function createProductRoutes(productService: ProductService, mediaService
       images = media.map((m) => ({ id: m.id, url: m.url, alt: m.alt, sortOrder: m.sortOrder }));
     }
 
-    return c.json({ data: { ...product, images } });
+    let productData = { ...product, images };
+
+    // Merge translation if locale requested
+    const locale = resolveLocale(c);
+    if (locale && productTranslationService) {
+      const translation = await productTranslationService.getTranslation(product.id, locale);
+      productData = mergeTranslation(productData, translation);
+    }
+
+    return c.json({ data: productData });
   });
 
   /** Create product */
