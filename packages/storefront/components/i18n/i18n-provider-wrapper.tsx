@@ -1,7 +1,7 @@
 'use client';
 
 import { I18nProvider } from '@forkcart/i18n/react';
-import { storefrontTranslations, storefrontLocales } from '@forkcart/i18n/dist/_locales.generated';
+import { storefrontTranslations, storefrontLocales } from '@forkcart/i18n/generated';
 import type { ReactNode } from 'react';
 
 /**

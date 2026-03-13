@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from '@forkcart/i18n/react';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -333,7 +334,8 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [welcomeMessage, setWelcomeMessage] = useState('Hallo! 👋 Wie kann ich dir helfen?');
+  const { t } = useTranslation();
+  const [welcomeMessage, setWelcomeMessage] = useState<string | null>(null);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -434,7 +436,7 @@ export function ChatWidget() {
     } catch (err) {
       const errorMsg: ChatMessage = {
         role: 'assistant',
-        content: 'Sorry, something went wrong. Please try again.',
+        content: t('chat.error'),
         timestamp: new Date().toISOString(),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -452,7 +454,7 @@ export function ChatWidget() {
         <button
           onClick={() => setOpen(true)}
           className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
-          aria-label="Open chat"
+          aria-label={t('chat.open')}
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -492,14 +494,14 @@ export function ChatWidget() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-semibold">Customer Support</p>
-                <p className="text-xs text-white/70">Powered by AI</p>
+                <p className="text-sm font-semibold">{t('chat.support')}</p>
+                <p className="text-xs text-white/70">{t('chat.poweredBy')}</p>
               </div>
             </div>
             <button
               onClick={() => setOpen(false)}
               className="rounded p-1 hover:bg-white/10"
-              aria-label="Close chat"
+              aria-label={t('chat.close')}
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -523,7 +525,7 @@ export function ChatWidget() {
             {messages.length === 0 && (
               <div className="flex justify-start">
                 <div className="max-w-[280px] rounded-2xl rounded-bl-md bg-gray-100 px-4 py-2.5 text-sm">
-                  {welcomeMessage}
+                  {welcomeMessage ?? t('chat.welcome')}
                 </div>
               </div>
             )}
@@ -628,7 +630,7 @@ export function ChatWidget() {
               <input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Type a message..."
+                placeholder={t('chat.placeholder')}
                 className="flex-1 rounded-xl border bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-black focus:ring-1 focus:ring-black"
                 maxLength={2000}
                 disabled={loading}
@@ -637,7 +639,7 @@ export function ChatWidget() {
                 type="submit"
                 disabled={!input.trim() || loading}
                 className="flex h-10 w-10 items-center justify-center rounded-xl bg-black text-white transition-opacity disabled:opacity-30"
-                aria-label="Send message"
+                aria-label={t('chat.send')}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"

@@ -17,7 +17,11 @@
     "./locales/en": "./locales/en.json",
     "./locales/de": "./locales/de.json",
     "./locales/admin-en": "./locales/admin-en.json",
-    "./locales/admin-de": "./locales/admin-de.json"
+    "./locales/admin-de": "./locales/admin-de.json",
+    "./generated": {
+      "types": "./dist/_locales.generated.d.ts",
+      "import": "./dist/_locales.generated.js"
+    }
   },
   "scripts": {
     "build": "node scripts/build-locales.js && tsc",

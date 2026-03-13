@@ -1,5 +1,5 @@
 import { createLogger } from '../lib/logger';
-import type { TranslationRepository, LanguageRow } from './repository';
+import type { TranslationRepository } from './repository';
 import { flattenTranslations, type TranslationDict, type FlatTranslations } from '@forkcart/i18n';
 
 const logger = createLogger('translation-service');
