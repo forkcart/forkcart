@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const { register, customer } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [form, setForm] = useState({
     firstName: '',
@@ -33,12 +35,12 @@ export default function RegisterPage() {
     setError('');
 
     if (form.password !== form.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('auth.passwordMismatch'));
       return;
     }
 
     if (form.password.length < 8) {
-      setError('Password must be at least 8 characters');
+      setError(t('auth.passwordMinLength'));
       return;
     }
 
@@ -53,7 +55,7 @@ export default function RegisterPage() {
       });
       router.push('/account');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : t('auth.registrationFailed'));
     } finally {
       setLoading(false);
     }
@@ -62,11 +64,13 @@ export default function RegisterPage() {
   return (
     <div className="container-page flex min-h-[60vh] items-center justify-center py-12">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Create account</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+          {t('auth.registerTitle')}
+        </h1>
         <p className="mt-2 text-sm text-gray-500">
-          Already have an account?{' '}
+          {t('auth.hasAccount')}{' '}
           <Link href="/account/login" className="font-medium text-accent hover:underline">
-            Sign in
+            {t('auth.loginButton')}
           </Link>
         </p>
 
@@ -76,7 +80,7 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="firstName" className="text-sm font-medium text-gray-700">
-                First Name
+                {t('checkout.firstName')}
               </label>
               <input
                 id="firstName"
@@ -88,7 +92,7 @@ export default function RegisterPage() {
             </div>
             <div>
               <label htmlFor="lastName" className="text-sm font-medium text-gray-700">
-                Last Name
+                {t('checkout.lastName')}
               </label>
               <input
                 id="lastName"
@@ -102,7 +106,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Email
+              {t('auth.email')}
             </label>
             <input
               id="email"
@@ -116,7 +120,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="password" className="text-sm font-medium text-gray-700">
-              Password
+              {t('auth.password')}
             </label>
             <input
               id="password"
@@ -131,7 +135,7 @@ export default function RegisterPage() {
 
           <div>
             <label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-              Confirm Password
+              {t('auth.confirmPassword')}
             </label>
             <input
               id="confirmPassword"
@@ -148,7 +152,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="flex h-10 w-full items-center justify-center rounded-md bg-gray-900 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create account'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('auth.registerButton')}
           </button>
         </form>
       </div>

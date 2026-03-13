@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatPrice } from '@forkcart/shared';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { ChevronLeft, Loader2, Package } from 'lucide-react';
 
@@ -20,6 +21,7 @@ interface Order {
 
 export default function OrdersPage() {
   const { token } = useAuth();
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +33,6 @@ export default function OrdersPage() {
     })
       .then((res) => res.json())
       .then(async (profile) => {
-        // Fetch orders for this customer via the storefront endpoint
         const res = await fetch(`${API_URL}/api/v1/storefront/customers/${profile.data.id}/orders`);
         if (res.ok) {
           const data = await res.json();
@@ -49,10 +50,10 @@ export default function OrdersPage() {
           href="/account"
           className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
         >
-          <ChevronLeft className="h-4 w-4" /> Back to Account
+          <ChevronLeft className="h-4 w-4" /> {t('account.backToAccount')}
         </Link>
 
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">My Orders</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{t('account.orders')}</h1>
 
         {loading ? (
           <div className="mt-12 flex justify-center">
@@ -61,12 +62,12 @@ export default function OrdersPage() {
         ) : orders.length === 0 ? (
           <div className="mt-12 text-center">
             <Package className="mx-auto h-12 w-12 text-gray-300" />
-            <p className="mt-4 text-gray-500">No orders yet</p>
+            <p className="mt-4 text-gray-500">{t('account.noOrders')}</p>
             <Link
               href="/category/all"
               className="mt-4 inline-flex rounded-full bg-gray-900 px-6 py-2 text-sm font-medium text-white hover:bg-gray-800"
             >
-              Start Shopping
+              {t('account.startShopping')}
             </Link>
           </div>
         ) : (

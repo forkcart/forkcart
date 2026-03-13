@@ -4,17 +4,18 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 import { Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
   const { login, customer } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Already logged in — redirect
   if (customer) {
     router.push('/account');
     return null;
@@ -29,7 +30,7 @@ export default function LoginPage() {
       await login(email, password);
       router.push('/account');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('auth.invalidCredentials'));
     } finally {
       setLoading(false);
     }
@@ -38,11 +39,11 @@ export default function LoginPage() {
   return (
     <div className="container-page flex min-h-[60vh] items-center justify-center py-12">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Sign in</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{t('auth.loginTitle')}</h1>
         <p className="mt-2 text-sm text-gray-500">
-          Don&apos;t have an account?{' '}
+          {t('auth.noAccount')}{' '}
           <Link href="/account/register" className="font-medium text-accent hover:underline">
-            Create one
+            {t('auth.registerButton')}
           </Link>
         </p>
 
@@ -51,7 +52,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
           <div>
             <label htmlFor="email" className="text-sm font-medium text-gray-700">
-              Email
+              {t('auth.email')}
             </label>
             <input
               id="email"
@@ -65,7 +66,7 @@ export default function LoginPage() {
 
           <div>
             <label htmlFor="password" className="text-sm font-medium text-gray-700">
-              Password
+              {t('auth.password')}
             </label>
             <input
               id="password"
@@ -82,13 +83,13 @@ export default function LoginPage() {
             disabled={loading}
             className="flex h-10 w-full items-center justify-center rounded-md bg-gray-900 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Sign in'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : t('auth.loginButton')}
           </button>
         </form>
 
         <p className="mt-4 text-center text-xs text-gray-400">
           <Link href="/account/forgot-password" className="hover:underline">
-            Forgot your password?
+            {t('auth.forgotPassword')}
           </Link>
         </p>
       </div>

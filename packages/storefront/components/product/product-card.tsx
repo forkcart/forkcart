@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import { formatPrice } from '@forkcart/shared';
 import type { Product } from '@forkcart/shared';

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useTranslation } from '@forkcart/i18n/react';
 
 interface Category {
   id: string;
@@ -18,15 +19,6 @@ interface Props {
   query: string;
 }
 
-const SORT_OPTIONS = [
-  { value: 'relevance', label: 'Relevance' },
-  { value: 'price_asc', label: 'Price: Low → High' },
-  { value: 'price_desc', label: 'Price: High → Low' },
-  { value: 'name_asc', label: 'Name: A → Z' },
-  { value: 'name_desc', label: 'Name: Z → A' },
-  { value: 'newest', label: 'Newest first' },
-] as const;
-
 export function SearchFilters({
   categories,
   currentCategory,
@@ -36,6 +28,7 @@ export function SearchFilters({
   query,
 }: Props) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [priceMin, setPriceMin] = useState(currentPriceMin ?? '');
   const [priceMax, setPriceMax] = useState(currentPriceMax ?? '');
 
@@ -66,11 +59,20 @@ export function SearchFilters({
     );
   }
 
+  const SORT_OPTIONS = [
+    { value: 'relevance', label: t('search.sort.relevance') },
+    { value: 'price_asc', label: t('search.sort.priceLowHigh') },
+    { value: 'price_desc', label: t('search.sort.priceHighLow') },
+    { value: 'name_asc', label: t('search.sort.nameAZ') },
+    { value: 'name_desc', label: t('search.sort.nameZA') },
+    { value: 'newest', label: t('search.sort.newest') },
+  ] as const;
+
   return (
     <aside className="hidden w-56 shrink-0 space-y-6 lg:block">
       {/* Sort */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-900">Sort by</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t('search.filters.sortBy')}</h3>
         <select
           value={currentSort ?? 'relevance'}
           onChange={(e) => router.push(buildUrl({ sort: e.target.value }))}
@@ -87,7 +89,7 @@ export function SearchFilters({
       {/* Categories */}
       {categories.length > 0 && (
         <div>
-          <h3 className="text-sm font-semibold text-gray-900">Category</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{t('search.filters.category')}</h3>
           <ul className="mt-2 space-y-1">
             <li>
               <button
@@ -98,7 +100,7 @@ export function SearchFilters({
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                All categories
+                {t('search.filters.allCategories')}
               </button>
             </li>
             {categories.map((cat) => (
@@ -121,11 +123,11 @@ export function SearchFilters({
 
       {/* Price Range */}
       <div>
-        <h3 className="text-sm font-semibold text-gray-900">Price range</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t('search.filters.priceRange')}</h3>
         <div className="mt-2 flex gap-2">
           <input
             type="number"
-            placeholder="Min"
+            placeholder={t('search.filters.min')}
             value={priceMin}
             onChange={(e) => setPriceMin(e.target.value)}
             className="w-20 rounded-md border px-2 py-1.5 text-sm"
@@ -134,7 +136,7 @@ export function SearchFilters({
           <span className="self-center text-gray-400">–</span>
           <input
             type="number"
-            placeholder="Max"
+            placeholder={t('search.filters.max')}
             value={priceMax}
             onChange={(e) => setPriceMax(e.target.value)}
             className="w-20 rounded-md border px-2 py-1.5 text-sm"
@@ -145,7 +147,7 @@ export function SearchFilters({
           onClick={handlePriceFilter}
           className="mt-2 rounded-md bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 transition hover:bg-gray-200"
         >
-          Apply
+          {t('search.filters.apply')}
         </button>
       </div>
     </aside>

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslation } from '@forkcart/i18n/react';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function SearchInput({ defaultValue }: Props) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState(defaultValue);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -103,7 +105,7 @@ export function SearchInput({ defaultValue }: Props) {
         onChange={(e) => handleChange(e.target.value)}
         onKeyDown={handleKeyDown}
         onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
-        placeholder="Search products…"
+        placeholder={t('nav.searchPlaceholder')}
         className="h-11 w-full rounded-lg border pl-10 pr-10 text-sm outline-none focus:ring-2 focus:ring-accent"
         autoComplete="off"
       />

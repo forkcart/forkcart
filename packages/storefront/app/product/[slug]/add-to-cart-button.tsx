@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { ShoppingBag, Check, Minus, Plus } from 'lucide-react';
 import { useCart } from '@/components/cart/cart-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 
 interface Props {
   product: { id: string; name: string; slug: string; price: number };
@@ -11,6 +12,7 @@ interface Props {
 
 export function AddToCartButton({ product, disabled }: Props) {
   const { addItem } = useCart();
+  const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
@@ -48,12 +50,12 @@ export function AddToCartButton({ product, disabled }: Props) {
         {added ? (
           <>
             <Check className="h-4 w-4" />
-            Added!
+            {t('product.added')}
           </>
         ) : (
           <>
             <ShoppingBag className="h-4 w-4" />
-            Add to Cart
+            {t('product.addToCart')}
           </>
         )}
       </button>
