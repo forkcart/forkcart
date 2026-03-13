@@ -32,6 +32,8 @@ interface CartContextValue {
   itemCount: number;
   subtotal: number;
   serverCartId: string | null;
+  cartOpen: boolean;
+  setCartOpen: (open: boolean) => void;
   addItem: (
     product: { id: string; name: string; slug: string; price: number; currency?: string },
     quantity?: number,
@@ -62,6 +64,7 @@ function getSessionId(): string {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [serverCartId, setServerCartId] = useState<string | null>(null);
+  const [cartOpen, setCartOpen] = useState(false);
   const initializedRef = useRef(false);
 
   // Hydrate: load server cart ID from localStorage and fetch cart
@@ -134,6 +137,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       product: { id: string; name: string; slug: string; price: number; currency?: string },
       quantity = 1,
     ) => {
+      // Open cart drawer
+      setCartOpen(true);
+
       // Optimistic local update
       setItems((prev) => {
         const existing = prev.find((item) => item.productId === product.id);
@@ -258,6 +264,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         itemCount,
         subtotal,
         serverCartId,
+        cartOpen,
+        setCartOpen,
         addItem,
         updateQuantity,
         removeItem,
