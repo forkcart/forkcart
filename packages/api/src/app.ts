@@ -72,6 +72,7 @@ import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
 import { createProductTranslationRoutes } from './routes/v1/product-translations';
+import { createCacheRoutes } from './routes/v1/cache';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -356,6 +357,7 @@ export async function createApp(db: Database) {
   );
   v1.route('/seo', createSeoRoutes(seoService));
   v1.route('/translations', createTranslationRoutes(translationService));
+  v1.route('/cache', createCacheRoutes());
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
