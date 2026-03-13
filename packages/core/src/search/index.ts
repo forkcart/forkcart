@@ -16,5 +16,8 @@ export type {
   PopularSearch,
   ZeroResultSearch,
   SearchAnalytics,
+  QueryCTR,
+  TopClickedProduct,
+  QueryProductMapping,
 } from './repository';
 export type { TrendingProduct, ProductScore } from './ranking';

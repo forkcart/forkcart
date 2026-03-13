@@ -65,6 +65,31 @@ export interface SearchAnalytics {
   zeroResultQueries: ZeroResultSearch[];
 }
 
+export interface QueryCTR {
+  query: string;
+  searches: number;
+  clicks: number;
+  ctrPercent: number;
+}
+
+export interface TopClickedProduct {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  currency: string;
+  clickCount: number;
+  uniqueQueries: number;
+}
+
+export interface QueryProductMapping {
+  query: string;
+  productId: string;
+  productName: string;
+  slug: string;
+  clicks: number;
+}
+
 /** Repository for search queries and full-text product search */
 export class SearchRepository {
   constructor(private readonly db: Database) {}
@@ -333,6 +358,107 @@ export class SearchRepository {
       query: r.query,
       searchCount: Number(r.searchCount),
       lastSearched: r.lastSearched,
+    }));
+  }
+
+  /** CTR per search query */
+  async getQueryCTR(daysBack = 30): Promise<QueryCTR[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - daysBack);
+
+    const rows = await this.db
+      .select({
+        query: searchQueries.query,
+        searches: count().as('searches'),
+        clicks: sql<number>`count(${searchQueries.clickedProductId})`.as('clicks'),
+        ctrPercent:
+          sql<number>`ROUND(count(${searchQueries.clickedProductId})::numeric / count(*)::numeric * 100, 1)`.as(
+            'ctr_percent',
+          ),
+      })
+      .from(searchQueries)
+      .where(gte(searchQueries.createdAt, since))
+      .groupBy(searchQueries.query)
+      .orderBy(desc(sql`searches`))
+      .limit(20);
+
+    return rows.map((r) => ({
+      query: r.query,
+      searches: Number(r.searches),
+      clicks: Number(r.clicks),
+      ctrPercent: Number(r.ctrPercent),
+    }));
+  }
+
+  /** Top products clicked from search results */
+  async getTopClickedProducts(daysBack = 30): Promise<TopClickedProduct[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - daysBack);
+
+    const rows = await this.db
+      .select({
+        id: products.id,
+        name: products.name,
+        slug: products.slug,
+        price: products.price,
+        currency: products.currency,
+        clickCount: count().as('click_count'),
+        uniqueQueries: sql<number>`count(DISTINCT ${searchQueries.query})`.as('unique_queries'),
+      })
+      .from(searchQueries)
+      .innerJoin(products, eq(products.id, searchQueries.clickedProductId))
+      .where(
+        and(
+          gte(searchQueries.createdAt, since),
+          sql`${searchQueries.clickedProductId} IS NOT NULL`,
+        ),
+      )
+      .groupBy(products.id, products.name, products.slug, products.price, products.currency)
+      .orderBy(desc(sql`click_count`))
+      .limit(20);
+
+    return rows.map((r) => ({
+      id: r.id,
+      name: r.name,
+      slug: r.slug,
+      price: r.price,
+      currency: r.currency,
+      clickCount: Number(r.clickCount),
+      uniqueQueries: Number(r.uniqueQueries),
+    }));
+  }
+
+  /** Map: which queries lead to which product clicks */
+  async getQueryProductMap(daysBack = 30): Promise<QueryProductMapping[]> {
+    const since = new Date();
+    since.setDate(since.getDate() - daysBack);
+
+    const rows = await this.db
+      .select({
+        query: searchQueries.query,
+        productId: products.id,
+        productName: products.name,
+        slug: products.slug,
+        clicks: count().as('clicks'),
+      })
+      .from(searchQueries)
+      .innerJoin(products, eq(products.id, searchQueries.clickedProductId))
+      .where(
+        and(
+          gte(searchQueries.createdAt, since),
+          sql`${searchQueries.clickedProductId} IS NOT NULL`,
+        ),
+      )
+      .groupBy(searchQueries.query, products.id, products.name, products.slug)
+      .orderBy(desc(sql`clicks`))
+      .limit(50);
+
+    return rows.map((r) => ({
+      query: r.query,
+      productId: r.productId,
+      productName: r.productName,
+      slug: r.slug,
+      clicks: Number(r.clicks),
     }));
   }
 

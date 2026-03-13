@@ -38,6 +38,10 @@ const ZeroResultsQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(365).default(30),
 });
 
+const RankingsQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+
 /** Public search routes (no auth required) */
 export function createSearchRoutes(searchService: SearchService) {
   const router = new Hono();
@@ -108,6 +112,38 @@ export function createSearchAdminRoutes(searchService: SearchService) {
     const params = ZeroResultsQuerySchema.parse(query);
     const results = await searchService.getZeroResultSearches(params.limit, params.days);
     return c.json({ data: results });
+  });
+
+  /** CTR per search query */
+  router.get('/analytics/ctr', async (c) => {
+    const query = c.req.query();
+    const params = AnalyticsQuerySchema.parse(query);
+    const data = await searchService.getQueryCTR(params.days);
+    return c.json({ data });
+  });
+
+  /** Top clicked products from search */
+  router.get('/analytics/top-products', async (c) => {
+    const query = c.req.query();
+    const params = AnalyticsQuerySchema.parse(query);
+    const data = await searchService.getTopClickedProducts(params.days);
+    return c.json({ data });
+  });
+
+  /** Query → Product click mapping */
+  router.get('/analytics/query-products', async (c) => {
+    const query = c.req.query();
+    const params = AnalyticsQuerySchema.parse(query);
+    const data = await searchService.getQueryProductMap(params.days);
+    return c.json({ data });
+  });
+
+  /** Product ranking scores with breakdown */
+  router.get('/analytics/rankings', async (c) => {
+    const query = c.req.query();
+    const params = RankingsQuerySchema.parse(query);
+    const data = await searchService.getProductRankingScores(params.limit);
+    return c.json({ data });
   });
 
   return router;
