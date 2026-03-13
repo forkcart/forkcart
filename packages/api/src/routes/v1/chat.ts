@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { ChatbotService } from '@forkcart/core';
 
 const ChatMessageSchema = z.object({
-  sessionId: z.string().optional(),
+  sessionId: z.string().nullable().optional(),
   message: z.string().min(1).max(2000),
 });
 
@@ -34,7 +34,7 @@ export function createChatRoutes(chatbotService: ChatbotService) {
     const body = await c.req.json();
     const input = ChatMessageSchema.parse(body);
     const result = await chatbotService.chat({
-      sessionId: input.sessionId,
+      sessionId: input.sessionId ?? undefined,
       message: input.message,
     });
     return c.json({ data: result });
