@@ -1,6 +1,7 @@
 import type { SearchRepository, SearchFilters, SearchResult } from './repository';
 import type { RankingService, TrendingProduct } from './ranking';
 import type { EventBus } from '../plugins/event-bus';
+import type { Database } from '@forkcart/database';
 import { SEARCH_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
 
@@ -63,6 +64,8 @@ export interface SearchServiceDeps {
   eventBus: EventBus;
   aiService?: AITextGenerator | null;
   semanticProvider?: SemanticSearchProvider | null;
+  mediaBaseUrl?: string;
+  db?: Database;
 }
 
 /** Search result with metadata */
@@ -83,13 +86,54 @@ export class SearchService {
   private readonly ranking: RankingService | null;
   private readonly events: EventBus;
   private readonly ai: AITextGenerator | null;
+  private readonly mediaBaseUrl: string;
+  private readonly db: Database | null;
 
   constructor(deps: SearchServiceDeps) {
     this.repo = deps.searchRepository;
     this.ranking = deps.rankingService ?? null;
     this.events = deps.eventBus;
     this.ai = deps.aiService ?? null;
+    this.mediaBaseUrl = deps.mediaBaseUrl ?? '';
+    this.db = deps.db ?? null;
     // semanticProvider reserved for future vector search (deps.semanticProvider)
+  }
+
+  /** Resolve a media path to a full URL */
+  private resolveImageUrl(path: string | null): string | null {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${this.mediaBaseUrl}/uploads${path.startsWith('/') ? '' : '/'}${path}`;
+  }
+
+  /** Get translated product names for a list of product IDs (default locale) */
+  private async getTranslatedNames(productIds: string[]): Promise<Map<string, string>> {
+    if (!this.db || productIds.length === 0) return new Map();
+    try {
+      const { sql: dsql } = await import('drizzle-orm');
+      // Get default locale
+      const [langRow] = await this.db.execute<{ locale: string }>(
+        dsql`SELECT locale FROM languages WHERE is_default = true LIMIT 1`,
+      );
+      if (!langRow) return new Map();
+      const locale = langRow.locale;
+
+      const rows = await this.db.execute<{ product_id: string; name: string }>(
+        dsql`SELECT product_id, name FROM product_translations
+             WHERE locale = ${locale}
+             AND product_id::text = ANY(ARRAY[${dsql.join(
+               productIds.map((id) => dsql`${id}`),
+               dsql`, `,
+             )}])`,
+      );
+      const map = new Map<string, string>();
+      for (const row of rows) {
+        if (row.name) map.set(row.product_id, row.name);
+      }
+      return map;
+    } catch {
+      return new Map();
+    }
   }
 
   /** Main search method — tries enhanced mode first, falls back to basic */
@@ -225,19 +269,22 @@ export class SearchService {
       sort: 'relevance',
     });
 
-    // Get images
-    const imageMap = this.ranking
-      ? await this.getProductImages(result.data.map((p) => p.id))
-      : new Map<string, string>();
+    const ids = result.data.map((p) => p.id);
+
+    // Get images + translated names in parallel
+    const [imageMap, nameMap] = await Promise.all([
+      this.ranking ? this.getProductImages(ids) : Promise.resolve(new Map<string, string>()),
+      this.getTranslatedNames(ids),
+    ]);
 
     return result.data.map((p) => ({
       id: p.id,
-      name: p.name,
+      name: nameMap.get(p.id) ?? p.name,
       slug: p.slug,
       price: p.price,
       compareAtPrice: p.compareAtPrice,
       currency: p.currency,
-      imageUrl: imageMap.get(p.id) ?? null,
+      imageUrl: this.resolveImageUrl(imageMap.get(p.id) ?? null),
       hasDiscount: !!(p.compareAtPrice && p.compareAtPrice > p.price),
     }));
   }
@@ -245,7 +292,56 @@ export class SearchService {
   /** Get trending products */
   async getTrendingProducts(limit = 10): Promise<TrendingProduct[]> {
     if (!this.ranking) return [];
-    return this.ranking.getTrendingProducts(limit);
+    let results = await this.ranking.getTrendingProducts(limit);
+
+    // Fallback: if no impressions data yet, show newest products with discounts
+    if (results.length === 0 && this.db) {
+      try {
+        const { sql: dsql } = await import('drizzle-orm');
+        const rows = await this.db.execute<{
+          id: string;
+          name: string;
+          slug: string;
+          price: number;
+          compare_at_price: number | null;
+          currency: string;
+          inventory_quantity: number;
+        }>(dsql`
+          SELECT id, name, slug, price, compare_at_price, currency, inventory_quantity
+          FROM products
+          WHERE status = 'active'
+          ORDER BY
+            CASE WHEN compare_at_price IS NOT NULL AND compare_at_price > price THEN 0 ELSE 1 END,
+            created_at DESC
+          LIMIT ${limit}
+        `);
+
+        const ids = rows.map((r) => r.id);
+        const [imageMap, nameMap] = await Promise.all([
+          this.ranking.getProductImages(ids),
+          this.getTranslatedNames(ids),
+        ]);
+
+        results = rows.map((r) => ({
+          id: r.id,
+          name: nameMap.get(r.id) ?? r.name,
+          slug: r.slug,
+          price: r.price,
+          compareAtPrice: r.compare_at_price,
+          currency: r.currency,
+          inventoryQuantity: r.inventory_quantity,
+          imageUrl: r.id ? (imageMap.get(r.id) ?? null) : null,
+          trendScore: 0,
+        }));
+      } catch {
+        // ignore fallback errors
+      }
+    }
+
+    return results.map((r) => ({
+      ...r,
+      imageUrl: this.resolveImageUrl(r.imageUrl),
+    }));
   }
 
   /** Track a product impression */
