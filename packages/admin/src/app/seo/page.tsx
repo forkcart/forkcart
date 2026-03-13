@@ -40,7 +40,9 @@ export default function SeoPage() {
           <Settings className="mr-2 inline-block h-6 w-6" />
           SEO Settings
         </h1>
-        <p className="text-sm text-muted-foreground">Global search engine optimization settings for your shop</p>
+        <p className="text-sm text-muted-foreground">
+          Global search engine optimization settings for your shop
+        </p>
       </div>
 
       <div className="max-w-2xl space-y-6">
