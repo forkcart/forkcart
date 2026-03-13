@@ -14,4 +14,5 @@ export * from './ai/index';
 export * from './chatbot/index';
 export * from './search/index';
 export * from './seo/index';
+export * from './translations/index';
 export { createLogger } from './lib/logger';

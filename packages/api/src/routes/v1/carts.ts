@@ -9,11 +9,16 @@ const CreateCartSchema = z.object({
 });
 
 const QuickCartSchema = z.object({
-  items: z.array(z.object({
-    productId: z.string().uuid(),
-    quantity: z.number().int().min(1).default(1),
-    variantId: z.string().uuid().optional(),
-  })).min(1).max(10),
+  items: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        quantity: z.number().int().min(1).default(1),
+        variantId: z.string().uuid().optional(),
+      }),
+    )
+    .min(1)
+    .max(10),
   sessionId: z.string().optional(),
 });
 
@@ -50,18 +55,24 @@ export function createCartRoutes(cartService: CartService) {
     const updatedCart = await cartService.getById(cart.id);
 
     if (updatedCart.items.length === 0) {
-      return c.json({
-        error: { message: 'No valid products could be added to cart', details: errors },
-      }, 400);
+      return c.json(
+        {
+          error: { message: 'No valid products could be added to cart', details: errors },
+        },
+        400,
+      );
     }
 
-    return c.json({
-      data: {
-        ...updatedCart,
-        checkoutUrl: `/checkout?cartId=${cart.id}`,
-        ...(errors.length > 0 ? { warnings: errors } : {}),
+    return c.json(
+      {
+        data: {
+          ...updatedCart,
+          checkoutUrl: `/checkout?cartId=${cart.id}`,
+          ...(errors.length > 0 ? { warnings: errors } : {}),
+        },
       },
-    }, 201);
+      201,
+    );
   });
 
   /** Create a new cart */

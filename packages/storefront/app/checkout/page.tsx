@@ -50,7 +50,13 @@ type CheckoutStep = 'address' | 'shipping' | 'payment' | 'success';
 
 export default function CheckoutPageWrapper() {
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+        </div>
+      }
+    >
       <CheckoutPage />
     </Suspense>
   );
@@ -687,7 +693,9 @@ function CheckoutPage() {
               </div>
               <div className="flex justify-between border-t pt-2">
                 <span className="font-semibold">Total</span>
-                <span className="text-lg font-bold">{formatPrice(effectiveSubtotal + shippingCost)}</span>
+                <span className="text-lg font-bold">
+                  {formatPrice(effectiveSubtotal + shippingCost)}
+                </span>
               </div>
             </div>
 
