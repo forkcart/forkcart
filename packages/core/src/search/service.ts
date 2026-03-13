@@ -1,5 +1,12 @@
-import type { SearchRepository, SearchFilters, SearchResult } from './repository';
-import type { RankingService, TrendingProduct } from './ranking';
+import type {
+  SearchRepository,
+  SearchFilters,
+  SearchResult,
+  QueryCTR,
+  TopClickedProduct,
+  QueryProductMapping,
+} from './repository';
+import type { RankingService, TrendingProduct, ProductScore } from './ranking';
 import type { EventBus } from '../plugins/event-bus';
 import type { Database } from '@forkcart/database';
 import { SEARCH_EVENTS } from './events';
@@ -274,6 +281,55 @@ export class SearchService {
   /** Get zero-result searches (admin) */
   async getZeroResultSearches(limit = 50, daysBack = 30) {
     return this.repo.getZeroResultSearches(limit, daysBack);
+  }
+
+  /** CTR per search query (admin) */
+  async getQueryCTR(daysBack = 30): Promise<QueryCTR[]> {
+    return this.repo.getQueryCTR(daysBack);
+  }
+
+  /** Top clicked products from search (admin) */
+  async getTopClickedProducts(daysBack = 30): Promise<TopClickedProduct[]> {
+    return this.repo.getTopClickedProducts(daysBack);
+  }
+
+  /** Query → Product click mapping (admin) */
+  async getQueryProductMap(daysBack = 30): Promise<QueryProductMapping[]> {
+    return this.repo.getQueryProductMap(daysBack);
+  }
+
+  /** Product ranking scores with detailed breakdown (admin) */
+  async getProductRankingScores(
+    limit = 20,
+  ): Promise<Array<ProductScore & { name: string; slug: string }>> {
+    if (!this.ranking || !this.db) return [];
+
+    try {
+      const { sql: dsql } = await import('drizzle-orm');
+      // Get top products by recent impressions to score
+      const rows = await this.db.execute<{ id: string; name: string; slug: string }>(dsql`
+        SELECT id, name, slug FROM products
+        WHERE status = 'active'
+        ORDER BY created_at DESC
+        LIMIT ${limit * 2}
+      `);
+
+      const productIds = rows.map((r) => r.id);
+      const detailed = await this.ranking.calculateDetailedScores(productIds);
+
+      // Merge product info and sort by totalBoost
+      const nameMap = new Map(rows.map((r) => [r.id, { name: r.name, slug: r.slug }]));
+      return detailed
+        .map((score) => ({
+          ...score,
+          name: nameMap.get(score.productId)?.name ?? '',
+          slug: nameMap.get(score.productId)?.slug ?? '',
+        }))
+        .sort((a, b) => b.totalBoost - a.totalBoost)
+        .slice(0, limit);
+    } catch {
+      return [];
+    }
   }
 
   /** Instant search — lightweight results for search overlay (max 8) */

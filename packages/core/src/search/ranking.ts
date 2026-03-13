@@ -53,7 +53,19 @@ export class RankingService {
    * Returns a map of productId → totalBoost to multiply with text relevance.
    */
   async calculateScores(productIds: string[]): Promise<Map<string, number>> {
-    if (productIds.length === 0) return new Map();
+    const detailed = await this.calculateDetailedScores(productIds);
+    const scores = new Map<string, number>();
+    for (const score of detailed) {
+      scores.set(score.productId, score.totalBoost);
+    }
+    return scores;
+  }
+
+  /**
+   * Calculate detailed ranking scores with component breakdown per product.
+   */
+  async calculateDetailedScores(productIds: string[]): Promise<ProductScore[]> {
+    if (productIds.length === 0) return [];
 
     const [ctrMap, conversionMap, popularityMap, productMeta] = await Promise.all([
       this.getCtrScores(productIds),
@@ -62,7 +74,7 @@ export class RankingService {
       this.getProductMeta(productIds),
     ]);
 
-    const scores = new Map<string, number>();
+    const results: ProductScore[] = [];
 
     for (const pid of productIds) {
       const ctrBoost = (ctrMap.get(pid) ?? 0) * WEIGHTS.ctr;
@@ -89,21 +101,32 @@ export class RankingService {
           ? WEIGHTS.outOfStock
           : 0;
 
-      const popularityBoost = (popularityMap.get(pid) ?? 0) * WEIGHTS.popularity;
+      const popularityScore = (popularityMap.get(pid) ?? 0) * WEIGHTS.popularity;
 
-      const totalBoost =
+      const totalBoost = Math.max(
+        0.1,
         1 +
-        ctrBoost +
-        conversionScore +
-        recencyBoost +
-        discountBoost +
-        popularityBoost -
-        outOfStockPenalty;
+          ctrBoost +
+          conversionScore +
+          recencyBoost +
+          discountBoost +
+          popularityScore -
+          outOfStockPenalty,
+      );
 
-      scores.set(pid, Math.max(0.1, totalBoost));
+      results.push({
+        productId: pid,
+        ctrBoost,
+        conversionScore,
+        recencyBoost,
+        discountBoost,
+        outOfStockPenalty,
+        popularityScore,
+        totalBoost,
+      });
     }
 
-    return scores;
+    return results;
   }
 
   /** Click-Through-Rate: clicks / total search impressions for each product */
