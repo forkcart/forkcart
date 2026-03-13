@@ -69,6 +69,7 @@ import { createSearchRoutes, createSearchAdminRoutes } from './routes/v1/search'
 import { createAIRoutes } from './routes/v1/ai';
 import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
+import './middleware/i18n'; // registers locale on ContextVariableMap
 
 /** Create the Hono application with all routes and middleware */
 export async function createApp(db: Database) {
@@ -84,6 +85,27 @@ export async function createApp(db: Database) {
       credentials: true,
     }),
   );
+
+  // i18n: parse Accept-Language header, set locale on request context
+  app.use('*', async (c, next) => {
+    const acceptLang = c.req.header('Accept-Language');
+    const supported = ['en', 'de'];
+    let locale = 'en';
+    if (acceptLang) {
+      const langs = acceptLang
+        .split(',')
+        .map((p) => {
+          const [lang, qp] = p.trim().split(';');
+          return { lang: lang!.split('-')[0]!, q: qp ? parseFloat(qp.replace('q=', '')) : 1 };
+        })
+        .sort((a, b) => b.q - a.q);
+      for (const { lang } of langs) {
+        if (supported.includes(lang)) { locale = lang; break; }
+      }
+    }
+    c.set('locale', locale);
+    await next();
+  });
 
   // Error handling
   app.onError(errorHandler);

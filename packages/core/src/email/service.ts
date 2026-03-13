@@ -72,8 +72,8 @@ export class EmailService {
     return result;
   }
 
-  /** Send order confirmation email */
-  async sendOrderConfirmation(to: string, data: OrderConfirmationData): Promise<EmailSendResult> {
+  /** Send order confirmation email. locale param reserved for Phase 2 multi-language templates. */
+  async sendOrderConfirmation(to: string, data: OrderConfirmationData, _locale: string = 'en'): Promise<EmailSendResult> {
     const html = orderConfirmationHtml(data);
     const text = orderConfirmationText(data);
     return this.sendTemplated(
@@ -85,8 +85,8 @@ export class EmailService {
     );
   }
 
-  /** Send order shipped email */
-  async sendOrderShipped(to: string, data: OrderShippedData): Promise<EmailSendResult> {
+  /** Send order shipped email. locale param reserved for Phase 2 multi-language templates. */
+  async sendOrderShipped(to: string, data: OrderShippedData, _locale: string = 'en'): Promise<EmailSendResult> {
     const html = orderShippedHtml(data);
     const text = orderShippedText(data);
     return this.sendTemplated(
@@ -98,8 +98,8 @@ export class EmailService {
     );
   }
 
-  /** Send order delivered email */
-  async sendOrderDelivered(to: string, data: OrderDeliveredData): Promise<EmailSendResult> {
+  /** Send order delivered email. locale param reserved for Phase 2 multi-language templates. */
+  async sendOrderDelivered(to: string, data: OrderDeliveredData, _locale: string = 'en'): Promise<EmailSendResult> {
     const html = orderDeliveredHtml(data);
     const text = orderDeliveredText(data);
     return this.sendTemplated(
@@ -111,15 +111,15 @@ export class EmailService {
     );
   }
 
-  /** Send welcome email */
-  async sendWelcome(to: string, data: WelcomeData): Promise<EmailSendResult> {
+  /** Send welcome email. locale param reserved for Phase 2 multi-language templates. */
+  async sendWelcome(to: string, data: WelcomeData, _locale: string = 'en'): Promise<EmailSendResult> {
     const html = welcomeHtml(data);
     const text = welcomeText(data);
     return this.sendTemplated(to, 'Welcome!', html, text, 'welcome');
   }
 
-  /** Send password reset email */
-  async sendPasswordReset(to: string, data: PasswordResetData): Promise<EmailSendResult> {
+  /** Send password reset email. locale param reserved for Phase 2 multi-language templates. */
+  async sendPasswordReset(to: string, data: PasswordResetData, _locale: string = 'en'): Promise<EmailSendResult> {
     const html = passwordResetHtml(data);
     const text = passwordResetText(data);
     return this.sendTemplated(to, 'Reset Your Password', html, text, 'password-reset');
