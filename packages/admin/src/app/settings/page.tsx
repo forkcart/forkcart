@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { apiClient } from '@/lib/api-client';
 import {
   Save,
   Store,
@@ -16,6 +17,8 @@ import {
   Search,
   CreditCard,
   ChevronRight,
+  RefreshCw,
+  Loader2,
 } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
@@ -168,6 +171,9 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Cache Management */}
+        <CachePurgeCard />
+
         {/* Settings Hub */}
         <div>
           <h2 className="text-lg font-semibold">All Settings</h2>
@@ -192,6 +198,66 @@ export default function SettingsPage() {
               </Link>
             ))}
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CachePurgeCard() {
+  const [purging, setPurging] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function handlePurge() {
+    setPurging(true);
+    setResult(null);
+    try {
+      await apiClient<{ data: { purged: boolean; warmed: string[] } }>('/cache/purge', {
+        method: 'POST',
+        body: JSON.stringify({ warm: true }),
+      });
+      setResult('Cache purged & pages warmed ✓');
+      setTimeout(() => setResult(null), 5000);
+    } catch {
+      setResult('Failed to purge cache');
+      setTimeout(() => setResult(null), 5000);
+    } finally {
+      setPurging(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-6 shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-500">
+            <RefreshCw className="h-5 w-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">Storefront Cache</h2>
+            <p className="text-sm text-muted-foreground">
+              Clear cached pages and pre-load fresh content
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          {result && (
+            <span className={`text-sm ${result.includes('✓') ? 'text-green-600' : 'text-red-600'}`}>
+              {result}
+            </span>
+          )}
+          <button
+            onClick={handlePurge}
+            disabled={purging}
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-medium text-orange-700 transition hover:bg-orange-100 disabled:opacity-50"
+          >
+            {purging ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+            {purging ? 'Purging...' : 'Purge & Warm Cache'}
+          </button>
         </div>
       </div>
     </div>
