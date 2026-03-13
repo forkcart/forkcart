@@ -65,6 +65,11 @@ export class TranslationRepository {
     await this.db.delete(languages).where(eq(languages.locale, locale));
   }
 
+  async getDefaultLanguage(): Promise<LanguageRow | null> {
+    const [row] = await this.db.select().from(languages).where(eq(languages.isDefault, true));
+    return (row as LanguageRow) ?? null;
+  }
+
   /** Set one language as default, clearing isDefault on all others */
   async setDefaultLanguage(locale: string): Promise<void> {
     await this.db.update(languages).set({ isDefault: false });
