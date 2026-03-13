@@ -46,6 +46,68 @@ export const LOCALE_NAMES: Record<string, string> = {
   hi: 'हिन्दी',
 };
 
+/** Country code for flag CDN (locale → ISO 3166-1 alpha-2) */
+const LOCALE_COUNTRY: Record<string, string> = {
+  en: 'gb',
+  de: 'de',
+  fr: 'fr',
+  es: 'es',
+  it: 'it',
+  nl: 'nl',
+  pt: 'pt',
+  pl: 'pl',
+  cs: 'cz',
+  ja: 'jp',
+  zh: 'cn',
+  ko: 'kr',
+  ar: 'sa',
+  ru: 'ru',
+  tr: 'tr',
+  sv: 'se',
+  da: 'dk',
+  fi: 'fi',
+  no: 'no',
+  hu: 'hu',
+  ro: 'ro',
+  uk: 'ua',
+  el: 'gr',
+  th: 'th',
+  vi: 'vn',
+  hi: 'in',
+};
+
+/** Get flag image URL for a locale */
+export function getFlagUrl(locale: string, size: 'w20' | 'w40' | 'w80' = 'w40'): string {
+  const country = LOCALE_COUNTRY[locale] ?? locale;
+  return `https://flagcdn.com/${size}/${country}.png`;
+}
+
+/** Flag image component */
+export function Flag({
+  locale,
+  size = 20,
+  className,
+}: {
+  locale: string;
+  size?: number;
+  className?: string;
+}) {
+  const cdnSize = size <= 20 ? 'w20' : size <= 40 ? 'w40' : 'w80';
+  const country = LOCALE_COUNTRY[locale] ?? locale;
+  const name = LOCALE_NAMES[locale] ?? locale.toUpperCase();
+  return (
+    <img
+      src={`https://flagcdn.com/${cdnSize}/${country}.png`}
+      srcSet={`https://flagcdn.com/${cdnSize === 'w20' ? 'w40' : 'w80'}/${country}.png 2x`}
+      width={size}
+      height={Math.round(size * 0.75)}
+      alt={name}
+      className={className ?? 'inline-block rounded-sm'}
+      loading="lazy"
+    />
+  );
+}
+
 export const LOCALE_FLAGS: Record<string, string> = {
   en: '🇬🇧',
   de: '🇩🇪',
@@ -230,8 +292,6 @@ export function LanguageSwitcher({ className }: { className?: string }) {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [open]);
 
-  const flag = LOCALE_FLAGS[locale] ?? '🌐';
-
   return (
     <div ref={ref} className={`relative ${className ?? ''}`}>
       <button
@@ -240,7 +300,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         aria-label="Select language"
         aria-expanded={open}
       >
-        <span className="text-base leading-none">{flag}</span>
+        <Flag locale={locale} size={18} />
         <span className="text-xs font-medium uppercase text-gray-600">{locale}</span>
         <svg
           className={`h-3 w-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -264,7 +324,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
                 loc === locale ? 'bg-gray-50 font-medium' : 'text-gray-600'
               }`}
             >
-              <span className="text-base leading-none">{LOCALE_FLAGS[loc] ?? '🌐'}</span>
+              <Flag locale={loc} size={18} />
               <span>{LOCALE_NAMES[loc] ?? loc.toUpperCase()}</span>
               {loc === locale && (
                 <svg
