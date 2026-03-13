@@ -145,6 +145,7 @@ export default function ProductDetailPage() {
 
       <div className="mt-8 space-y-8">
         <ProductForm
+          key={`${id}-${defaultLocale}-${defaultTranslation?.data?.name ?? 'base'}`}
           initialData={isNew ? undefined : formData}
           productId={isNew ? undefined : id}
           onSubmit={(values) => saveMutation.mutate(values)}
