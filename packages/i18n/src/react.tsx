@@ -301,6 +301,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
         aria-expanded={open}
       >
         <Flag locale={locale} size={18} />
+        &nbsp;
         <span className="text-xs font-medium uppercase text-gray-600">{locale}</span>
         <svg
           className={`h-3 w-3 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
@@ -325,6 +326,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
               }`}
             >
               <Flag locale={loc} size={18} />
+              &nbsp;
               <span>{LOCALE_NAMES[loc] ?? loc.toUpperCase()}</span>
               {loc === locale && (
                 <svg
