@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/components/cart/cart-provider';
+
 import { useAuth } from '@/components/auth/auth-provider';
 import { useTranslation, LanguageSwitcher } from '@forkcart/i18n/react';
 
@@ -13,7 +14,7 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
-  const { itemCount } = useCart();
+  const { itemCount, setCartOpen } = useCart();
   const { customer } = useAuth();
   const { t } = useTranslation();
 
@@ -88,14 +89,17 @@ export function Header() {
               <User className="h-5 w-5" />
             </Link>
 
-            <Link href="/cart" className="relative rounded-md p-2 text-gray-600 hover:bg-gray-100">
+            <button
+              onClick={() => setCartOpen(true)}
+              className="relative rounded-md p-2 text-gray-600 hover:bg-gray-100"
+            >
               <ShoppingBag className="h-5 w-5" />
               {itemCount > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-bold text-white">
                   {itemCount}
                 </span>
               )}
-            </Link>
+            </button>
 
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
