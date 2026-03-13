@@ -247,6 +247,25 @@ export class SearchService {
     this.events.emit(SEARCH_EVENTS.SEARCH_CLICK, { searchId, productId }).catch(() => {});
   }
 
+  /** Log a search + click in one go (for instant search overlay clicks) */
+  async logSearchWithClick(
+    query: string,
+    clickedProductId: string,
+    sessionId?: string,
+  ): Promise<void> {
+    try {
+      await this.repo.logSearch({
+        query,
+        resultsCount: 1,
+        clickedProductId,
+        sessionId: sessionId ?? undefined,
+        customerId: undefined,
+      });
+    } catch {
+      // non-critical, don't fail the request
+    }
+  }
+
   /** Get search analytics (admin) */
   async getAnalytics(daysBack = 30) {
     return this.repo.getAnalytics(daysBack);

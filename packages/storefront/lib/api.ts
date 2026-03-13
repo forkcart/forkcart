@@ -163,6 +163,7 @@ export async function trackImpression(params: {
   productId: string;
   eventType: 'view' | 'click' | 'cart_add';
   sessionId?: string;
+  query?: string;
 }): Promise<void> {
   fetch(`${API_URL}/api/v1/public/search/track`, {
     method: 'POST',
