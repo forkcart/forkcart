@@ -14,3 +14,4 @@ export * from './seo';
 export * from './ai-settings';
 export * from './chatbot';
 export * from './search';
+export * from './translations';

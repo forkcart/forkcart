@@ -92,8 +92,7 @@ export class ProductAIService {
     const messages: ChatMessage[] = [
       {
         role: 'system',
-        content:
-          'You are an SEO specialist for e-commerce. Respond exclusively with valid JSON.',
+        content: 'You are an SEO specialist for e-commerce. Respond exclusively with valid JSON.',
       },
       { role: 'user', content: prompt },
     ];
