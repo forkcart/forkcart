@@ -116,7 +116,7 @@ Rules:
 
     const shortDesc = product.shortDescription ?? product.description?.slice(0, 100) ?? '';
     const metaDescription =
-      `${product.name} - ${shortDesc}. Jetzt bestellen bei ${shopName}. ✓ Schneller Versand ✓ Sichere Zahlung`.slice(
+      `${product.name} - ${shortDesc}. Order now at ${shopName}. ✓ Fast shipping ✓ Secure payment`.slice(
         0,
         160,
       );
@@ -344,10 +344,10 @@ Rules:
 
     // Static pages
     const staticPages = [
-      { path: '/impressum', priority: '0.3' },
-      { path: '/datenschutz', priority: '0.3' },
-      { path: '/agb', priority: '0.3' },
-      { path: '/kontakt', priority: '0.5' },
+      { path: '/imprint', priority: '0.3' },
+      { path: '/privacy', priority: '0.3' },
+      { path: '/terms', priority: '0.3' },
+      { path: '/contact', priority: '0.5' },
     ];
     for (const page of staticPages) {
       urls.push({

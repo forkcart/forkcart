@@ -278,10 +278,10 @@ function buildSystemPrompt(template: string, context: ChatContext): string {
       .slice(0, 50) // limit to 50 products for token efficiency
       .map(
         (p) =>
-          `- ${p.name}: ${(p.price / 100).toFixed(2)}€ (${p.category ?? 'Allgemein'}, ${p.inStock ? 'verfügbar' : 'ausverkauft'})`,
+          `- ${p.name}: ${(p.price / 100).toFixed(2)}€ (${p.category ?? 'General'}, ${p.inStock ? 'in stock' : 'out of stock'})`,
       )
       .join('\n');
-    prompt += `\n\nAktuelle Produkte:\n${productList}`;
+    prompt += `\n\nAvailable products:\n${productList}`;
   }
 
   // Append shipping info
@@ -289,19 +289,19 @@ function buildSystemPrompt(template: string, context: ChatContext): string {
     const shippingList = context.shippingMethods
       .map(
         (s) =>
-          `- ${s.name}: ${(s.price / 100).toFixed(2)}€${s.estimatedDays ? ` (${s.estimatedDays} Tage)` : ''}`,
+          `- ${s.name}: ${(s.price / 100).toFixed(2)}€${s.estimatedDays ? ` (${s.estimatedDays} days)` : ''}`,
       )
       .join('\n');
-    prompt += `\n\nVersandarten:\n${shippingList}`;
+    prompt += `\n\nShipping methods:\n${shippingList}`;
   }
 
   // Append FAQ
   if (context.faqEntries && context.faqEntries.length > 0) {
     const faqList = context.faqEntries
       .slice(0, 20)
-      .map((f) => `F: ${f.question}\nA: ${f.answer}`)
+      .map((f) => `Q: ${f.question}\nA: ${f.answer}`)
       .join('\n\n');
-    prompt += `\n\nHäufige Fragen:\n${faqList}`;
+    prompt += `\n\nFAQ:\n${faqList}`;
   }
 
   return prompt;

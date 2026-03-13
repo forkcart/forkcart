@@ -10,38 +10,38 @@ export function passwordResetHtml(data: PasswordResetData): string {
   const expiry = data.expiresInMinutes ?? 60;
 
   const content = `
-    <h1>Passwort zurücksetzen</h1>
-    <p>Hallo ${data.customerName},</p>
-    <p>wir haben eine Anfrage zum Zurücksetzen deines Passworts erhalten. Klicke auf den Button, um ein neues Passwort zu erstellen:</p>
+    <h1>Reset Your Password</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>We received a request to reset your password. Click the button below to create a new password:</p>
 
     <p style="text-align:center;margin:28px 0;">
-      <a href="${data.resetUrl}" class="btn">🔑 Neues Passwort erstellen</a>
+      <a href="${data.resetUrl}" class="btn">🔑 Create New Password</a>
     </p>
 
-    <p style="font-size:13px;color:#6b7280;">Dieser Link ist ${expiry} Minuten gültig.</p>
+    <p style="font-size:13px;color:#6b7280;">This link is valid for ${expiry} minutes.</p>
 
     <hr class="divider">
-    <p style="font-size:13px;color:#6b7280;">Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren. Dein Passwort wird nicht geändert.</p>
+    <p style="font-size:13px;color:#6b7280;">If you did not request this, you can safely ignore this email. Your password will not be changed.</p>
   `;
 
-  return baseLayout(content, 'Passwort zurücksetzen');
+  return baseLayout(content, 'Reset Your Password');
 }
 
 export function passwordResetText(data: PasswordResetData): string {
   const expiry = data.expiresInMinutes ?? 60;
 
-  return `PASSWORT ZURÜCKSETZEN
+  return `RESET YOUR PASSWORD
 
-Hallo ${data.customerName},
+Hi ${data.customerName},
 
-wir haben eine Anfrage zum Zurücksetzen deines Passworts erhalten.
+We received a request to reset your password.
 
-Klicke auf den folgenden Link, um ein neues Passwort zu erstellen:
+Click the following link to create a new password:
 ${data.resetUrl}
 
-Dieser Link ist ${expiry} Minuten gültig.
+This link is valid for ${expiry} minutes.
 
-Falls du diese Anfrage nicht gestellt hast, kannst du diese E-Mail ignorieren.
+If you did not request this, you can safely ignore this email.
 
 — ForkCart`;
 }

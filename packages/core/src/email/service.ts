@@ -78,7 +78,7 @@ export class EmailService {
     const text = orderConfirmationText(data);
     return this.sendTemplated(
       to,
-      `Bestellbestätigung ${data.orderNumber}`,
+      `Order Confirmation ${data.orderNumber}`,
       html,
       text,
       'order-confirmation',
@@ -91,7 +91,7 @@ export class EmailService {
     const text = orderShippedText(data);
     return this.sendTemplated(
       to,
-      `Deine Bestellung ${data.orderNumber} ist unterwegs`,
+      `Your order ${data.orderNumber} has been shipped`,
       html,
       text,
       'order-shipped',
@@ -104,7 +104,7 @@ export class EmailService {
     const text = orderDeliveredText(data);
     return this.sendTemplated(
       to,
-      `Bestellung ${data.orderNumber} zugestellt`,
+      `Order ${data.orderNumber} delivered`,
       html,
       text,
       'order-delivered',
@@ -115,14 +115,14 @@ export class EmailService {
   async sendWelcome(to: string, data: WelcomeData): Promise<EmailSendResult> {
     const html = welcomeHtml(data);
     const text = welcomeText(data);
-    return this.sendTemplated(to, 'Willkommen!', html, text, 'welcome');
+    return this.sendTemplated(to, 'Welcome!', html, text, 'welcome');
   }
 
   /** Send password reset email */
   async sendPasswordReset(to: string, data: PasswordResetData): Promise<EmailSendResult> {
     const html = passwordResetHtml(data);
     const text = passwordResetText(data);
-    return this.sendTemplated(to, 'Passwort zurücksetzen', html, text, 'password-reset');
+    return this.sendTemplated(to, 'Reset Your Password', html, text, 'password-reset');
   }
 
   /** Get email log entries */

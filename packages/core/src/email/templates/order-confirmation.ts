@@ -35,7 +35,7 @@ export interface OrderConfirmationData {
 }
 
 function formatPrice(cents: number, currency: string): string {
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
+  return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(cents / 100);
 }
 
 function formatAddress(addr: OrderConfirmationData['shippingAddress']): string {
@@ -63,11 +63,11 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
     .join('');
 
   const content = `
-    <h1>Bestellbestätigung 🎉</h1>
-    <p>Hallo ${data.customerName},</p>
-    <p>vielen Dank für deine Bestellung! Wir haben sie erhalten und bearbeiten sie so schnell wie möglich.</p>
+    <h1>Order Confirmation 🎉</h1>
+    <p>Hi ${data.customerName},</p>
+    <p>Thank you for your order! We have received it and will process it as quickly as possible.</p>
 
-    <p style="font-size:13px;color:#6b7280;margin-bottom:4px;">Bestellnummer</p>
+    <p style="font-size:13px;color:#6b7280;margin-bottom:4px;">Order number</p>
     <p style="font-size:20px;font-weight:700;color:#1a1a2e;margin-top:0;">${data.orderNumber}</p>
 
     <hr class="divider">
@@ -75,32 +75,32 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
     <table class="order-table">
       <thead>
         <tr>
-          <th>Artikel</th>
-          <th style="text-align:center;">Menge</th>
-          <th style="text-align:right;">Einzelpreis</th>
-          <th style="text-align:right;">Gesamt</th>
+          <th>Item</th>
+          <th style="text-align:center;">Qty</th>
+          <th style="text-align:right;">Unit Price</th>
+          <th style="text-align:right;">Total</th>
         </tr>
       </thead>
       <tbody>
         ${itemRows}
         <tr>
-          <td colspan="3" style="text-align:right;color:#6b7280;">Zwischensumme</td>
+          <td colspan="3" style="text-align:right;color:#6b7280;">Subtotal</td>
           <td style="text-align:right;">${formatPrice(data.subtotal, data.currency)}</td>
         </tr>
         <tr>
-          <td colspan="3" style="text-align:right;color:#6b7280;">Versand</td>
+          <td colspan="3" style="text-align:right;color:#6b7280;">Shipping</td>
           <td style="text-align:right;">${formatPrice(data.shippingTotal, data.currency)}</td>
         </tr>
         ${
           data.taxTotal > 0
             ? `<tr>
-          <td colspan="3" style="text-align:right;color:#6b7280;">MwSt.</td>
+          <td colspan="3" style="text-align:right;color:#6b7280;">Tax</td>
           <td style="text-align:right;">${formatPrice(data.taxTotal, data.currency)}</td>
         </tr>`
             : ''
         }
         <tr class="total-row">
-          <td colspan="3" style="text-align:right;">Gesamtsumme</td>
+          <td colspan="3" style="text-align:right;">Total</td>
           <td style="text-align:right;">${formatPrice(data.total, data.currency)}</td>
         </tr>
       </tbody>
@@ -108,7 +108,7 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
 
     <hr class="divider">
 
-    <h2 style="font-size:16px;margin-bottom:8px;">Lieferadresse</h2>
+    <h2 style="font-size:16px;margin-bottom:8px;">Shipping Address</h2>
     <div class="address-block">
       ${formatAddress(data.shippingAddress)}
     </div>
@@ -116,7 +116,7 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
     ${
       data.billingAddress
         ? `
-    <h2 style="font-size:16px;margin-bottom:8px;">Rechnungsadresse</h2>
+    <h2 style="font-size:16px;margin-bottom:8px;">Billing Address</h2>
     <div class="address-block">
       ${formatAddress(data.billingAddress)}
     </div>
@@ -124,10 +124,10 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
         : ''
     }
 
-    <p style="margin-top:24px;">Bei Fragen zu deiner Bestellung antworte einfach auf diese E-Mail.</p>
+    <p style="margin-top:24px;">If you have any questions about your order, simply reply to this email.</p>
   `;
 
-  return baseLayout(content, `Bestellbestätigung ${data.orderNumber}`);
+  return baseLayout(content, `Order Confirmation ${data.orderNumber}`);
 }
 
 export function orderConfirmationText(data: OrderConfirmationData): string {
@@ -139,28 +139,28 @@ export function orderConfirmationText(data: OrderConfirmationData): string {
 
   const addr = data.shippingAddress;
 
-  return `BESTELLBESTÄTIGUNG
+  return `ORDER CONFIRMATION
 
-Hallo ${data.customerName},
+Hi ${data.customerName},
 
-vielen Dank für deine Bestellung!
+Thank you for your order!
 
-Bestellnummer: ${data.orderNumber}
+Order number: ${data.orderNumber}
 
-Artikel:
+Items:
 ${items}
 
-Zwischensumme: ${formatPrice(data.subtotal, data.currency)}
-Versand: ${formatPrice(data.shippingTotal, data.currency)}
-${data.taxTotal > 0 ? `MwSt.: ${formatPrice(data.taxTotal, data.currency)}\n` : ''}Gesamtsumme: ${formatPrice(data.total, data.currency)}
+Subtotal: ${formatPrice(data.subtotal, data.currency)}
+Shipping: ${formatPrice(data.shippingTotal, data.currency)}
+${data.taxTotal > 0 ? `Tax: ${formatPrice(data.taxTotal, data.currency)}\n` : ''}Total: ${formatPrice(data.total, data.currency)}
 
-Lieferadresse:
+Shipping address:
 ${addr.firstName} ${addr.lastName}
 ${addr.addressLine1}
 ${addr.addressLine2 ? addr.addressLine2 + '\n' : ''}${addr.postalCode} ${addr.city}
 ${addr.country}
 
-Bei Fragen zu deiner Bestellung antworte einfach auf diese E-Mail.
+If you have any questions about your order, simply reply to this email.
 
 — ForkCart`;
 }

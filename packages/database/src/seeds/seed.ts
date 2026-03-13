@@ -130,8 +130,8 @@ async function seed() {
   // Create shipping methods
   await db.insert(shippingMethods).values([
     {
-      name: 'Standardversand',
-      description: 'Lieferung in 3-5 Werktagen',
+      name: 'Standard Shipping',
+      description: 'Delivery in 3-5 business days',
       price: 499,
       estimatedDays: '3-5',
       isActive: true,
@@ -139,24 +139,24 @@ async function seed() {
       freeAbove: 4900,
     },
     {
-      name: 'Expressversand',
-      description: 'Lieferung in 1-2 Werktagen',
+      name: 'Express Shipping',
+      description: 'Delivery in 1-2 business days',
       price: 999,
       estimatedDays: '1-2',
       isActive: true,
       countries: ['DE', 'AT'],
     },
     {
-      name: 'EU-Versand',
-      description: 'Lieferung in 5-10 Werktagen innerhalb der EU',
+      name: 'EU Shipping',
+      description: 'Delivery in 5-10 business days within the EU',
       price: 1299,
       estimatedDays: '5-10',
       isActive: true,
       countries: ['EU'],
     },
     {
-      name: 'Worldwide',
-      description: 'Weltweiter Versand in 10-20 Werktagen',
+      name: 'Worldwide Shipping',
+      description: 'Worldwide delivery in 10-20 business days',
       price: 2499,
       estimatedDays: '10-20',
       isActive: true,

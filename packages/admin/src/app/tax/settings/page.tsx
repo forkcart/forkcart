@@ -114,7 +114,7 @@ export default function TaxSettingsPage() {
               <div>
                 <div className="font-medium">Tax Inclusive (EU Standard)</div>
                 <div className="text-sm text-muted-foreground">
-                  Prices shown include tax. Common in Europe (€29.99 inkl. MwSt.)
+                  Prices shown include tax. Common in Europe (€29.99 incl. VAT)
                 </div>
               </div>
             </label>
