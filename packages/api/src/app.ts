@@ -309,7 +309,7 @@ export async function createApp(db: Database) {
   // Mount v1 routes
   const v1 = new Hono();
   v1.route('/auth', createAuthRoutes(authService));
-  v1.route('/products', createProductRoutes(productService));
+  v1.route('/products', createProductRoutes(productService, mediaService));
   v1.route('/categories', createCategoryRoutes(categoryService));
   v1.route('/orders', createOrderRoutes(orderService));
   v1.route('/customers', createCustomerRoutes(customerService));
