@@ -272,7 +272,7 @@ export class RankingService {
         )::int AS trend_score
       FROM product_impressions pi
       JOIN products p ON p.id = pi.product_id
-      WHERE pi.created_at >= ${since}
+      WHERE pi.created_at >= ${since.toISOString()}::timestamptz
         AND p.status = 'active'
       GROUP BY p.id, p.name, p.slug, p.price, p.compare_at_price, p.currency, p.inventory_quantity
       ORDER BY trend_score DESC
@@ -308,7 +308,10 @@ export class RankingService {
         entity_id, path
       FROM media
       WHERE entity_type = 'product'
-        AND entity_id::text = ANY(${productIds})
+        AND entity_id::text = ANY(ARRAY[${sql.join(
+          productIds.map((id) => sql`${id}`),
+          sql`, `,
+        )}])
       ORDER BY entity_id, sort_order ASC
     `);
 

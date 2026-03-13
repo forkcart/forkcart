@@ -16,7 +16,7 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="/category/all" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link href="/products" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.allProducts')}
                 </Link>
               </li>

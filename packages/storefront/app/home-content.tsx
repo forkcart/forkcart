@@ -24,7 +24,7 @@ export function HomeContent({ products, categories }: HomeContentProps) {
           <p className="mx-auto mt-6 max-w-xl text-lg text-gray-500">{t('home.hero.subtitle')}</p>
           <div className="mt-8 flex items-center justify-center gap-4">
             <Link
-              href="/category/all"
+              href="/products"
               className="inline-flex items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-gray-800"
             >
               {t('home.hero.shopNow')}
@@ -66,7 +66,7 @@ export function HomeContent({ products, categories }: HomeContentProps) {
           <h2 className="text-2xl font-bold tracking-tight text-gray-900">
             {t('home.featuredProducts')}
           </h2>
-          <Link href="/category/all" className="text-sm font-medium text-accent hover:underline">
+          <Link href="/products" className="text-sm font-medium text-accent hover:underline">
             {t('home.viewAll')}
           </Link>
         </div>

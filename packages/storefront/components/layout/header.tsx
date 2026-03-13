@@ -49,7 +49,7 @@ export function Header() {
                 {t('nav.home')}
               </Link>
               <Link
-                href="/category/all"
+                href="/products"
                 className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
               >
                 {t('nav.shop')}
@@ -111,7 +111,7 @@ export function Header() {
                 {t('nav.home')}
               </Link>
               <Link
-                href="/category/all"
+                href="/products"
                 onClick={() => setMobileOpen(false)}
                 className="block py-2 text-sm font-medium text-gray-600"
               >
