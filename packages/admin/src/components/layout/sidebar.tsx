@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Store,
+  Tag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { removeToken } from '@/lib/auth';
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { href: '/categories', label: 'Categories', icon: FolderTree },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/coupons', label: 'Coupons', icon: Tag },
   { href: '/plugins', label: 'Plugins', icon: Puzzle },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const;

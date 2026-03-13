@@ -16,4 +16,5 @@ export * from './search/index';
 export * from './seo/index';
 export * from './translations/index';
 export * from './product-translations/index';
+export * from './coupons/index';
 export { createLogger } from './lib/logger';

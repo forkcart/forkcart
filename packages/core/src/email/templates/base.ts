@@ -1,16 +1,21 @@
 /**
- * Base HTML email layout — responsive, clean design with ForkCart branding.
+ * Base HTML email layout — responsive, clean design.
  * All email templates wrap their content with this layout.
+ * storeName defaults to 'ForkCart' but can be overridden via settings.
  */
 
-export function baseLayout(content: string, previewText: string): string {
+export function baseLayout(
+  content: string,
+  previewText: string,
+  storeName: string = 'ForkCart',
+): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>ForkCart</title>
+  <title>${storeName}</title>
   <!--[if mso]>
   <noscript><xml><o:OfficeDocumentSettings><o:PixelsPerInch>96</o:PixelsPerInch></o:OfficeDocumentSettings></xml></noscript>
   <![endif]-->
@@ -55,7 +60,7 @@ export function baseLayout(content: string, previewText: string): string {
           <tr>
             <td class="email-header">
               <!-- Replace src with your logo URL -->
-              <a href="#" class="logo-text">🛒 ForkCart</a>
+              <a href="#" class="logo-text">🛒 ${storeName}</a>
             </td>
           </tr>
           <!-- Body -->
@@ -67,8 +72,8 @@ export function baseLayout(content: string, previewText: string): string {
           <!-- Footer -->
           <tr>
             <td class="email-footer">
-              <p>Powered by ForkCart — AI-native E-Commerce</p>
-              <p>&copy; ${new Date().getFullYear()} ForkCart. All rights reserved.</p>
+              <p>Powered by ${storeName} — AI-native E-Commerce</p>
+              <p>&copy; ${new Date().getFullYear()} ${storeName}. All rights reserved.</p>
             </td>
           </tr>
         </table>

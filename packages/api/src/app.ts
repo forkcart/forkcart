@@ -45,10 +45,14 @@ import {
   TranslationService,
   ProductTranslationRepository,
   ProductTranslationService,
+  CouponRepository,
+  CouponService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
+import { LogEmailProvider } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
 import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
+import { smtpPlugin, createSmtpProvider } from '@forkcart/plugin-smtp';
 import { errorHandler } from './middleware/error-handler';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
@@ -73,6 +77,7 @@ import { createSeoRoutes, createPublicSeoRoutes } from './routes/v1/seo';
 import { createTranslationRoutes, createPublicTranslationRoutes } from './routes/v1/translations';
 import { createProductTranslationRoutes } from './routes/v1/product-translations';
 import { createCacheRoutes } from './routes/v1/cache';
+import { createCouponRoutes, createPublicCouponRoutes } from './routes/v1/coupons';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -151,6 +156,7 @@ export async function createApp(db: Database) {
   const paymentRepository = new PaymentRepository(db);
   const userRepository = new UserRepository(db);
   const shippingRepository = new ShippingRepository(db);
+  const couponRepository = new CouponRepository(db);
 
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
@@ -172,6 +178,7 @@ export async function createApp(db: Database) {
   });
 
   const shippingService = new ShippingService({ shippingRepository, eventBus });
+  const couponService = new CouponService({ couponRepository });
 
   // Product translations
   const productTranslationRepository = new ProductTranslationRepository(db);
@@ -261,9 +268,21 @@ export async function createApp(db: Database) {
     ...mailgunPlugin,
     createEmailProvider: createMailgunProvider,
   });
+  pluginLoader.registerDefinition({
+    ...smtpPlugin,
+    createEmailProvider: createSmtpProvider,
+  });
 
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
+
+  // Register log email provider as fallback for development
+  // It auto-activates only if no other provider is already active
+  if (!emailProviderRegistry.getActiveProvider()) {
+    const logProvider = new LogEmailProvider();
+    await logProvider.initialize({});
+    emailProviderRegistry.register(logProvider);
+  }
 
   // Register email event listeners (order confirmation, shipping, welcome)
   registerEmailEventListeners(eventBus, emailService);
@@ -363,6 +382,7 @@ export async function createApp(db: Database) {
   v1.route('/seo', createSeoRoutes(seoService));
   v1.route('/translations', createTranslationRoutes(translationService));
   v1.route('/cache', createCacheRoutes());
+  v1.route('/coupons', createCouponRoutes(couponService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
@@ -373,6 +393,9 @@ export async function createApp(db: Database) {
 
   // Public translations API (no auth — must be mounted BEFORE /api/v1 to avoid auth middleware)
   app.route('/api/v1/public/translations', createPublicTranslationRoutes(translationService));
+
+  // Public coupon routes (no auth)
+  app.route('/api/v1/public/coupons', createPublicCouponRoutes(couponService));
 
   app.route('/api/v1', v1);
 

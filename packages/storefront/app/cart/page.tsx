@@ -1,14 +1,60 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { Trash2, Minus, Plus, ShoppingBag } from 'lucide-react';
+import { Trash2, Minus, Plus, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
 import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 
+const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+
+interface CouponResult {
+  valid: boolean;
+  discount: number;
+  message: string;
+  type?: string;
+}
+
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
   const { t } = useTranslation();
+  const [couponCode, setCouponCode] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponResult, setCouponResult] = useState<CouponResult | null>(null);
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+
+  async function handleValidateCoupon() {
+    if (!couponCode.trim()) return;
+    setCouponLoading(true);
+    setCouponResult(null);
+
+    try {
+      const res = await fetch(`${API_URL}/api/v1/public/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim(), cartTotal: subtotal }),
+      });
+      const json = (await res.json()) as { data: CouponResult };
+      setCouponResult(json.data);
+      if (json.data.valid) {
+        setAppliedCode(couponCode.trim().toUpperCase());
+      }
+    } catch {
+      setCouponResult({ valid: false, discount: 0, message: 'Failed to validate coupon' });
+    } finally {
+      setCouponLoading(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setCouponResult(null);
+    setAppliedCode(null);
+    setCouponCode('');
+  }
+
+  const discount = couponResult?.valid ? couponResult.discount : 0;
+  const totalAfterDiscount = subtotal - discount;
 
   if (items.length === 0) {
     return (
@@ -100,6 +146,60 @@ export default function CartPage() {
                 <span className="text-gray-500">{t('cart.subtotal')}</span>
                 <span className="font-medium">{formatPrice(subtotal)}</span>
               </div>
+
+              {/* Coupon Input */}
+              <div className="border-t pt-3">
+                {appliedCode ? (
+                  <div className="flex items-center justify-between rounded-md bg-green-50 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-green-600" />
+                      <span className="text-sm font-medium text-green-800">{appliedCode}</span>
+                      <span className="text-sm text-green-600">−{formatPrice(discount)}</span>
+                    </div>
+                    <button
+                      onClick={handleRemoveCoupon}
+                      className="text-green-600 hover:text-green-800"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleValidateCoupon();
+                          }
+                        }}
+                        className="h-9 flex-1 rounded-md border px-3 text-sm uppercase placeholder:normal-case"
+                        placeholder="Coupon code"
+                      />
+                      <button
+                        onClick={handleValidateCoupon}
+                        disabled={couponLoading || !couponCode.trim()}
+                        className="inline-flex h-9 items-center rounded-md bg-gray-900 px-3 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                      </button>
+                    </div>
+                    {couponResult && !couponResult.valid && (
+                      <p className="mt-1 text-xs text-red-500">{couponResult.message}</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {discount > 0 && (
+                <div className="flex justify-between text-sm text-green-600">
+                  <span>Discount</span>
+                  <span>−{formatPrice(discount)}</span>
+                </div>
+              )}
+
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{t('cart.shipping')}</span>
                 <span className="text-gray-500">{t('cart.shippingCalculated')}</span>
@@ -107,13 +207,15 @@ export default function CartPage() {
               <div className="border-t pt-3">
                 <div className="flex justify-between">
                   <span className="text-base font-semibold">{t('cart.total')}</span>
-                  <span className="text-base font-bold">{formatPrice(subtotal)}</span>
+                  <span className="text-base font-bold">{formatPrice(totalAfterDiscount)}</span>
                 </div>
               </div>
             </div>
 
             <Link
-              href="/checkout"
+              href={
+                appliedCode ? `/checkout?coupon=${encodeURIComponent(appliedCode)}` : '/checkout'
+              }
               className="mt-6 block w-full rounded-lg bg-gray-900 py-3 text-center text-sm font-medium text-white transition hover:bg-gray-800"
             >
               {t('cart.checkout')}
