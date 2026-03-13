@@ -5,87 +5,158 @@
  |_|\___/_|  |_\_\ \___\__,_|_|  \__|
 ```
 
-**The AI-native e-commerce platform. Open source. Plugin-first. Built for builders.**
+**Open source e-commerce. AI-native. Plugin-first. TypeScript end-to-end.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-green.svg)](https://nodejs.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
-[![Discord](https://img.shields.io/badge/Discord-Join%20us-7289da.svg)](https://discord.gg/forkcart)
 
 ---
 
 ## What is ForkCart?
 
-ForkCart is a modular, open source e-commerce platform built from the ground up with AI capabilities and a plugin-first architecture. No vendor lock-in. Swap out payments, shipping, or AI providers without touching your core code. Own your store, own your data.
+ForkCart is a modular, self-hosted e-commerce platform with built-in AI capabilities and an interface-based plugin system. Products, orders, payments, shipping, emails, and AI integrations all work out of the box. Everything is swappable — no vendor lock-in, no monthly fees.
 
-## ✨ Features
+## Features
 
-- 🔌 **Plugin System** — Payments, shipping, AI — everything is swappable. Write a plugin in 50 lines.
-- 🤖 **AI-native** — Product descriptions, smart search, chatbot, auto-categorization — AI is a first-class citizen, not a bolt-on.
-- 🛒 **Full Shop** — Products, categories, cart, checkout, orders — the whole deal.
-- 📊 **Admin Panel** — Dashboard, product management, customers, orders, plugin settings — all in one place.
-- 🖼️ **Media Management** — Image uploads, product galleries, drag & drop.
-- 🔐 **Auth** — JWT-based authentication with role-based access control.
-- 💳 **Payment Plugins** — Stripe included. PayPal and Klarna coming soon.
-- 📦 **Modern Stack** — Next.js 15, Hono, Drizzle ORM, PostgreSQL, TypeScript end-to-end.
+**Products and Catalog**
 
-## 🚀 Quick Start
+- Products with variants, categories, image galleries, and drag-and-drop media management
+- Full-text search with search analytics and suggestions
+- SEO metadata per product and category (meta title, description, Open Graph)
+- Multi-language support with configurable default language — product content stored per locale
+
+**Orders and Checkout**
+
+- Cart with guest and authenticated checkout
+- Coupon/discount codes — percentage, fixed amount, or free shipping with usage limits, expiry dates, and minimum order amounts
+- Order management with status tracking (pending, processing, shipped, delivered, cancelled)
+- Customer accounts with order history, address book, and profile management
+
+**Payments**
+
+- Plugin-based payment providers — Stripe included as reference implementation
+- Payment processing with webhook support for async confirmation
+- Provider settings managed from the admin panel at runtime
+
+**Email**
+
+- Transactional email system with provider registry (Mailgun, SMTP, or console logger for development)
+- Event-driven: order confirmation, shipping notification, delivery notification, welcome email, password reset
+- Email templates with dynamic store name
+- Email log with send history viewable in admin
+
+**Tax**
+
+- Tax zones and rules with support for percentage and fixed-rate taxes
+- EU VAT validation
+- Tax settings configurable per zone and product category
+
+**Shipping**
+
+- Shipping methods and zones
+- Configurable rates per zone, weight, or order value
+
+**AI (optional)**
+
+- AI-powered product description generation
+- Smart search with natural language queries
+- Storefront chatbot
+- Auto-generated SEO metadata
+- Provider-agnostic — works with OpenRouter, OpenAI, Anthropic, or any compatible API
+
+**Internationalization**
+
+- Multi-language admin and storefront
+- Dynamic default language (stored in database, not hardcoded)
+- Product translations with fallback logic — empty strings are preserved, only null values fall back
+- Language management in admin with default language selection
+
+**Admin Panel**
+
+- Dashboard with order and revenue overview
+- Product, category, customer, and order management
+- Plugin activation and configuration
+- Email logs and test sending
+- Coupon management
+- Tax zone and rule configuration
+- Shipping method setup
+- Search analytics
+- SEO settings
+- AI provider configuration
+- Chatbot settings
+- Translation and language management
+- Cache management
+
+**Storefront**
+
+- Server-rendered product pages and category listings
+- Product search with filters
+- Shopping cart with coupon code input
+- Multi-step checkout
+- Customer account area (orders, addresses, profile)
+- AI chatbot widget
+- Locale-aware content rendering
+
+## Tech Stack
+
+| Layer      | Technology                         |
+| ---------- | ---------------------------------- |
+| API        | Hono (Node.js)                     |
+| Admin      | Next.js 15, TanStack Query         |
+| Storefront | Next.js 15                         |
+| Database   | PostgreSQL, Drizzle ORM            |
+| Language   | TypeScript (strict, end-to-end)    |
+| Monorepo   | pnpm workspaces, Turborepo         |
+| Plugins    | Stripe, Mailgun, SMTP (extensible) |
+
+## Quick Start
 
 ```bash
-# 1. Clone
 git clone https://github.com/forkcart/forkcart.git
 cd forkcart
-
-# 2. Install dependencies
 pnpm install
-
-# 3. Configure environment
-cp .env.example .env
-# Edit .env — at minimum set DATABASE_URL
-
-# 4. Run migrations
+cp .env.example .env   # configure DATABASE_URL at minimum
 pnpm db:migrate
-
-# 5. Start development
 pnpm dev
 ```
 
-The storefront runs on `http://localhost:3000`, admin on `http://localhost:3001`, and the API on `http://localhost:4000`.
+Default ports: storefront on `3000`, admin on `3001`, API on `4000`.
 
-## 🏗️ Architecture
-
-ForkCart is a monorepo powered by pnpm workspaces and Turborepo:
+## Project Structure
 
 ```
 forkcart/
-├── packages/
-│   ├── api/            # Hono REST API (Port 4000)
-│   ├── admin/          # Next.js 15 Admin Panel (Port 3001)
-│   ├── storefront/     # Next.js 15 Storefront (Port 3000)
-│   ├── database/       # Drizzle ORM + PostgreSQL schemas
-│   ├── core/           # Business logic — services, repositories, events
-│   ├── shared/         # Types, constants, utils shared across packages
-│   ├── ai/             # AI providers (OpenAI, Anthropic, Ollama)
-│   └── plugins/
-│       └── stripe/     # Stripe payment plugin (reference implementation)
+  packages/
+    api/             Hono REST API
+    admin/           Next.js admin panel
+    storefront/      Next.js storefront
+    database/        Drizzle ORM schemas and migrations
+    core/            Business logic — services, repositories, event bus
+    shared/          Shared types, constants, utilities
+    ai/              AI provider registry and interfaces
+    i18n/            Internationalization runtime
+    plugins/
+      stripe/        Stripe payment plugin
+      mailgun/       Mailgun email plugin
+      smtp/          SMTP email plugin
 ```
 
 **Request flow:**
 
 ```
-Client → Hono Route → Service → Repository → Drizzle → PostgreSQL
-                         ↓
-                      EventBus → Plugin handlers
+Client -> Hono Route -> Service -> Repository -> Drizzle -> PostgreSQL
+                           |
+                        EventBus -> Plugin handlers (payments, emails, etc.)
 ```
 
-Clean architecture: routes don't touch the database, services don't know about HTTP, and plugins react to domain events.
+Routes handle HTTP. Services handle business logic. Repositories handle data access. Plugins react to domain events. Each layer only knows about the one below it.
 
-## 🔌 Plugin System
+## Plugin System
 
-ForkCart's plugin system is interface-based. Every payment provider, shipping method, or AI integration implements a well-defined TypeScript interface. The `PluginLoader` handles registration, activation, and settings — all managed from the admin panel.
+Plugins implement a TypeScript interface and register through the `PluginLoader`. They are activated, deactivated, and configured at runtime through the admin panel. Settings are stored in the database.
 
 ```typescript
-// That's all it takes to define a plugin
 export const myPlugin: PluginDefinition = {
   name: 'my-payment',
   version: '1.0.0',
@@ -96,51 +167,27 @@ export const myPlugin: PluginDefinition = {
 };
 ```
 
-Plugins are activated/deactivated at runtime. Settings are stored in the database and configurable through the admin UI.
+Currently supported plugin types: `payment` and `notification` (email).
 
-👉 **[Full Plugin Development Guide →](docs/plugins.md)**
+## Database
 
-## 🆚 Why ForkCart?
+PostgreSQL with Drizzle ORM. Migrations are numbered SQL files in `packages/database/src/migrations/`. Current schema includes tables for products, product translations, categories, orders, customers, carts, payments, coupons, plugins, plugin settings, email logs, shipping, tax zones, tax rules, search analytics, SEO metadata, AI settings, chatbot sessions, users, media, and languages.
 
-|                    | ForkCart           | Shopify        | Medusa     | Saleor    |
-| ------------------ | ------------------ | -------------- | ---------- | --------- |
-| **Open Source**    | ✅ MIT             | ❌             | ✅         | ✅        |
-| **AI-native**      | ✅ Built-in        | 💰 Apps        | ❌ DIY     | ❌ DIY    |
-| **Plugin System**  | ✅ Interface-based | 🔒 App Store   | 🟡 Modules | 🟡 Apps   |
-| **Self-hosted**    | ✅                 | ❌             | ✅         | ✅        |
-| **Vendor Lock-in** | ❌ None            | 🔒 Full        | 🟡 Some    | 🟡 Some   |
-| **TypeScript**     | ✅ End-to-end      | ❌ Ruby/Liquid | ✅         | ✅ Python |
+## Comparison
 
-## 📸 Screenshots
+|                | ForkCart        | Shopify     | Medusa     | Saleor  |
+| -------------- | --------------- | ----------- | ---------- | ------- |
+| Open Source    | MIT             | No          | MIT        | BSD     |
+| AI built-in    | Yes             | Paid apps   | No         | No      |
+| Plugin system  | Interface-based | App Store   | Modules    | Apps    |
+| Self-hosted    | Yes             | No          | Yes        | Yes     |
+| Vendor lock-in | None            | Full        | Partial    | Partial |
+| Language       | TypeScript      | Ruby/Liquid | TypeScript | Python  |
 
-<!-- TODO: Add screenshots -->
-<p align="center">
-  <em>Admin Panel — coming soon</em>
-</p>
+## Contributing
 
-<p align="center">
-  <em>Storefront — coming soon</em>
-</p>
+Contributions welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-## 🤝 Contributing
+## License
 
-We'd love your help! Whether it's fixing a bug, adding a feature, or improving docs — every contribution matters.
-
-👉 **[Read the Contributing Guide →](CONTRIBUTING.md)**
-
-## 📖 Documentation
-
-- [Plugin Development Guide](docs/plugins.md)
-- [Self-Hosting Guide](docs/self-hosting.md)
-- [Architecture Overview](ARCHITECTURE.md)
-- [Feature Checklist](FEATURES.md)
-
-## 📄 License
-
-[MIT](LICENSE) © 2026 ForkCart Contributors
-
----
-
-<p align="center">
-  Built with 🦞 by the ForkCart community
-</p>
+[MIT](LICENSE)
