@@ -79,7 +79,7 @@ export async function createApp(db: Database) {
 
   // Global middleware
   app.use('*', honoLogger());
-  app.use('*', secureHeaders());
+  app.use('*', secureHeaders({ crossOriginResourcePolicy: 'cross-origin' }));
   app.use(
     '*',
     cors({
