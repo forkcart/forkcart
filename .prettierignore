@@ -4,3 +4,4 @@ dist
 .turbo
 coverage
 pnpm-lock.yaml
+packages/i18n/src/_locales.generated.ts
