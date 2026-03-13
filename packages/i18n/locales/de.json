@@ -50,7 +50,10 @@
     "categories": "Kategorien",
     "tags": "Schlagwörter",
     "share": "Teilen",
-    "details": "Produktdetails"
+    "details": "Produktdetails",
+    "added": "Zum Warenkorb hinzugefügt",
+    "notFound": "Produkt nicht gefunden",
+    "notFoundSubtext": "Dieses Produkt existiert nicht oder wurde entfernt"
   },
   "cart": {
     "title": "Warenkorb",
@@ -94,18 +97,68 @@
     "orderNumber": "Bestellung #{number}",
     "backToShop": "Zurück zum Shop",
     "secureCheckout": "Sichere Kasse",
-    "step": "Schritt {current} von {total}"
+    "step": "Schritt {current} von {total}",
+    "backToAddress": "Zurück zur Adresse",
+    "backToHome": "Zurück zur Startseite",
+    "backToShipping": "Zurück zum Versand",
+    "browseProducts": "Produkte durchstöbern",
+    "confirmationEmail": "Eine Bestätigung wurde an {email} gesendet",
+    "confirmationEmailShort": "Bestätigung per E-Mail gesendet",
+    "continueToPayment": "Weiter zur Zahlung",
+    "continueToShipping": "Weiter zum Versand",
+    "estimatedDays": "{min}-{max} Werktage",
+    "free": "Kostenlos",
+    "freeAbove": "Kostenlos ab {amount}",
+    "noShippingMethods": "Keine Versandarten verfügbar",
+    "nothingToCheckout": "Dein Warenkorb ist leer",
+    "orderConfirmed": "Bestellung bestätigt",
+    "paymentFailed": "Zahlung fehlgeschlagen",
+    "paymentSecure": "Sichere Zahlung mit SSL-Verschlüsselung",
+    "paymentSuccessful": "Zahlung erfolgreich",
+    "payNow": "Jetzt bezahlen",
+    "prepayment": {
+      "creating": "Bestellung wird erstellt...",
+      "description": "Bitte überweise den Betrag nach Erhalt der Bestellbestätigung",
+      "placeOrder": "Kostenpflichtig bestellen",
+      "title": "Vorkasse"
+    },
+    "qty": "Stk."
   },
   "account": {
     "title": "Mein Konto",
     "orders": "Meine Bestellungen",
-    "addresses": "Meine Adressen",
+    "addresses": {
+      "add": "Neue Adresse hinzufügen",
+      "deleteConfirm": "Adresse wirklich löschen?",
+      "edit": "Adresse bearbeiten",
+      "new": "Neue Adresse",
+      "noAddresses": "Keine Adressen gespeichert",
+      "saveFailed": "Adresse konnte nicht gespeichert werden",
+      "setDefault": "Als Standard setzen",
+      "update": "Adresse aktualisieren"
+    },
     "settings": "Einstellungen",
     "noOrders": "Du hast noch keine Bestellungen aufgegeben",
     "orderStatus": "Bestellstatus",
     "viewOrder": "Bestellung ansehen",
     "personalInfo": "Persönliche Daten",
-    "changePassword": "Passwort ändern"
+    "changePassword": "Passwort ändern",
+    "backToAccount": "Zurück zum Konto",
+    "manageAddresses": "Adressen verwalten",
+    "ordersSpent": "Ausgegeben",
+    "profile": {
+      "confirmNewPassword": "Neues Passwort bestätigen",
+      "currentPassword": "Aktuelles Passwort",
+      "newPassword": "Neues Passwort",
+      "passwordChanged": "Passwort erfolgreich geändert",
+      "passwordFailed": "Passwort konnte nicht geändert werden",
+      "saveChanges": "Änderungen speichern",
+      "updated": "Profil aktualisiert",
+      "updateFailed": "Profil konnte nicht aktualisiert werden"
+    },
+    "signOut": "Abmelden",
+    "startShopping": "Jetzt einkaufen",
+    "welcomeBack": "Willkommen zurück"
   },
   "auth": {
     "loginTitle": "Anmelden",
@@ -120,7 +173,9 @@
     "noAccount": "Noch kein Konto?",
     "hasAccount": "Bereits ein Konto?",
     "invalidCredentials": "Ungültige E-Mail oder Passwort",
-    "passwordMismatch": "Passwörter stimmen nicht überein"
+    "passwordMismatch": "Passwörter stimmen nicht überein",
+    "passwordMinLength": "Mindestens 8 Zeichen",
+    "registrationFailed": "Registrierung fehlgeschlagen"
   },
   "chat": {
     "placeholder": "Nachricht eingeben...",
@@ -161,7 +216,28 @@
     "title": "Suchergebnisse",
     "placeholder": "Produkte suchen...",
     "noResults": "Keine Produkte gefunden für \"{query}\"",
-    "resultsCount": "{count} Ergebnisse für \"{query}\""
+    "resultsCount": "{count} Ergebnisse für \"{query}\"",
+    "aiEnhanced": "KI-unterstützte Suche",
+    "didYouMean": "Meintest du",
+    "filters": {
+      "allCategories": "Alle Kategorien",
+      "apply": "Filter anwenden",
+      "category": "Kategorie",
+      "max": "Max",
+      "min": "Min",
+      "priceRange": "Preisbereich",
+      "sortBy": "Sortieren nach"
+    },
+    "popularSearches": "Beliebte Suchen",
+    "sort": {
+      "nameAZ": "Name (A-Z)",
+      "nameZA": "Name (Z-A)",
+      "newest": "Neueste",
+      "priceHighLow": "Preis (hoch-niedrig)",
+      "priceLowHigh": "Preis (niedrig-hoch)",
+      "relevance": "Relevanz"
+    },
+    "typeToSearch": "Suchbegriff eingeben..."
   },
   "footer": {
     "shop": "Shop",
@@ -173,7 +249,11 @@
     "privacy": "Datenschutz",
     "terms": "AGB",
     "imprint": "Impressum",
-    "copyright": "© {year} {shopName}. Alle Rechte vorbehalten."
+    "copyright": "© {year} {shopName}. Alle Rechte vorbehalten.",
+    "emailPlaceholder": "E-Mail-Adresse",
+    "newsletter": "Newsletter",
+    "newsletterSubtext": "Erhalte Updates zu neuen Produkten und Angeboten",
+    "subscribe": "Abonnieren"
   },
   "errors": {
     "notFound": "Seite nicht gefunden",
@@ -182,5 +262,34 @@
     "unauthorized": "Bitte melde dich an, um fortzufahren",
     "forbidden": "Du hast keine Berechtigung für diesen Bereich",
     "validation": "Bitte überprüfe deine Eingaben"
+  },
+  "category": {
+    "noProducts": "Keine Produkte in dieser Kategorie",
+    "productCount": "{count} Produkte",
+    "sort": {
+      "label": "Sortieren",
+      "nameAZ": "Name (A-Z)",
+      "newest": "Neueste zuerst",
+      "priceHighLow": "Preis (hoch-niedrig)",
+      "priceLowHigh": "Preis (niedrig-hoch)"
+    }
+  },
+  "home": {
+    "browse": "Alle Produkte",
+    "cta": {
+      "github": "GitHub",
+      "subtitle": "Schau dir den Quellcode an",
+      "title": "Open Source"
+    },
+    "featuredProducts": "Beliebte Produkte",
+    "hero": {
+      "shopNow": "Jetzt einkaufen",
+      "subtitle": "Entdecke unser Sortiment",
+      "title": "Willkommen bei",
+      "titleAccent": "ForkCart"
+    },
+    "noProducts": "Noch keine Produkte vorhanden",
+    "shopByCategory": "Nach Kategorie shoppen",
+    "viewAll": "Alle anzeigen"
   }
 }
