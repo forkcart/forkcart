@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatPrice } from '@forkcart/shared';
-import { useTranslation } from '@forkcart/i18n/react';
+import { useTranslation, useLocale } from '@forkcart/i18n/react';
 import { AddToCartButton } from './add-to-cart-button';
+
+const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
 interface ProductImage {
   id: string;
@@ -37,10 +39,31 @@ export function ProductNotFound() {
   );
 }
 
-export function ProductContent({ product }: { product: ProductData }) {
+export function ProductContent({ product: initialProduct }: { product: ProductData }) {
   const { t } = useTranslation();
+  const locale = useLocale();
+  const [product, setProduct] = useState(initialProduct);
   const [selectedImage, setSelectedImage] = useState(0);
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
+
+  // Fetch localized product content when locale changes
+  useEffect(() => {
+    if (locale === 'en') {
+      setProduct(initialProduct);
+      return;
+    }
+    fetch(`${API_URL}/api/v1/products/${initialProduct.slug}?locale=${locale}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ data: ProductData }>) : null))
+      .then((data) => {
+        if (data?.data)
+          setProduct({
+            ...initialProduct,
+            ...data.data,
+            images: data.data.images ?? initialProduct.images,
+          });
+      })
+      .catch(() => {});
+  }, [locale, initialProduct.slug]); // eslint-disable-line react-hooks/exhaustive-deps
   const inStock = product.inventoryQuantity > 0 || !product.trackInventory;
   const images = product.images?.sort((a, b) => a.sortOrder - b.sortOrder) ?? [];
 
