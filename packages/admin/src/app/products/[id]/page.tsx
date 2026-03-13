@@ -7,6 +7,7 @@ import { apiClient } from '@/lib/api-client';
 import type { Product } from '@forkcart/shared';
 import { ProductForm } from '@/components/products/product-form';
 import { ProductImages } from '@/components/products/product-images';
+import { ProductTranslations } from '@/components/products/product-translations';
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -73,6 +74,9 @@ export default function ProductDetailPage() {
 
         {/* Product Images — only show for existing products */}
         {!isNew && <ProductImages productId={id} />}
+
+        {/* Product Translations — only show for existing products */}
+        {!isNew && <ProductTranslations productId={id} product={data?.data} />}
       </div>
     </div>
   );

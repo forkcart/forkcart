@@ -15,3 +15,4 @@ export * from './ai-settings';
 export * from './chatbot';
 export * from './search';
 export * from './translations';
+export * from './product-translations';
