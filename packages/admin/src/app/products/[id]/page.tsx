@@ -9,12 +9,28 @@ import { ProductForm } from '@/components/products/product-form';
 import { ProductImages } from '@/components/products/product-images';
 import { ProductTranslations } from '@/components/products/product-translations';
 
+interface LanguageInfo {
+  locale: string;
+  name: string;
+  nativeName: string;
+  isDefault?: boolean;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
   const id = params.id as string;
   const isNew = id === 'new';
+
+  const { data: languagesData } = useQuery({
+    queryKey: ['languages'],
+    queryFn: () => apiClient<{ data: LanguageInfo[] }>('/translations'),
+  });
+  const defaultLang =
+    languagesData?.data?.find((l) => l.isDefault) ??
+    languagesData?.data?.find((l) => l.locale === 'en');
+  const defaultLangLabel = defaultLang?.nativeName ?? defaultLang?.name ?? 'English';
 
   const { data, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -51,8 +67,13 @@ export default function ProductDetailPage() {
         <div>
           <h1 className="text-3xl font-bold">{isNew ? 'New Product' : 'Edit Product'}</h1>
           <p className="mt-1 text-muted-foreground">
-            {isNew ? 'Create a new product' : `Editing: ${data?.data.name}`}
+            {isNew ? `Content in ${defaultLangLabel}` : `Editing: ${data?.data.name}`}
           </p>
+          {!isNew && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Content in {defaultLangLabel} — other languages under Translations below
+            </p>
+          )}
         </div>
         {!isNew && (
           <button

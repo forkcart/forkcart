@@ -8,6 +8,7 @@ interface Language {
   locale: string;
   name: string;
   nativeName: string;
+  isDefault?: boolean;
 }
 
 interface TranslationData {
@@ -55,7 +56,12 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
     queryFn: () => apiClient<{ data: TranslationData[] }>(`/products/${productId}/translations`),
   });
 
-  const languages = (languagesData?.data ?? []).filter((l) => l.locale !== 'en');
+  const allLanguages = languagesData?.data ?? [];
+  const defaultLang =
+    allLanguages.find((l) => l.isDefault) ?? allLanguages.find((l) => l.locale === 'en');
+  const defaultLocale = defaultLang?.locale ?? 'en';
+  const defaultName = defaultLang?.nativeName ?? defaultLang?.name ?? 'English';
+  const languages = allLanguages.filter((l) => l.locale !== defaultLocale);
 
   // Set first locale as active by default
   useEffect(() => {
@@ -193,7 +199,9 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Original (English)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Original ({defaultName})
+              </label>
               <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {product?.name ?? '—'}
               </div>
@@ -213,7 +221,9 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Original (English)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Original ({defaultName})
+              </label>
               <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {product?.shortDescription ?? '—'}
               </div>
@@ -233,7 +243,9 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Original (English)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Original ({defaultName})
+              </label>
               <div className="max-h-[140px] overflow-auto rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {product?.description ?? '—'}
               </div>
@@ -253,7 +265,9 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Original (English)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Original ({defaultName})
+              </label>
               <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {product?.metaTitle ?? '—'}
               </div>
@@ -273,7 +287,9 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-muted-foreground">Original (English)</label>
+              <label className="mb-1 block text-xs text-muted-foreground">
+                Original ({defaultName})
+              </label>
               <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {product?.metaDescription ?? '—'}
               </div>

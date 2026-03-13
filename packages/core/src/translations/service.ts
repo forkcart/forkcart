@@ -152,9 +152,16 @@ export class TranslationService {
   }
 
   async deleteLanguage(locale: string): Promise<void> {
-    if (locale === 'en') throw new Error('Cannot delete the default English language');
+    const lang = await this.repo.getLanguage(locale);
+    if (lang?.isDefault) throw new Error('Cannot delete the default language');
     await this.repo.deleteLanguage(locale);
     logger.info({ locale }, 'Language deleted');
+  }
+
+  /** Get the default language locale (falls back to 'en') */
+  async getDefaultLocale(): Promise<string> {
+    const lang = await this.repo.getDefaultLanguage();
+    return lang?.locale ?? 'en';
   }
 
   /** Set a language as the store default (clears isDefault on all others) */
