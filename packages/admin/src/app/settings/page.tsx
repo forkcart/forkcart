@@ -67,6 +67,12 @@ const SETTINGS_SECTIONS = [
     description: 'View customer chat conversations',
     icon: MessageCircle,
   },
+  {
+    href: '/settings/translations',
+    label: 'Translations',
+    description: 'Manage languages and translate your store',
+    icon: Globe,
+  },
 ];
 
 export default function SettingsPage() {

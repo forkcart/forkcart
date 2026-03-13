@@ -29,9 +29,7 @@ export default function CartPage() {
   return (
     <div className="container-page py-12">
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('cart.title')}</h1>
-      <p className="mt-1 text-sm text-gray-500">
-        {t('cart.itemCount', { count: items.length })}
-      </p>
+      <p className="mt-1 text-sm text-gray-500">{t('cart.itemCount', { count: items.length })}</p>
 
       <div className="mt-8 grid gap-12 lg:grid-cols-3">
         {/* Items */}
