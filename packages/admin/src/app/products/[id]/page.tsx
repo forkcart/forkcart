@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useRouter } from 'next/navigation';
 
@@ -16,6 +17,15 @@ interface LanguageInfo {
   isDefault?: boolean;
 }
 
+interface TranslationData {
+  locale?: string;
+  name: string | null;
+  description: string | null;
+  shortDescription: string | null;
+  metaTitle: string | null;
+  metaDescription: string | null;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -30,6 +40,7 @@ export default function ProductDetailPage() {
   const defaultLang =
     languagesData?.data?.find((l) => l.isDefault) ??
     languagesData?.data?.find((l) => l.locale === 'en');
+  const defaultLocale = defaultLang?.locale ?? 'en';
   const defaultLangLabel = defaultLang?.nativeName ?? defaultLang?.name ?? 'English';
 
   const { data, isLoading } = useQuery({
@@ -38,13 +49,60 @@ export default function ProductDetailPage() {
     enabled: !isNew,
   });
 
+  // Fetch the default locale's translation to overlay on the product form
+  const { data: defaultTranslation } = useQuery({
+    queryKey: ['product-translation', id, defaultLocale],
+    queryFn: () =>
+      apiClient<{ data: TranslationData }>(`/products/${id}/translations/${defaultLocale}`).catch(
+        () => null,
+      ),
+    enabled: !isNew && !!data,
+  });
+
+  // Merge: base product + default locale translation overlay for content fields
+  const formData = useMemo(() => {
+    if (!data?.data) return undefined;
+    const base = data.data;
+    const tr = defaultTranslation?.data;
+    if (!tr) return base;
+    return {
+      ...base,
+      name: tr.name || base.name,
+      description: tr.description || base.description,
+      shortDescription: tr.shortDescription || base.shortDescription,
+      metaTitle:
+        (tr.metaTitle as string) || ((base as Record<string, unknown>).metaTitle as string) || '',
+      metaDescription:
+        (tr.metaDescription as string) ||
+        ((base as Record<string, unknown>).metaDescription as string) ||
+        '',
+    } as Product;
+  }, [data, defaultTranslation]);
+
   const saveMutation = useMutation({
-    mutationFn: (values: Record<string, unknown>) =>
-      isNew
-        ? apiClient('/products', { method: 'POST', body: JSON.stringify(values) })
-        : apiClient(`/products/${id}`, { method: 'PUT', body: JSON.stringify(values) }),
+    mutationFn: async (values: Record<string, unknown>) => {
+      if (isNew) {
+        return apiClient('/products', { method: 'POST', body: JSON.stringify(values) });
+      }
+      // Save structural fields to product, content fields to default locale translation
+      const contentFields = {
+        name: values.name,
+        description: values.description,
+        shortDescription: values.shortDescription,
+        metaTitle: values.metaTitle,
+        metaDescription: values.metaDescription,
+      };
+      await Promise.all([
+        apiClient(`/products/${id}`, { method: 'PUT', body: JSON.stringify(values) }),
+        apiClient(`/products/${id}/translations/${defaultLocale}`, {
+          method: 'PUT',
+          body: JSON.stringify(contentFields),
+        }),
+      ]);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['product-translation', id, defaultLocale] });
       router.push('/products');
     },
   });
@@ -87,7 +145,7 @@ export default function ProductDetailPage() {
 
       <div className="mt-8 space-y-8">
         <ProductForm
-          initialData={isNew ? undefined : data?.data}
+          initialData={isNew ? undefined : formData}
           productId={isNew ? undefined : id}
           onSubmit={(values) => saveMutation.mutate(values)}
           isSubmitting={saveMutation.isPending}
