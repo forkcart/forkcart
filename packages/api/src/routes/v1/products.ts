@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import type { ProductService } from '@forkcart/core';
+import type { ProductService, MediaService } from '@forkcart/core';
 import {
   CreateProductSchema,
   UpdateProductSchema,
@@ -9,7 +9,7 @@ import {
 } from '@forkcart/shared';
 
 /** Product CRUD routes */
-export function createProductRoutes(productService: ProductService) {
+export function createProductRoutes(productService: ProductService, mediaService?: MediaService) {
   const router = new Hono();
 
   /** List products with filtering and pagination */
@@ -19,6 +19,24 @@ export function createProductRoutes(productService: ProductService) {
     const pagination = PaginationSchema.parse(query);
 
     const result = await productService.list(filter, pagination);
+
+    // Attach images to each product
+    if (mediaService && result.data?.length) {
+      const productsWithImages = await Promise.all(
+        result.data.map(async (p: { id: string }) => {
+          const media = await mediaService.getByEntity('product', p.id);
+          const images = media.map((m) => ({
+            id: m.id,
+            url: m.url,
+            alt: m.alt,
+            sortOrder: m.sortOrder,
+          }));
+          return { ...p, images };
+        }),
+      );
+      return c.json({ ...result, data: productsWithImages });
+    }
+
     return c.json(result);
   });
 
@@ -31,7 +49,14 @@ export function createProductRoutes(productService: ProductService) {
 
     const product = isUuid ? await productService.getById(id) : await productService.getBySlug(id);
 
-    return c.json({ data: product });
+    // Attach images if media service available
+    let images: Array<{ id: string; url: string; alt: string | null; sortOrder: number }> = [];
+    if (mediaService) {
+      const media = await mediaService.getByEntity('product', product.id);
+      images = media.map((m) => ({ id: m.id, url: m.url, alt: m.alt, sortOrder: m.sortOrder }));
+    }
+
+    return c.json({ data: { ...product, images } });
   });
 
   /** Create product */

@@ -1,8 +1,16 @@
 'use client';
 
+import { useState } from 'react';
 import { formatPrice } from '@forkcart/shared';
 import { useTranslation } from '@forkcart/i18n/react';
 import { AddToCartButton } from './add-to-cart-button';
+
+interface ProductImage {
+  id: string;
+  url: string;
+  alt: string | null;
+  sortOrder: number;
+}
 
 interface ProductData {
   id: string;
@@ -16,6 +24,7 @@ interface ProductData {
   sku?: string | null;
   shortDescription?: string | null;
   description?: string | null;
+  images?: ProductImage[];
 }
 
 export function ProductNotFound() {
@@ -30,24 +39,57 @@ export function ProductNotFound() {
 
 export function ProductContent({ product }: { product: ProductData }) {
   const { t } = useTranslation();
+  const [selectedImage, setSelectedImage] = useState(0);
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
   const inStock = product.inventoryQuantity > 0 || !product.trackInventory;
+  const images = product.images?.sort((a, b) => a.sortOrder - b.sortOrder) ?? [];
 
   return (
     <div className="container-page py-12">
       <div className="grid gap-12 lg:grid-cols-2">
-        {/* Image */}
-        <div className="aspect-square overflow-hidden rounded-2xl bg-gray-100">
-          <div className="flex h-full items-center justify-center text-gray-300">
-            <svg className="h-32 w-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={0.5}
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+        {/* Images */}
+        <div>
+          <div className="aspect-square overflow-hidden rounded-2xl bg-gray-100">
+            {images.length > 0 ? (
+              <img
+                src={images[selectedImage]?.url}
+                alt={images[selectedImage]?.alt ?? product.name}
+                className="h-full w-full object-cover"
               />
-            </svg>
+            ) : (
+              <div className="flex h-full items-center justify-center text-gray-300">
+                <svg className="h-32 w-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={0.5}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            )}
           </div>
+          {images.length > 1 && (
+            <div className="mt-4 flex gap-3">
+              {images.map((img, idx) => (
+                <button
+                  key={img.id}
+                  onClick={() => setSelectedImage(idx)}
+                  className={`h-20 w-20 overflow-hidden rounded-lg border-2 transition ${
+                    idx === selectedImage
+                      ? 'border-gray-900'
+                      : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <img
+                    src={img.url}
+                    alt={img.alt ?? `${product.name} ${idx + 1}`}
+                    className="h-full w-full object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
