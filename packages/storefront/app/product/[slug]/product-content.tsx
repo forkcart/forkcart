@@ -149,9 +149,10 @@ export function ProductContent({ product }: { product: ProductData }) {
               <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-900">
                 {t('product.description')}
               </h2>
-              <div className="mt-3 text-sm leading-relaxed text-gray-600 whitespace-pre-line">
-                {product.description}
-              </div>
+              <div
+                className="mt-3 text-sm leading-relaxed text-gray-600 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:text-accent [&_a]:underline"
+                dangerouslySetInnerHTML={{ __html: product.description }}
+              />
             </div>
           )}
         </div>
