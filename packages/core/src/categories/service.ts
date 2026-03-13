@@ -43,6 +43,11 @@ export class CategoryService {
     return this.repo.findAll(activeOnly);
   }
 
+  /** Get product count per category */
+  async getProductCounts(): Promise<Map<string, number>> {
+    return this.repo.getProductCounts();
+  }
+
   /** Get root categories (top-level, no parent) */
   async listRoots(activeOnly = false) {
     return this.repo.findRoots(activeOnly);

@@ -90,6 +90,72 @@ export async function getPopularSearches(): Promise<{
   return fetchApi('/search/popular');
 }
 
+/** Instant search result for overlay */
+export interface InstantSearchItem {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice: number | null;
+  currency: string;
+  imageUrl: string | null;
+  hasDiscount: boolean;
+}
+
+/** Trending product */
+export interface TrendingProductItem {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice: number | null;
+  currency: string;
+  inventoryQuantity: number;
+  imageUrl: string | null;
+  trendScore: number;
+}
+
+/** Public search API — instant search for overlay */
+export async function instantSearch(query: string): Promise<{ data: InstantSearchItem[] }> {
+  const res = await fetch(
+    `${API_URL}/api/v1/public/search/instant?q=${encodeURIComponent(query)}`,
+    { next: { revalidate: 0 } },
+  );
+  if (!res.ok) return { data: [] };
+  return res.json() as Promise<{ data: InstantSearchItem[] }>;
+}
+
+/** Public search API — popular search terms */
+export async function getPublicPopularSearches(): Promise<{
+  data: Array<{ query: string; searchCount: number }>;
+}> {
+  const res = await fetch(`${API_URL}/api/v1/public/search/popular`, { next: { revalidate: 60 } });
+  if (!res.ok) return { data: [] };
+  return res.json() as Promise<{ data: Array<{ query: string; searchCount: number }> }>;
+}
+
+/** Public search API — trending products */
+export async function getTrendingProducts(): Promise<{ data: TrendingProductItem[] }> {
+  const res = await fetch(`${API_URL}/api/v1/public/search/trending`, {
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) return { data: [] };
+  return res.json() as Promise<{ data: TrendingProductItem[] }>;
+}
+
+/** Public search API — track impressions */
+export async function trackImpression(params: {
+  productId: string;
+  eventType: 'view' | 'click' | 'cart_add';
+  sessionId?: string;
+}): Promise<void> {
+  fetch(`${API_URL}/api/v1/public/search/track`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  }).catch(() => {});
+}
+
 // Cart operations (client-side)
 export async function getCart(sessionId: string): Promise<Cart> {
   const res = await fetch(`${API_URL}/api/v1/cart`, {

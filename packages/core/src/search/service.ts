@@ -1,4 +1,5 @@
 import type { SearchRepository, SearchFilters, SearchResult } from './repository';
+import type { RankingService, TrendingProduct } from './ranking';
 import type { EventBus } from '../plugins/event-bus';
 import { SEARCH_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
@@ -27,6 +28,18 @@ export interface SearchOptions {
   customerId?: string;
 }
 
+/** Instant search result — lightweight for overlay */
+export interface InstantSearchResult {
+  id: string;
+  name: string;
+  slug: string;
+  price: number;
+  compareAtPrice: number | null;
+  currency: string;
+  imageUrl: string | null;
+  hasDiscount: boolean;
+}
+
 /** Enhanced query result from AI parsing */
 interface EnhancedQuery {
   keywords: string[];
@@ -46,6 +59,7 @@ export interface SemanticSearchProvider {
 /** Dependencies for SearchService */
 export interface SearchServiceDeps {
   searchRepository: SearchRepository;
+  rankingService?: RankingService | null;
   eventBus: EventBus;
   aiService?: AITextGenerator | null;
   semanticProvider?: SemanticSearchProvider | null;
@@ -66,11 +80,13 @@ export interface SearchResponse {
  */
 export class SearchService {
   private readonly repo: SearchRepository;
+  private readonly ranking: RankingService | null;
   private readonly events: EventBus;
   private readonly ai: AITextGenerator | null;
 
   constructor(deps: SearchServiceDeps) {
     this.repo = deps.searchRepository;
+    this.ranking = deps.rankingService ?? null;
     this.events = deps.eventBus;
     this.ai = deps.aiService ?? null;
     // semanticProvider reserved for future vector search (deps.semanticProvider)
@@ -139,6 +155,23 @@ export class SearchService {
       })
       .catch(() => {});
 
+    // Apply smart ranking when sorting by relevance
+    let rankedData = result.data;
+    if (this.ranking && (!filters.sort || filters.sort === 'relevance') && result.data.length > 0) {
+      try {
+        const productIds = result.data.map((p) => p.id);
+        const scores = await this.ranking.calculateScores(productIds);
+        rankedData = result.data
+          .map((p) => ({
+            ...p,
+            rank: p.rank * (scores.get(p.id) ?? 1),
+          }))
+          .sort((a, b) => b.rank - a.rank);
+      } catch (err) {
+        logger.warn({ err }, 'Smart ranking failed, using text relevance');
+      }
+    }
+
     // If no results, get "did you mean" suggestions
     let suggestions: string[] | undefined;
     if (result.total === 0) {
@@ -146,7 +179,7 @@ export class SearchService {
     }
 
     return {
-      data: result.data,
+      data: rankedData,
       total: result.total,
       query: trimmed,
       mode,
@@ -178,6 +211,57 @@ export class SearchService {
   /** Get zero-result searches (admin) */
   async getZeroResultSearches(limit = 50, daysBack = 30) {
     return this.repo.getZeroResultSearches(limit, daysBack);
+  }
+
+  /** Instant search — lightweight results for search overlay (max 8) */
+  async instantSearch(query: string): Promise<InstantSearchResult[]> {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+
+    const result = await this.repo.searchProducts({
+      query: trimmed,
+      limit: 8,
+      offset: 0,
+      sort: 'relevance',
+    });
+
+    // Get images
+    const imageMap = this.ranking
+      ? await this.getProductImages(result.data.map((p) => p.id))
+      : new Map<string, string>();
+
+    return result.data.map((p) => ({
+      id: p.id,
+      name: p.name,
+      slug: p.slug,
+      price: p.price,
+      compareAtPrice: p.compareAtPrice,
+      currency: p.currency,
+      imageUrl: imageMap.get(p.id) ?? null,
+      hasDiscount: !!(p.compareAtPrice && p.compareAtPrice > p.price),
+    }));
+  }
+
+  /** Get trending products */
+  async getTrendingProducts(limit = 10): Promise<TrendingProduct[]> {
+    if (!this.ranking) return [];
+    return this.ranking.getTrendingProducts(limit);
+  }
+
+  /** Track a product impression */
+  async trackImpression(params: {
+    productId: string;
+    eventType: 'view' | 'click' | 'cart_add' | 'purchase';
+    sessionId?: string;
+  }): Promise<void> {
+    if (!this.ranking) return;
+    await this.ranking.logImpression(params);
+  }
+
+  /** Helper to get product images via ranking service */
+  private async getProductImages(productIds: string[]): Promise<Map<string, string>> {
+    if (!this.ranking || productIds.length === 0) return new Map();
+    return this.ranking.getProductImages(productIds);
   }
 
   /**
