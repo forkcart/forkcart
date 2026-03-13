@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { ChevronLeft, Loader2, Check } from 'lucide-react';
 
@@ -10,6 +11,7 @@ const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localho
 
 export default function ProfilePage() {
   const { customer, token, updateProfile } = useAuth();
+  const { t } = useTranslation();
   const [form, setForm] = useState({
     firstName: customer?.firstName ?? '',
     lastName: customer?.lastName ?? '',
@@ -38,7 +40,7 @@ export default function ProfilePage() {
       setProfileSuccess(true);
       setTimeout(() => setProfileSuccess(false), 3000);
     } catch (err) {
-      setProfileError(err instanceof Error ? err.message : 'Failed to update profile');
+      setProfileError(err instanceof Error ? err.message : t('account.profile.updateFailed'));
     } finally {
       setSaving(false);
     }
@@ -50,12 +52,12 @@ export default function ProfilePage() {
     setPasswordSuccess(false);
 
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError(t('auth.passwordMismatch'));
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
+      setPasswordError(t('auth.passwordMinLength'));
       return;
     }
 
@@ -77,7 +79,8 @@ export default function ProfilePage() {
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(
-          (data as { error?: { message?: string } }).error?.message ?? 'Failed to change password',
+          (data as { error?: { message?: string } }).error?.message ??
+            t('account.profile.passwordFailed'),
         );
       }
 
@@ -85,7 +88,7 @@ export default function ProfilePage() {
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setTimeout(() => setPasswordSuccess(false), 3000);
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : 'Failed to change password');
+      setPasswordError(err instanceof Error ? err.message : t('account.profile.passwordFailed'));
     } finally {
       setChangingPassword(false);
     }
@@ -98,28 +101,30 @@ export default function ProfilePage() {
           href="/account"
           className="mb-4 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
         >
-          <ChevronLeft className="h-4 w-4" /> Back to Account
+          <ChevronLeft className="h-4 w-4" /> {t('account.backToAccount')}
         </Link>
 
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">Profile</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">{t('account.profile')}</h1>
 
         {/* Profile Form */}
         <form onSubmit={handleProfileSubmit} className="mt-6 max-w-lg rounded-lg border p-6">
-          <h2 className="font-semibold text-gray-900">Personal Information</h2>
+          <h2 className="font-semibold text-gray-900">{t('account.personalInfo')}</h2>
 
           {profileError && (
             <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">{profileError}</div>
           )}
           {profileSuccess && (
             <div className="mt-3 flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700">
-              <Check className="h-4 w-4" /> Profile updated
+              <Check className="h-4 w-4" /> {t('account.profile.updated')}
             </div>
           )}
 
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-700">First Name</label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t('checkout.firstName')}
+                </label>
                 <input
                   required
                   value={form.firstName}
@@ -128,7 +133,9 @@ export default function ProfilePage() {
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700">Last Name</label>
+                <label className="text-sm font-medium text-gray-700">
+                  {t('checkout.lastName')}
+                </label>
                 <input
                   required
                   value={form.lastName}
@@ -138,7 +145,7 @@ export default function ProfilePage() {
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Email</label>
+              <label className="text-sm font-medium text-gray-700">{t('auth.email')}</label>
               <input
                 type="email"
                 required
@@ -155,13 +162,13 @@ export default function ProfilePage() {
             className="mt-4 flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Save Changes
+            {t('account.profile.saveChanges')}
           </button>
         </form>
 
         {/* Password Form */}
         <form onSubmit={handlePasswordSubmit} className="mt-8 max-w-lg rounded-lg border p-6">
-          <h2 className="font-semibold text-gray-900">Change Password</h2>
+          <h2 className="font-semibold text-gray-900">{t('account.changePassword')}</h2>
 
           {passwordError && (
             <div className="mt-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
@@ -170,13 +177,15 @@ export default function ProfilePage() {
           )}
           {passwordSuccess && (
             <div className="mt-3 flex items-center gap-2 rounded-md bg-green-50 p-3 text-sm text-green-700">
-              <Check className="h-4 w-4" /> Password changed
+              <Check className="h-4 w-4" /> {t('account.profile.passwordChanged')}
             </div>
           )}
 
           <div className="mt-4 space-y-4">
             <div>
-              <label className="text-sm font-medium text-gray-700">Current Password</label>
+              <label className="text-sm font-medium text-gray-700">
+                {t('account.profile.currentPassword')}
+              </label>
               <input
                 type="password"
                 required
@@ -188,7 +197,9 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">New Password</label>
+              <label className="text-sm font-medium text-gray-700">
+                {t('account.profile.newPassword')}
+              </label>
               <input
                 type="password"
                 required
@@ -199,7 +210,9 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium text-gray-700">Confirm New Password</label>
+              <label className="text-sm font-medium text-gray-700">
+                {t('account.profile.confirmNewPassword')}
+              </label>
               <input
                 type="password"
                 required
@@ -218,7 +231,7 @@ export default function ProfilePage() {
             className="mt-4 flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50"
           >
             {changingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            Change Password
+            {t('account.changePassword')}
           </button>
         </form>
       </div>

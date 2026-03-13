@@ -1,19 +1,21 @@
 'use client';
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-
-const SORT_OPTIONS = [
-  { label: 'Newest', value: 'createdAt:desc' },
-  { label: 'Price: Low to High', value: 'price:asc' },
-  { label: 'Price: High to Low', value: 'price:desc' },
-  { label: 'Name: A–Z', value: 'name:asc' },
-] as const;
+import { useTranslation } from '@forkcart/i18n/react';
 
 export function SortFilter() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { t } = useTranslation();
   const current = `${searchParams.get('sort') ?? 'createdAt'}:${searchParams.get('order') ?? 'desc'}`;
+
+  const SORT_OPTIONS = [
+    { label: t('category.sort.newest'), value: 'createdAt:desc' },
+    { label: t('category.sort.priceLowHigh'), value: 'price:asc' },
+    { label: t('category.sort.priceHighLow'), value: 'price:desc' },
+    { label: t('category.sort.nameAZ'), value: 'name:asc' },
+  ] as const;
 
   function handleChange(value: string) {
     const [sort, order] = value.split(':');
@@ -26,7 +28,7 @@ export function SortFilter() {
   return (
     <div className="flex items-center gap-2">
       <label htmlFor="sort" className="text-sm text-gray-500">
-        Sort by
+        {t('category.sort.label')}
       </label>
       <select
         id="sort"

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { Lock, Loader2 } from 'lucide-react';
+import { useTranslation } from '@forkcart/i18n/react';
 
 interface StripePaymentProps {
   clientSecret: string;
@@ -21,6 +22,7 @@ function StripePaymentForm({
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const { t } = useTranslation();
   const [processing, setProcessing] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -38,7 +40,7 @@ function StripePaymentForm({
     });
 
     if (error) {
-      onError(error.message ?? 'Payment failed');
+      onError(error.message ?? t('checkout.paymentFailed'));
       setProcessing(false);
     } else {
       onSuccess();
@@ -54,7 +56,7 @@ function StripePaymentForm({
         className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
       >
         {processing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />}
-        {processing ? 'Processing...' : 'Pay Now'}
+        {processing ? t('checkout.processing') : t('checkout.payNow')}
       </button>
     </form>
   );

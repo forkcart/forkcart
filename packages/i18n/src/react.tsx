@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from 'react';
 import {
   translate,
   flattenTranslations,
@@ -80,6 +88,8 @@ interface I18nProviderProps {
   defaultLocale?: string;
   supportedLocales?: string[];
   translations: Record<Locale, TranslationDict>;
+  /** Optional API base URL for dynamic translations (e.g. http://localhost:4000/api/v1/public/translations) */
+  apiBaseUrl?: string;
 }
 
 export function I18nProvider({
@@ -87,6 +97,7 @@ export function I18nProvider({
   defaultLocale = 'en',
   supportedLocales = ['en'],
   translations,
+  apiBaseUrl,
 }: I18nProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(() => {
     if (typeof window !== 'undefined') {
@@ -98,6 +109,9 @@ export function I18nProvider({
     return defaultLocale;
   });
 
+  // Dynamic API overrides (flat keys from DB)
+  const [apiOverrides, setApiOverrides] = useState<Record<string, FlatTranslations>>({});
+
   const setLocale = useCallback((newLocale: Locale) => {
     setLocaleState(newLocale);
     if (typeof window !== 'undefined') {
@@ -106,13 +120,44 @@ export function I18nProvider({
     }
   }, []);
 
+  // Fetch dynamic translations from API when locale changes
+  useEffect(() => {
+    if (!apiBaseUrl) return;
+
+    // Skip if we already fetched this locale
+    if (apiOverrides[locale]) return;
+
+    fetch(`${apiBaseUrl}/${locale}`)
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json() as Promise<{ data: { locale: string; translations: FlatTranslations } }>;
+      })
+      .then((data) => {
+        if (data?.data?.translations) {
+          setApiOverrides((prev) => ({
+            ...prev,
+            [locale]: data.data.translations,
+          }));
+        }
+      })
+      .catch(() => {
+        // API not available — use static translations only
+      });
+  }, [apiBaseUrl, locale]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Pre-flatten translations with cache
   const flatCache = useRef<Record<string, FlatTranslations>>({});
   const getFlat = (loc: string): FlatTranslations => {
     if (!flatCache.current[loc] && translations[loc]) {
       flatCache.current[loc] = flattenTranslations(translations[loc]);
     }
-    return flatCache.current[loc] ?? {};
+    const staticFlat = flatCache.current[loc] ?? {};
+    const dynamicFlat = apiOverrides[loc] ?? {};
+    // Merge: dynamic (DB) overrides win over static defaults
+    if (Object.keys(dynamicFlat).length > 0) {
+      return { ...staticFlat, ...dynamicFlat };
+    }
+    return staticFlat;
   };
 
   const t = useCallback(
@@ -125,7 +170,7 @@ export function I18nProvider({
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [locale, defaultLocale],
+    [locale, defaultLocale, apiOverrides],
   );
 
   return (
