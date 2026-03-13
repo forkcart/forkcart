@@ -34,22 +34,22 @@ Same pattern — copy `admin-en.json` → `admin-fr.json` and translate.
 
 Use standard [ISO 639-1](https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes) codes:
 
-| Code | Language    | Native Name  |
-|------|-------------|-------------|
-| `en` | English     | English     |
-| `de` | German      | Deutsch     |
-| `fr` | French      | Français    |
-| `es` | Spanish     | Español     |
-| `it` | Italian     | Italiano    |
-| `nl` | Dutch       | Nederlands  |
-| `pt` | Portuguese  | Português   |
-| `pl` | Polish      | Polski      |
-| `tr` | Turkish     | Türkçe      |
-| `ru` | Russian     | Русский     |
-| `ja` | Japanese    | 日本語       |
-| `zh` | Chinese     | 中文         |
-| `ko` | Korean      | 한국어       |
-| `ar` | Arabic      | العربية      |
+| Code | Language   | Native Name |
+| ---- | ---------- | ----------- |
+| `en` | English    | English     |
+| `de` | German     | Deutsch     |
+| `fr` | French     | Français    |
+| `es` | Spanish    | Español     |
+| `it` | Italian    | Italiano    |
+| `nl` | Dutch      | Nederlands  |
+| `pt` | Portuguese | Português   |
+| `pl` | Polish     | Polski      |
+| `tr` | Turkish    | Türkçe      |
+| `ru` | Russian    | Русский     |
+| `ja` | Japanese   | 日本語      |
+| `zh` | Chinese    | 中文        |
+| `ko` | Korean     | 한국어      |
+| `ar` | Arabic     | العربية     |
 
 Unknown locale codes will display as uppercase (e.g. `SW` for Swahili).
 
@@ -69,11 +69,13 @@ Missing keys fall back to English at runtime — the shop still works perfectly.
 ## Hybrid: File Defaults + Admin Overrides
 
 ForkCart uses a hybrid approach:
+
 - **JSON files** = Default translations (shipped with code, version-controlled)
 - **Database** = Admin overrides (editable via Admin Panel)
 - At runtime: `{ ...jsonDefaults, ...dbOverrides }` — DB always wins
 
 This means:
+
 - Developers can contribute translations via PRs (JSON files)
 - Shop owners can customize any string without touching code (Admin Panel)
 - Both work together seamlessly

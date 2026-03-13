@@ -80,8 +80,32 @@ export function createTranslationRoutes(translationService: TranslationService) 
     return c.json({ data: { success: true, imported: count } });
   });
 
-  /** Public endpoint: merged translations for storefront (no auth needed) */
-  // This is mounted separately in app.ts as a public route
+  /** AI-translate all missing keys for a locale */
+  router.post('/:locale/auto-translate', async (c) => {
+    const locale = c.req.param('locale');
+    try {
+      const result = await translationService.autoTranslateMissing(locale);
+      return c.json({ data: result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Translation failed';
+      return c.json({ error: { code: 'TRANSLATION_ERROR', message } }, 400);
+    }
+  });
+
+  /** AI-translate specific keys for a locale */
+  router.post('/:locale/auto-translate-keys', async (c) => {
+    const body = await c.req.json();
+    const keys: string[] = body.keys ?? [];
+    const locale = c.req.param('locale');
+    try {
+      const result = await translationService.autoTranslateKeys(locale, keys);
+      return c.json({ data: result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Translation failed';
+      return c.json({ error: { code: 'TRANSLATION_ERROR', message } }, 400);
+    }
+  });
+
   return router;
 }
 

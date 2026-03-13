@@ -55,13 +55,27 @@ export interface MergedTranslations {
   translations: FlatTranslations;
 }
 
+/** Minimal AI provider interface for translation */
+export interface TranslationAIProvider {
+  chat(
+    messages: Array<{ role: string; content: string }>,
+    options?: { temperature?: number },
+  ): Promise<{ content: string }>;
+}
+
 export class TranslationService {
   private readonly repo: TranslationRepository;
   private fileDefaults: Record<string, FlatTranslations>;
+  private aiProvider: TranslationAIProvider | null = null;
 
   constructor(deps: TranslationServiceDeps) {
     this.repo = deps.translationRepository;
     this.fileDefaults = deps.fileDefaults;
+  }
+
+  /** Set AI provider for auto-translation */
+  setAIProvider(provider: TranslationAIProvider | null): void {
+    this.aiProvider = provider;
   }
 
   /** Update file defaults (e.g. after loading JSON at startup) */
@@ -231,6 +245,137 @@ export class TranslationService {
     await this.repo.upsertMany(locale, pairs);
     logger.info({ locale, count: pairs.length }, 'Translations imported');
     return pairs.length;
+  }
+
+  /**
+   * AI-translate missing keys for a locale.
+   * Takes English values and translates them to the target language.
+   * Returns the translated key-value pairs (also saves to DB).
+   */
+  async autoTranslateMissing(
+    locale: string,
+  ): Promise<{ translated: Record<string, string>; count: number }> {
+    if (!this.aiProvider) throw new Error('AI provider not configured');
+    if (locale === 'en')
+      throw new Error('Cannot auto-translate English (it is the source language)');
+
+    const lang = await this.repo.getLanguage(locale);
+    if (!lang) throw new Error(`Language "${locale}" not found`);
+
+    const refKeys = this.getReferenceKeys();
+    const enMap = this.fileDefaults['en'] ?? {};
+    const dbRows = await this.repo.getTranslationsForLocale(locale);
+    const dbMap = new Map(dbRows.map((r) => [r.key, r.value]));
+    const fileMap = this.fileDefaults[locale] ?? {};
+
+    // Find missing keys (no DB override AND no file default)
+    const missing: Record<string, string> = {};
+    for (const key of refKeys) {
+      if (!dbMap.has(key) && !fileMap[key] && enMap[key]) {
+        missing[key] = enMap[key];
+      }
+    }
+
+    if (Object.keys(missing).length === 0) {
+      return { translated: {}, count: 0 };
+    }
+
+    const targetLang = NATIVE_NAMES[locale] ?? locale;
+
+    // Batch in chunks of 50 to avoid token limits
+    const entries = Object.entries(missing);
+    const allTranslated: Record<string, string> = {};
+    const BATCH = 50;
+
+    for (let i = 0; i < entries.length; i += BATCH) {
+      const batch = entries.slice(i, i + BATCH);
+      const jsonPayload = Object.fromEntries(batch);
+
+      const response = await this.aiProvider.chat(
+        [
+          {
+            role: 'system',
+            content: `You are a professional translator. Translate the JSON values from English to ${targetLang}. Keep the keys EXACTLY the same. Return ONLY valid JSON, no markdown, no explanation. Keep translations concise and natural — these are UI strings for an e-commerce shop.`,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify(jsonPayload, null, 2),
+          },
+        ],
+        { temperature: 0.3 },
+      );
+
+      try {
+        // Strip markdown code fences if present
+        let raw = response.content.trim();
+        if (raw.startsWith('```')) {
+          raw = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+        }
+        const parsed = JSON.parse(raw) as Record<string, string>;
+        Object.assign(allTranslated, parsed);
+      } catch {
+        logger.error({ locale, batch: i }, 'Failed to parse AI translation response');
+      }
+    }
+
+    // Save to DB
+    if (Object.keys(allTranslated).length > 0) {
+      const pairs = Object.entries(allTranslated).map(([key, value]) => ({ key, value }));
+      await this.repo.upsertMany(locale, pairs);
+      logger.info({ locale, count: pairs.length }, 'AI translations saved');
+    }
+
+    return { translated: allTranslated, count: Object.keys(allTranslated).length };
+  }
+
+  /**
+   * AI-translate specific keys for a locale.
+   */
+  async autoTranslateKeys(
+    locale: string,
+    keys: string[],
+  ): Promise<{ translated: Record<string, string>; count: number }> {
+    if (!this.aiProvider) throw new Error('AI provider not configured');
+    if (locale === 'en')
+      throw new Error('Cannot auto-translate English (it is the source language)');
+
+    const enMap = this.fileDefaults['en'] ?? {};
+    const toTranslate: Record<string, string> = {};
+    for (const key of keys) {
+      if (enMap[key]) toTranslate[key] = enMap[key];
+    }
+
+    if (Object.keys(toTranslate).length === 0) {
+      return { translated: {}, count: 0 };
+    }
+
+    const targetLang = NATIVE_NAMES[locale] ?? locale;
+
+    const response = await this.aiProvider.chat(
+      [
+        {
+          role: 'system',
+          content: `You are a professional translator. Translate the JSON values from English to ${targetLang}. Keep the keys EXACTLY the same. Return ONLY valid JSON, no markdown, no explanation. Keep translations concise and natural — these are UI strings for an e-commerce shop.`,
+        },
+        {
+          role: 'user',
+          content: JSON.stringify(toTranslate, null, 2),
+        },
+      ],
+      { temperature: 0.3 },
+    );
+
+    let raw = response.content.trim();
+    if (raw.startsWith('```')) {
+      raw = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '');
+    }
+    const translated = JSON.parse(raw) as Record<string, string>;
+
+    // Save to DB
+    const pairs = Object.entries(translated).map(([key, value]) => ({ key, value }));
+    await this.repo.upsertMany(locale, pairs);
+
+    return { translated, count: pairs.length };
   }
 }
 
