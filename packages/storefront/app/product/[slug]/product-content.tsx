@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { formatPrice } from '@forkcart/shared';
 import { useTranslation, useLocale } from '@forkcart/i18n/react';
 import { AddToCartButton } from './add-to-cart-button';
+import { WishlistButton } from '@/components/product/wishlist-button';
+import { ProductReviews } from '@/components/product/product-reviews';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -119,9 +121,12 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
               {t('product.sku')}: {product.sku}
             </p>
           )}
-          <h1 className="mt-2 text-3xl font-bold tracking-tight text-gray-900 lg:text-4xl">
-            {product.name}
-          </h1>
+          <div className="mt-2 flex items-start justify-between gap-4">
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 lg:text-4xl">
+              {product.name}
+            </h1>
+            <WishlistButton productId={product.id} size="md" />
+          </div>
 
           <div className="mt-4 flex items-baseline gap-3">
             <span className="text-2xl font-bold text-gray-900">
@@ -175,6 +180,8 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
               />
             </div>
           )}
+
+          <ProductReviews productId={product.id} />
         </div>
       </div>
     </div>

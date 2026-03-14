@@ -14,6 +14,7 @@ import {
   Store,
   Tag,
   UserCog,
+  Star,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -36,6 +37,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/coupons', label: 'Coupons', icon: Tag, roles: ['admin', 'superadmin'] },
+  { href: '/reviews', label: 'Reviews', icon: Star, roles: ['admin', 'superadmin'] },
   { href: '/plugins', label: 'Plugins', icon: Puzzle, roles: ['admin', 'superadmin'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'superadmin'] },
   { href: '/users', label: 'Users', icon: UserCog, roles: ['superadmin'] },
