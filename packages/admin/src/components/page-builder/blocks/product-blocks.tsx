@@ -1,105 +1,11 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
-import {
-  ImageIcon,
-  Type,
-  DollarSign,
-  ShoppingBag,
-  FileText,
-  Star,
-  Package,
-  Tag,
-} from 'lucide-react';
+import { ShoppingBag, Star, Minus, Plus, Heart } from 'lucide-react';
+import { usePreviewProduct } from '../hooks/use-preview-product';
 
-// ─── Shared placeholder wrapper ──────────────────────────────────────────────
-
-function DynamicPlaceholder({
-  icon: Icon,
-  label,
-  color,
-  description,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  color: string;
-  description: string;
-  children?: React.ReactNode;
-}) {
-  const {
-    connectors: { connect },
-  } = useNode();
-
-  const colors: Record<string, { border: string; bg: string; text: string; badge: string }> = {
-    blue: {
-      border: 'border-blue-300',
-      bg: 'bg-blue-50',
-      text: 'text-blue-700',
-      badge: 'bg-blue-200 text-blue-700',
-    },
-    green: {
-      border: 'border-green-300',
-      bg: 'bg-green-50',
-      text: 'text-green-700',
-      badge: 'bg-green-200 text-green-700',
-    },
-    purple: {
-      border: 'border-purple-300',
-      bg: 'bg-purple-50',
-      text: 'text-purple-700',
-      badge: 'bg-purple-200 text-purple-700',
-    },
-    amber: {
-      border: 'border-amber-300',
-      bg: 'bg-amber-50',
-      text: 'text-amber-700',
-      badge: 'bg-amber-200 text-amber-700',
-    },
-    cyan: {
-      border: 'border-cyan-300',
-      bg: 'bg-cyan-50',
-      text: 'text-cyan-700',
-      badge: 'bg-cyan-200 text-cyan-700',
-    },
-    rose: {
-      border: 'border-rose-300',
-      bg: 'bg-rose-50',
-      text: 'text-rose-700',
-      badge: 'bg-rose-200 text-rose-700',
-    },
-    indigo: {
-      border: 'border-indigo-300',
-      bg: 'bg-indigo-50',
-      text: 'text-indigo-700',
-      badge: 'bg-indigo-200 text-indigo-700',
-    },
-    gray: {
-      border: 'border-gray-300',
-      bg: 'bg-gray-50',
-      text: 'text-gray-700',
-      badge: 'bg-gray-200 text-gray-700',
-    },
-  };
-
-  const c = colors[color] ?? colors.blue!;
-
-  return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={`rounded-lg border-2 border-dashed ${c.border} ${c.bg} p-4`}
-    >
-      <div className="flex items-center gap-2">
-        <Icon className={`h-4 w-4 ${c.text}`} />
-        <span className={`text-sm font-semibold ${c.text}`}>{label}</span>
-        <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${c.badge}`}>Dynamic</span>
-      </div>
-      <p className={`mt-1 text-xs ${c.text} opacity-75`}>{description}</p>
-      {children}
-    </div>
-  );
+function formatPrice(cents: number, currency = 'EUR'): string {
+  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
 }
 
 // ─── Product Images ──────────────────────────────────────────────────────────
@@ -112,24 +18,56 @@ export interface ProductImagesBlockProps {
 
 export const ProductImagesBlock: UserComponent<ProductImagesBlockProps> = ({
   layout = 'gallery',
-  aspectRatio = 'square',
-}) => (
-  <DynamicPlaceholder
-    icon={ImageIcon}
-    label="Product Images"
-    color="blue"
-    description={`${layout} layout · ${aspectRatio} ratio — Shows product image gallery with thumbnails`}
-  >
-    <div className="mt-2 grid grid-cols-4 gap-1">
-      <div className="col-span-3 aspect-square rounded bg-blue-100" />
-      <div className="flex flex-col gap-1">
-        <div className="aspect-square rounded bg-blue-100" />
-        <div className="aspect-square rounded bg-blue-100" />
-        <div className="aspect-square rounded bg-blue-100" />
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+  const product = usePreviewProduct();
+  const hasImages = product?.images && product.images.length > 0;
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+    >
+      <div className="aspect-square overflow-hidden rounded-2xl bg-gray-100">
+        {hasImages ? (
+          <img
+            src={product!.images![0]!.url}
+            alt={product!.name}
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-gray-300">
+            <svg className="h-32 w-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={0.5}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        )}
       </div>
+      {hasImages && layout !== 'single' && product!.images!.length > 1 && (
+        <div className="mt-4 flex gap-3">
+          {product!.images!.slice(0, 4).map((img, idx) => (
+            <div
+              key={img.id}
+              className={`h-20 w-20 overflow-hidden rounded-lg border-2 ${
+                idx === 0 ? 'border-gray-900' : 'border-transparent opacity-60'
+              }`}
+            >
+              <img src={img.url} alt={img.alt ?? ''} className="h-full w-full object-cover" />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
-  </DynamicPlaceholder>
-);
+  );
+};
 
 ProductImagesBlock.craft = {
   displayName: 'Product Images',
@@ -193,22 +131,34 @@ export const ProductTitleBlock: UserComponent<ProductTitleBlockProps> = ({
   showWishlist = true,
   titleSize = 'lg',
 }) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+  const product = usePreviewProduct();
   const sizeClass = { sm: 'text-xl', md: 'text-2xl', lg: 'text-3xl', xl: 'text-4xl' }[titleSize];
+
   return (
-    <DynamicPlaceholder
-      icon={Type}
-      label="Product Title"
-      color="indigo"
-      description="Shows product name, SKU, and wishlist button"
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
     >
-      <div className="mt-2">
-        {showSku && <div className="h-3 w-16 rounded bg-indigo-100" />}
-        <div className={`mt-1 h-6 w-48 rounded bg-indigo-200 ${sizeClass}`} />
+      {showSku && product?.sku && (
+        <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
+          SKU: {product.sku}
+        </p>
+      )}
+      <div className="mt-2 flex items-start justify-between gap-4">
+        <h1 className={`font-bold tracking-tight text-gray-900 ${sizeClass}`}>
+          {product?.name ?? 'Product Name'}
+        </h1>
         {showWishlist && (
-          <span className="mt-1 inline-block text-[10px] text-indigo-400">♥ Wishlist</span>
+          <button className="rounded-md p-2 text-gray-400 hover:text-red-500" disabled>
+            <Heart className="h-5 w-5" />
+          </button>
         )}
       </div>
-    </DynamicPlaceholder>
+    </div>
   );
 };
 
@@ -279,20 +229,47 @@ export interface ProductPriceBlockProps {
 export const ProductPriceBlock: UserComponent<ProductPriceBlockProps> = ({
   showComparePrice = true,
   showStock = true,
-}) => (
-  <DynamicPlaceholder
-    icon={DollarSign}
-    label="Product Price"
-    color="green"
-    description="Shows price, compare-at price, and stock status"
-  >
-    <div className="mt-2 flex items-baseline gap-2">
-      <div className="h-5 w-20 rounded bg-green-200" />
-      {showComparePrice && <div className="h-3 w-14 rounded bg-green-100 line-through" />}
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+  const product = usePreviewProduct();
+  const price = product ? formatPrice(product.price, product.currency) : '€0.00';
+  const hasDiscount = product?.compareAtPrice && product.compareAtPrice > product.price;
+  const inStock = product ? product.inventoryQuantity > 0 || !product.trackInventory : true;
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+    >
+      <div className="flex items-baseline gap-3">
+        <span className="text-2xl font-bold text-gray-900">{price}</span>
+        {showComparePrice && hasDiscount && (
+          <span className="text-lg text-gray-400 line-through">
+            {formatPrice(product!.compareAtPrice!, product!.currency)}
+          </span>
+        )}
+      </div>
+      {showStock && (
+        <div className="mt-2">
+          {inStock ? (
+            <span className="inline-flex items-center gap-1.5 text-sm text-green-600">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              In Stock
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 text-sm text-red-500">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+              Out of Stock
+            </span>
+          )}
+        </div>
+      )}
     </div>
-    {showStock && <div className="mt-1 h-3 w-12 rounded bg-green-100" />}
-  </DynamicPlaceholder>
-);
+  );
+};
 
 ProductPriceBlock.craft = {
   displayName: 'Product Price',
@@ -345,23 +322,41 @@ export const AddToCartBlock: UserComponent<AddToCartBlockProps> = ({
   showQuantity = true,
   buttonStyle = 'full',
   buttonText = 'Add to Cart',
-}) => (
-  <DynamicPlaceholder
-    icon={ShoppingBag}
-    label="Add to Cart"
-    color="amber"
-    description="Quantity selector and Add to Cart button"
-  >
-    <div className="mt-2 flex items-center gap-2">
-      {showQuantity && <div className="h-8 w-24 rounded border border-amber-200 bg-white" />}
-      <div className={`h-8 rounded bg-amber-300 ${buttonStyle === 'full' ? 'flex-1' : 'px-6'}`}>
-        <span className="flex h-full items-center justify-center text-xs font-medium text-amber-900">
-          {buttonText}
-        </span>
-      </div>
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+      className="flex items-center gap-4"
+    >
+      {showQuantity && (
+        <div className="flex items-center rounded-lg border">
+          <button className="flex h-11 w-11 items-center justify-center text-gray-500" disabled>
+            <Minus className="h-4 w-4" />
+          </button>
+          <span className="w-10 text-center text-sm font-medium">1</span>
+          <button className="flex h-11 w-11 items-center justify-center text-gray-500" disabled>
+            <Plus className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+      <button
+        className={`flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white ${
+          buttonStyle === 'full' ? 'flex-1' : ''
+        }`}
+        disabled
+      >
+        <ShoppingBag className="h-4 w-4" />
+        {buttonText}
+      </button>
     </div>
-  </DynamicPlaceholder>
-);
+  );
+};
 
 AddToCartBlock.craft = {
   displayName: 'Add to Cart',
@@ -425,23 +420,30 @@ export interface ProductDescriptionBlockProps {
 export const ProductDescriptionBlock: UserComponent<ProductDescriptionBlockProps> = ({
   showHeading = true,
   headingText = 'Description',
-}) => (
-  <DynamicPlaceholder
-    icon={FileText}
-    label="Product Description"
-    color="gray"
-    description="Shows the full product description"
-  >
-    <div className="mt-2">
-      {showHeading && <div className="h-3 w-20 rounded bg-gray-200 font-bold">{headingText}</div>}
-      <div className="mt-1 space-y-1">
-        <div className="h-2 w-full rounded bg-gray-100" />
-        <div className="h-2 w-5/6 rounded bg-gray-100" />
-        <div className="h-2 w-3/4 rounded bg-gray-100" />
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+  const product = usePreviewProduct();
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+      className="border-t pt-8"
+    >
+      {showHeading && (
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-900">
+          {headingText}
+        </h2>
+      )}
+      <div className="mt-3 text-sm leading-relaxed text-gray-600">
+        {product?.description ?? 'Product description will appear here.'}
       </div>
     </div>
-  </DynamicPlaceholder>
-);
+  );
+};
 
 ProductDescriptionBlock.craft = {
   displayName: 'Product Description',
@@ -496,26 +498,40 @@ export interface ProductReviewsBlockProps {
 export const ProductReviewsBlock: UserComponent<ProductReviewsBlockProps> = ({
   showForm = true,
   showRating = true,
-}) => (
-  <DynamicPlaceholder
-    icon={Star}
-    label="Product Reviews"
-    color="rose"
-    description="Customer reviews and rating form"
-  >
-    <div className="mt-2 flex items-center gap-1">
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+      className="border-t pt-8 mt-10"
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-900">Reviews</h2>
+      </div>
       {showRating && (
-        <>
+        <div className="mt-4 flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((i) => (
-            <Star key={i} className="h-3 w-3 fill-rose-300 text-rose-300" />
+            <Star
+              key={i}
+              className={`h-5 w-5 ${i <= 4 ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'}`}
+            />
           ))}
-          <span className="ml-1 text-[10px] text-rose-400">4.5 (12 reviews)</span>
-        </>
+          <span className="ml-2 text-sm text-gray-500">4.0 (0 reviews)</span>
+        </div>
+      )}
+      {showForm && (
+        <div className="mt-6 rounded-lg border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-sm text-gray-400">
+          Review form will appear here
+        </div>
       )}
     </div>
-    {showForm && <div className="mt-1 text-[10px] text-rose-400">+ Write a review form</div>}
-  </DynamicPlaceholder>
-);
+  );
+};
 
 ProductReviewsBlock.craft = {
   displayName: 'Product Reviews',
@@ -532,25 +548,43 @@ export interface RelatedProductsBlockProps {
 
 export const RelatedProductsBlock: UserComponent<RelatedProductsBlockProps> = ({
   columns = 4,
-  limit = 4,
   title = 'Related Products',
-}) => (
-  <DynamicPlaceholder
-    icon={Package}
-    label="Related Products"
-    color="cyan"
-    description={`${limit} products in ${columns} columns`}
-  >
-    <div className="mt-2">
-      <div className="text-[10px] font-medium text-cyan-600">{title}</div>
-      <div className={`mt-1 grid grid-cols-${columns} gap-1`}>
-        {Array.from({ length: Math.min(limit, columns) }).map((_, i) => (
-          <div key={i} className="aspect-square rounded bg-cyan-100" />
+}) => {
+  const {
+    connectors: { connect },
+  } = useNode();
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+      className="border-t pt-8"
+    >
+      <h2 className="mb-6 text-lg font-semibold text-gray-900">{title}</h2>
+      <div className={`grid gap-6 grid-cols-2 lg:grid-cols-${columns}`}>
+        {Array.from({ length: columns }).map((_, i) => (
+          <div key={i} className="group">
+            <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
+              <div className="flex h-full items-center justify-center text-gray-300">
+                <svg className="h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div className="mt-2 h-4 w-24 rounded bg-gray-100" />
+            <div className="mt-1 h-4 w-16 rounded bg-gray-100" />
+          </div>
         ))}
       </div>
     </div>
-  </DynamicPlaceholder>
-);
+  );
+};
 
 RelatedProductsBlock.craft = {
   displayName: 'Related Products',
@@ -594,7 +628,7 @@ function RelatedProductsSettings() {
         </select>
       </div>
       <div>
-        <label className="mb-1 block text-xs font-medium text-gray-600">Limit</label>
+        <label className="mb-1 block text-xs font-medium text-gray-600">Max Products</label>
         <input
           type="number"
           className="w-full rounded border px-2 py-1 text-sm"
@@ -612,16 +646,22 @@ function RelatedProductsSettings() {
 
 // ─── Product Short Description ───────────────────────────────────────────────
 
-export const ProductShortDescBlock: UserComponent = () => (
-  <DynamicPlaceholder
-    icon={Tag}
-    label="Short Description"
-    color="purple"
-    description="Shows the product's short description / tagline"
-  >
-    <div className="mt-1 h-2 w-3/4 rounded bg-purple-100" />
-  </DynamicPlaceholder>
-);
+export const ProductShortDescBlock: UserComponent = () => {
+  const {
+    connectors: { connect },
+  } = useNode();
+  const product = usePreviewProduct();
+
+  return (
+    <div
+      ref={(ref) => {
+        if (ref) connect(ref);
+      }}
+    >
+      <p className="text-gray-600">{product?.shortDescription ?? 'Short product description'}</p>
+    </div>
+  );
+};
 
 ProductShortDescBlock.craft = {
   displayName: 'Short Description',
