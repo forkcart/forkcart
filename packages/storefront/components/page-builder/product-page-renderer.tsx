@@ -39,7 +39,8 @@ interface ProductPageRendererProps {
 
 /**
  * Renders a Page Builder product page with real product data
- * injected into dynamic block slots.
+ * injected into dynamic block slots. Re-fetches product with
+ * the active locale so translations are applied.
  */
 export function ProductPageRenderer({ content, product }: ProductPageRendererProps) {
   if (!content || typeof content !== 'object') {
@@ -47,25 +48,42 @@ export function ProductPageRenderer({ content, product }: ProductPageRendererPro
   }
 
   return (
-    <ProductDataProvider product={product}>
+    <LocalizedProductProvider initialProduct={product}>
       <PageRenderer content={content} />
-    </ProductDataProvider>
+    </LocalizedProductProvider>
   );
 }
 
 // ─── Product data context ────────────────────────────────────────────────────
 
 import { createContext, useContext } from 'react';
+import { useLocale } from '@forkcart/i18n/react';
 
 const ProductContext = createContext<ProductData | null>(null);
 
-function ProductDataProvider({
-  product,
+/**
+ * Wraps children with product data context.
+ * Re-fetches product with current locale so translated name/description are used.
+ */
+function LocalizedProductProvider({
+  initialProduct,
   children,
 }: {
-  product: ProductData;
+  initialProduct: ProductData;
   children: React.ReactNode;
 }) {
+  const locale = useLocale();
+  const [product, setProduct] = useState<ProductData>(initialProduct);
+
+  useEffect(() => {
+    fetch(`${API_URL}/api/v1/products/${initialProduct.slug}?locale=${locale}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { data?: ProductData } | null) => {
+        if (d?.data) setProduct(d.data);
+      })
+      .catch(() => {});
+  }, [locale, initialProduct.slug]);
+
   return <ProductContext.Provider value={product}>{children}</ProductContext.Provider>;
 }
 
