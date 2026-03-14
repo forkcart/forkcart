@@ -23,6 +23,11 @@ import {
   MapPin,
   Share2,
   Megaphone,
+  ShoppingBag,
+  ShoppingCart as ShoppingCartIcon,
+  CreditCard as CreditCardIcon,
+  User as UserIcon,
+  Search as SearchIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Container } from './blocks/container';
@@ -46,11 +51,16 @@ import { ContactForm } from './blocks/contact-form';
 import { MapEmbed } from './blocks/map-embed';
 import { SocialLinks } from './blocks/social-links';
 import { Banner } from './blocks/banner';
+import { DynamicProductDetail } from './blocks/dynamic-product-detail';
+import { DynamicCart } from './blocks/dynamic-cart';
+import { DynamicCheckout } from './blocks/dynamic-checkout';
+import { DynamicAccount } from './blocks/dynamic-account';
+import { DynamicSearch } from './blocks/dynamic-search';
 
 interface BlockDefinition {
   label: string;
   icon: React.ReactNode;
-  category: 'layout' | 'content' | 'commerce';
+  category: 'layout' | 'content' | 'commerce' | 'dynamic';
   create: () => React.ReactElement;
 }
 
@@ -97,6 +107,37 @@ const blocks: BlockDefinition[] = [
     icon: <Megaphone className="h-5 w-5" />,
     category: 'commerce',
     create: () => <Banner />,
+  },
+  // Dynamic (real shop functionality)
+  {
+    label: 'Product Detail',
+    icon: <ShoppingBag className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <DynamicProductDetail />,
+  },
+  {
+    label: 'Shopping Cart',
+    icon: <ShoppingCartIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <DynamicCart />,
+  },
+  {
+    label: 'Checkout',
+    icon: <CreditCardIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <DynamicCheckout />,
+  },
+  {
+    label: 'Account',
+    icon: <UserIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <DynamicAccount />,
+  },
+  {
+    label: 'Search Results',
+    icon: <SearchIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <DynamicSearch />,
   },
   // Layout
   {
@@ -187,6 +228,7 @@ const blocks: BlockDefinition[] = [
 ];
 
 const categoryLabels: Record<string, string> = {
+  dynamic: '⚡ Shop Pages',
   commerce: 'Commerce',
   layout: 'Layout',
   content: 'Content',

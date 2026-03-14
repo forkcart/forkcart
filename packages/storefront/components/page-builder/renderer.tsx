@@ -168,6 +168,18 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
     case 'Banner':
       return <RenderBanner {...(props as Record<string, unknown>)} />;
 
+    // Dynamic shop blocks — render a slot marker that routes pick up
+    case 'DynamicProductDetail':
+      return <div data-dynamic-block="product-detail" />;
+    case 'DynamicCart':
+      return <div data-dynamic-block="cart" />;
+    case 'DynamicCheckout':
+      return <div data-dynamic-block="checkout" />;
+    case 'DynamicAccount':
+      return <div data-dynamic-block="account" />;
+    case 'DynamicSearch':
+      return <div data-dynamic-block="search" />;
+
     // Fallback for unknown blocks: just render children if any
     default:
       if (children) return <div>{children}</div>;
