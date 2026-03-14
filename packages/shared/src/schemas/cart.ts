@@ -26,6 +26,7 @@ export const CartItemSchema = z.object({
   totalPrice: z.number().int(),
   productName: z.string(),
   productSlug: z.string(),
+  productImage: z.string().nullable().optional(),
 });
 
 export type CartItem = z.infer<typeof CartItemSchema>;

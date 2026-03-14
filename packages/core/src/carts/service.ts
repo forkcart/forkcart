@@ -2,6 +2,7 @@ import type { AddCartItemInput, UpdateCartItemInput } from '@forkcart/shared';
 import { NotFoundError, ValidationError } from '@forkcart/shared';
 import type { CartRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { ProductTranslationService } from '../product-translations/service';
 import { CART_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
 
@@ -10,6 +11,7 @@ const logger = createLogger('cart-service');
 export interface CartServiceDeps {
   cartRepository: CartRepository;
   eventBus: EventBus;
+  productTranslationService?: ProductTranslationService | null;
 }
 
 /** Formatted cart item with product details and computed prices */
@@ -46,14 +48,24 @@ interface CartResponse {
 export class CartService {
   private readonly repo: CartRepository;
   private readonly events: EventBus;
+  private translationService: ProductTranslationService | null;
 
   constructor(deps: CartServiceDeps) {
     this.repo = deps.cartRepository;
     this.events = deps.eventBus;
+    this.translationService = deps.productTranslationService ?? null;
+  }
+
+  /** Set product translation service (for late injection) */
+  setProductTranslationService(service: ProductTranslationService): void {
+    this.translationService = service;
   }
 
   /** Create a new cart */
-  async create(data: { sessionId?: string; customerId?: string }): Promise<CartResponse> {
+  async create(
+    data: { sessionId?: string; customerId?: string },
+    locale?: string,
+  ): Promise<CartResponse> {
     if (!data.sessionId && !data.customerId) {
       throw new ValidationError('Either sessionId or customerId is required');
     }
@@ -63,20 +75,20 @@ export class CartService {
 
     await this.events.emit(CART_EVENTS.CREATED, { cart });
 
-    return this.formatCart(cart.id);
+    return this.formatCart(cart.id, locale);
   }
 
   /** Get cart by ID with full product details */
-  async getById(id: string): Promise<CartResponse> {
+  async getById(id: string, locale?: string): Promise<CartResponse> {
     const cart = await this.repo.findById(id);
     if (!cart) {
       throw new NotFoundError('Cart', id);
     }
-    return this.formatCart(id);
+    return this.formatCart(id, locale);
   }
 
   /** Add item to cart — merges quantity if product already exists */
-  async addItem(cartId: string, input: AddCartItemInput): Promise<CartResponse> {
+  async addItem(cartId: string, input: AddCartItemInput, locale?: string): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -138,7 +150,7 @@ export class CartService {
 
     await this.events.emit(CART_EVENTS.ITEM_ADDED, { cartId, input });
 
-    return this.formatCart(cartId);
+    return this.formatCart(cartId, locale);
   }
 
   /** Update cart item quantity */
@@ -146,6 +158,7 @@ export class CartService {
     cartId: string,
     itemId: string,
     input: UpdateCartItemInput,
+    locale?: string,
   ): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
@@ -162,7 +175,7 @@ export class CartService {
       await this.repo.removeItem(itemId, cartId);
       logger.info({ cartId, itemId }, 'Cart item removed (quantity 0)');
       await this.events.emit(CART_EVENTS.ITEM_REMOVED, { cartId, itemId });
-      return this.formatCart(cartId);
+      return this.formatCart(cartId, locale);
     }
 
     // Inventory check
@@ -186,11 +199,11 @@ export class CartService {
 
     await this.events.emit(CART_EVENTS.ITEM_UPDATED, { cartId, itemId, quantity: input.quantity });
 
-    return this.formatCart(cartId);
+    return this.formatCart(cartId, locale);
   }
 
   /** Remove item from cart */
-  async removeItem(cartId: string, itemId: string): Promise<CartResponse> {
+  async removeItem(cartId: string, itemId: string, locale?: string): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -206,11 +219,11 @@ export class CartService {
 
     await this.events.emit(CART_EVENTS.ITEM_REMOVED, { cartId, itemId });
 
-    return this.formatCart(cartId);
+    return this.formatCart(cartId, locale);
   }
 
   /** Clear all items from cart */
-  async clear(cartId: string): Promise<CartResponse> {
+  async clear(cartId: string, locale?: string): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -221,11 +234,15 @@ export class CartService {
 
     await this.events.emit(CART_EVENTS.CLEARED, { cartId });
 
-    return this.formatCart(cartId);
+    return this.formatCart(cartId, locale);
   }
 
   /** Assign a cart to a customer. Merges items if customer already has a cart. */
-  async assignToCustomer(cartId: string, customerId: string): Promise<CartResponse> {
+  async assignToCustomer(
+    cartId: string,
+    customerId: string,
+    locale?: string,
+  ): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -268,18 +285,18 @@ export class CartService {
         'Carts merged',
       );
 
-      return this.formatCart(existingCustomerCart.id);
+      return this.formatCart(existingCustomerCart.id, locale);
     }
 
     // No existing customer cart — just assign
     await this.repo.assignToCustomer(cartId, customerId);
     logger.info({ cartId, customerId }, 'Cart assigned to customer');
 
-    return this.formatCart(cartId);
+    return this.formatCart(cartId, locale);
   }
 
   /** Format a cart with full product details and computed totals */
-  private async formatCart(cartId: string): Promise<CartResponse> {
+  private async formatCart(cartId: string, locale?: string): Promise<CartResponse> {
     const cart = await this.repo.findById(cartId);
     if (!cart) {
       throw new NotFoundError('Cart', cartId);
@@ -295,10 +312,23 @@ export class CartService {
       const totalPrice = unitPrice * item.quantity;
       const productImage = await this.repo.getProductImage(item.productId);
 
+      // Use translated name if locale is provided
+      let productName = item.product.name;
+      if (locale && this.translationService) {
+        try {
+          const translation = await this.translationService.getTranslation(item.productId, locale);
+          if (translation?.name) {
+            productName = translation.name;
+          }
+        } catch {
+          // fallback to base name
+        }
+      }
+
       items.push({
         id: item.id,
         productId: item.productId,
-        productName: item.product.name,
+        productName,
         productSlug: item.product.slug,
         productImage,
         variantId: item.variantId,

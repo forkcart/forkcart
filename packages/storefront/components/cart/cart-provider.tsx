@@ -5,6 +5,19 @@ import type { CartItem } from '@forkcart/shared';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
+/** Get browser language for Accept-Language header */
+function getBrowserLocale(): string {
+  if (typeof navigator === 'undefined') return 'en';
+  return navigator.language || 'en';
+}
+
+function apiHeaders(extra?: Record<string, string>): Record<string, string> {
+  return {
+    'Accept-Language': getBrowserLocale(),
+    ...extra,
+  };
+}
+
 interface ServerCartItem {
   id: string;
   productId: string;
@@ -76,7 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     if (savedCartId) {
       setServerCartId(savedCartId);
       // Sync from server
-      fetch(`${API_URL}/api/v1/carts/${savedCartId}`)
+      fetch(`${API_URL}/api/v1/carts/${savedCartId}`, { headers: apiHeaders() })
         .then((r) => {
           if (!r.ok) throw new Error('Cart not found');
           return r.json() as Promise<ServerCartResponse>;
@@ -121,7 +134,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     const sessionId = getSessionId();
     const res = await fetch(`${API_URL}/api/v1/carts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: apiHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ sessionId }),
     });
 
@@ -172,7 +185,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .then((cartId) => {
           return fetch(`${API_URL}/api/v1/carts/${cartId}/items`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: apiHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ productId: product.id, quantity }),
           });
         })
@@ -211,10 +224,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (serverCartId) {
         const endpoint =
           quantity <= 0
-            ? fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, { method: 'DELETE' })
+            ? fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
+                method: 'DELETE',
+                headers: apiHeaders(),
+              })
             : fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: apiHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ quantity }),
               });
 
@@ -248,7 +264,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = useCallback(() => {
     setItems([]);
     if (serverCartId) {
-      fetch(`${API_URL}/api/v1/carts/${serverCartId}`, { method: 'DELETE' }).catch(() => {});
+      fetch(`${API_URL}/api/v1/carts/${serverCartId}`, {
+        method: 'DELETE',
+        headers: apiHeaders(),
+      }).catch(() => {});
     }
     localStorage.removeItem('forkcart_cart_id');
     setServerCartId(null);
@@ -287,5 +306,6 @@ function serverItemToCartItem(item: ServerCartItem): CartItem {
     totalPrice: item.totalPrice,
     productName: item.productName,
     productSlug: item.productSlug,
+    productImage: item.productImage ?? undefined,
   };
 }
