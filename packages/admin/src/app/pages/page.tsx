@@ -168,7 +168,7 @@ export default function PagesListPage() {
                       </Link>
                       {page.status === 'published' && (
                         <a
-                          href={page.isHomepage ? '/' : `/p/${page.slug}`}
+                          href={`${process.env['NEXT_PUBLIC_STOREFRONT_URL'] ?? 'https://forkcart.heynyx.dev'}${page.isHomepage ? '/' : `/p/${page.slug}`}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="rounded p-1.5 text-gray-400 transition-colors hover:bg-green-50 hover:text-green-600"
