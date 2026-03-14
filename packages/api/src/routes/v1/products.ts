@@ -18,9 +18,15 @@ export function createProductRoutes(
 ) {
   const router = new Hono();
 
-  /** Resolve locale from ?locale= query param. Returns null only if no param given. */
-  function resolveLocale(c: { req: { query: (k: string) => string | undefined } }): string | null {
-    return c.req.query('locale') ?? null;
+  /** Resolve locale from ?locale= query param or Accept-Language header */
+  function resolveLocale(c: {
+    req: { query: (k: string) => string | undefined; header: (k: string) => string | undefined };
+  }): string | null {
+    const fromQuery = c.req.query('locale');
+    if (fromQuery) return fromQuery;
+    const acceptLang = c.req.header('Accept-Language');
+    if (acceptLang) return acceptLang.split(',')[0]?.split('-')[0]?.trim() || null;
+    return null;
   }
 
   /** Merge translation fields over product (non-null fields override, empty string is valid) */

@@ -34,6 +34,7 @@ export interface SearchOptions {
   offset?: number;
   sessionId?: string;
   customerId?: string;
+  locale?: string;
 }
 
 /** Instant search result — lightweight for overlay */
@@ -114,20 +115,27 @@ export class SearchService {
   }
 
   /** Get translated product names for a list of product IDs (default locale) */
-  private async getTranslatedNames(productIds: string[]): Promise<Map<string, string>> {
+  private async getTranslatedNames(
+    productIds: string[],
+    locale?: string,
+  ): Promise<Map<string, string>> {
     if (!this.db || productIds.length === 0) return new Map();
     try {
       const { sql: dsql } = await import('drizzle-orm');
-      // Get default locale
-      const [langRow] = await this.db.execute<{ locale: string }>(
-        dsql`SELECT locale FROM languages WHERE is_default = true LIMIT 1`,
-      );
-      if (!langRow) return new Map();
-      const locale = langRow.locale;
+      // Use provided locale or fall back to default
+      let resolvedLocale = locale;
+      if (!resolvedLocale) {
+        const [langRow] = await this.db.execute<{ locale: string }>(
+          dsql`SELECT locale FROM languages WHERE is_default = true LIMIT 1`,
+        );
+        if (!langRow) return new Map();
+        resolvedLocale = langRow.locale;
+      }
+      const locale_ = resolvedLocale;
 
       const rows = await this.db.execute<{ product_id: string; name: string }>(
         dsql`SELECT product_id, name FROM product_translations
-             WHERE locale = ${locale}
+             WHERE locale = ${locale_}
              AND product_id::text = ANY(ARRAY[${dsql.join(
                productIds.map((id) => dsql`${id}`),
                dsql`, `,
@@ -223,6 +231,16 @@ export class SearchService {
           .sort((a, b) => b.rank - a.rank);
       } catch (err) {
         logger.warn({ err }, 'Smart ranking failed, using text relevance');
+      }
+    }
+
+    // Apply translations if locale provided
+    if (options.locale && rankedData.length > 0) {
+      const ids = rankedData.map((p) => p.id);
+      const nameMap = await this.getTranslatedNames(ids, options.locale);
+      for (const p of rankedData) {
+        const translated = nameMap.get(p.id);
+        if (translated) (p as Record<string, unknown>).name = translated;
       }
     }
 
@@ -341,7 +359,7 @@ export class SearchService {
   }
 
   /** Instant search — lightweight results for search overlay (max 8) */
-  async instantSearch(query: string): Promise<InstantSearchResult[]> {
+  async instantSearch(query: string, locale?: string): Promise<InstantSearchResult[]> {
     const trimmed = query.trim();
     if (!trimmed) return [];
 
@@ -357,7 +375,7 @@ export class SearchService {
     // Get images + translated names in parallel
     const [imageMap, nameMap] = await Promise.all([
       this.ranking ? this.getProductImages(ids) : Promise.resolve(new Map<string, string>()),
-      this.getTranslatedNames(ids),
+      this.getTranslatedNames(ids, locale),
     ]);
 
     return result.data.map((p) => ({
@@ -373,7 +391,7 @@ export class SearchService {
   }
 
   /** Get trending products */
-  async getTrendingProducts(limit = 10): Promise<TrendingProduct[]> {
+  async getTrendingProducts(limit = 10, locale?: string): Promise<TrendingProduct[]> {
     if (!this.ranking) return [];
     let results = await this.ranking.getTrendingProducts(limit);
 
@@ -402,7 +420,7 @@ export class SearchService {
         const ids = rows.map((r) => r.id);
         const [imageMap, nameMap] = await Promise.all([
           this.ranking.getProductImages(ids),
-          this.getTranslatedNames(ids),
+          this.getTranslatedNames(ids, locale),
         ]);
 
         results = rows.map((r) => ({
