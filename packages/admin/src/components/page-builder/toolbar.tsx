@@ -5,27 +5,54 @@ import { Undo2, Redo2, Monitor, Smartphone, Tablet, Eye, Save } from 'lucide-rea
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
+export type DeviceView = 'desktop' | 'tablet' | 'mobile';
+
 interface ToolbarProps {
   onSave: (content: string) => void;
   onPublish?: () => void;
   onPreview?: () => void;
   saving?: boolean;
   pageTitle?: string;
+  pageStatus?: 'draft' | 'published' | 'archived';
+  deviceView: DeviceView;
+  onDeviceChange: (device: DeviceView) => void;
 }
 
-type DeviceView = 'desktop' | 'tablet' | 'mobile';
-
-export function Toolbar({ onSave, onPublish, onPreview, saving, pageTitle }: ToolbarProps) {
+export function Toolbar({
+  onSave,
+  onPublish,
+  onPreview,
+  saving,
+  pageTitle,
+  pageStatus,
+  deviceView,
+  onDeviceChange,
+}: ToolbarProps) {
   const { actions, query, canUndo, canRedo } = useEditor((_state, query) => ({
     canUndo: query.history.canUndo(),
     canRedo: query.history.canRedo(),
   }));
 
-  const [deviceView, setDeviceView] = useState<DeviceView>('desktop');
+  const [publishing, setPublishing] = useState(false);
 
   const handleSave = () => {
     const json = query.serialize();
     onSave(json);
+  };
+
+  const handlePublish = async () => {
+    if (!onPublish) return;
+    setPublishing(true);
+    try {
+      // Save first, then publish
+      const json = query.serialize();
+      onSave(json);
+      // Small delay to ensure save completes
+      await new Promise((r) => setTimeout(r, 500));
+      await onPublish();
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -67,7 +94,7 @@ export function Toolbar({ onSave, onPublish, onPreview, saving, pageTitle }: Too
               'rounded p-2 transition-colors',
               deviceView === view ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100',
             )}
-            onClick={() => setDeviceView(view)}
+            onClick={() => onDeviceChange(view)}
             title={label}
           >
             <Icon className="h-4 w-4" />
@@ -96,10 +123,11 @@ export function Toolbar({ onSave, onPublish, onPreview, saving, pageTitle }: Too
         </button>
         {onPublish && (
           <button
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-            onClick={onPublish}
+            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            onClick={handlePublish}
+            disabled={publishing || saving}
           >
-            Publish
+            {publishing ? 'Publishing...' : pageStatus === 'published' ? '✓ Published' : 'Publish'}
           </button>
         )}
       </div>

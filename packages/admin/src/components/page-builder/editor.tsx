@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { Editor, Frame, Element } from '@craftjs/core';
 import { ComponentPanel } from './component-panel';
 import { SettingsPanel } from './settings-panel';
-import { Toolbar } from './toolbar';
+import { Toolbar, type DeviceView, getDeviceWidth } from './toolbar';
 import { Container } from './blocks/container';
 import { Heading } from './blocks/heading';
 import { TextBlock } from './blocks/text-block';
@@ -62,6 +63,8 @@ interface PageBuilderEditorProps {
   onPreview?: () => void;
   /** Page title shown in toolbar */
   pageTitle?: string;
+  /** Current page status */
+  pageStatus?: 'draft' | 'published' | 'archived';
   /** Whether save is in progress */
   saving?: boolean;
 }
@@ -72,8 +75,12 @@ export function PageBuilderEditor({
   onPublish,
   onPreview,
   pageTitle,
+  pageStatus,
   saving,
 }: PageBuilderEditorProps) {
+  const [deviceView, setDeviceView] = useState<DeviceView>('desktop');
+  const deviceWidth = getDeviceWidth(deviceView);
+
   return (
     <div className="flex h-full flex-col">
       <Editor resolver={resolver} enabled>
@@ -82,12 +89,18 @@ export function PageBuilderEditor({
           onPublish={onPublish}
           onPreview={onPreview}
           pageTitle={pageTitle}
+          pageStatus={pageStatus}
           saving={saving}
+          deviceView={deviceView}
+          onDeviceChange={setDeviceView}
         />
         <div className="flex flex-1 overflow-hidden">
           <ComponentPanel />
           <div className="flex-1 overflow-y-auto bg-gray-50 p-8">
-            <div className="mx-auto min-h-[600px] bg-white shadow-sm">
+            <div
+              className="mx-auto min-h-[600px] bg-white shadow-sm transition-all duration-300"
+              style={{ maxWidth: deviceWidth ?? '100%' }}
+            >
               <Frame data={initialContent ?? undefined}>
                 <Element is={Container} canvas paddingX={0} paddingY={0} maxWidth="full">
                   <Hero />
