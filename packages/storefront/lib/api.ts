@@ -2,10 +2,16 @@ import type { Product, Category, Cart, PaginatedResponse, ApiResponse } from '@f
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
-/** Get browser locale for Accept-Language header */
-function getBrowserLocale(): string {
-  if (typeof navigator === 'undefined') return 'en';
-  return navigator.language?.split('-')[0] || 'en';
+/** Get locale for Accept-Language header.
+ *  Client: reads from localStorage (set by i18n provider) → navigator.language → env default.
+ *  Server: reads from env default (NEXT_PUBLIC_DEFAULT_LOCALE). */
+function getLocaleForHeader(): string {
+  if (typeof window !== 'undefined') {
+    const stored = localStorage.getItem('forkcart_locale');
+    if (stored) return stored;
+    return navigator.language?.split('-')[0] || process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] || 'en';
+  }
+  return process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] || 'en';
 }
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
@@ -13,7 +19,7 @@ async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      'Accept-Language': getBrowserLocale(),
+      'Accept-Language': getLocaleForHeader(),
       ...options?.headers,
     },
     next: { revalidate: 60 },
@@ -168,7 +174,7 @@ export async function getPublicPopularSearches(): Promise<{
 export async function getTrendingProducts(
   locale?: string,
 ): Promise<{ data: TrendingProductItem[] }> {
-  const lang = locale || getBrowserLocale();
+  const lang = locale || getLocaleForHeader();
   const res = await fetch(`${API_URL}/api/v1/public/search/trending`, {
     next: { revalidate: 60 },
     headers: { 'Accept-Language': lang },
