@@ -296,6 +296,23 @@
     "subscribe": "Subscribe",
     "copyright": "© {year} {shopName}. Powered by open source."
   },
+  "wishlist": {
+    "title": "Wishlist",
+    "empty": "Your wishlist is empty",
+    "loginRequired": "Please log in to view your wishlist",
+    "browseProducts": "Browse products"
+  },
+  "reviews": {
+    "noReviews": "No reviews yet. Be the first to review!",
+    "writeReview": "Write a review",
+    "submitted": "Thank you! Your review has been submitted and is pending approval.",
+    "rating": "Rating",
+    "titleLabel": "Title",
+    "titlePlaceholder": "Give your review a title",
+    "contentLabel": "Your review",
+    "contentPlaceholder": "Share your experience with this product...",
+    "submit": "Submit Review"
+  },
   "errors": {
     "notFound": "Page not found",
     "serverError": "Internal server error",

@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { formatPrice } from '@forkcart/shared';
 import type { Product } from '@forkcart/shared';
+import { WishlistButton } from './wishlist-button';
+import { StarRating } from './star-rating';
 
 interface ProductWithImages extends Product {
   images?: Array<{ id: string; url: string; alt: string | null; sortOrder: number }>;
@@ -10,14 +12,16 @@ interface ProductWithImages extends Product {
 
 interface ProductCardProps {
   product: ProductWithImages;
+  averageRating?: number;
+  reviewCount?: number;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, averageRating, reviewCount }: ProductCardProps) {
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
   const mainImage = product.images?.sort((a, b) => a.sortOrder - b.sortOrder)[0];
 
   return (
-    <Link href={`/product/${product.slug}`} className="group block">
+    <Link href={`/product/${product.slug}`} className="group relative block">
       <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
         {mainImage ? (
           <img
@@ -37,6 +41,9 @@ export function ProductCard({ product }: ProductCardProps) {
             </svg>
           </div>
         )}
+        <div className="absolute top-2 right-2">
+          <WishlistButton productId={product.id} size="sm" />
+        </div>
       </div>
 
       <div className="mt-3">
@@ -45,6 +52,14 @@ export function ProductCard({ product }: ProductCardProps) {
         </h3>
         {product.shortDescription && (
           <p className="mt-0.5 text-xs text-gray-500 line-clamp-1">{product.shortDescription}</p>
+        )}
+        {averageRating !== undefined && averageRating > 0 && (
+          <div className="mt-1 flex items-center gap-1">
+            <StarRating rating={averageRating} size="sm" />
+            {reviewCount !== undefined && reviewCount > 0 && (
+              <span className="text-xs text-gray-400">({reviewCount})</span>
+            )}
+          </div>
         )}
         <div className="mt-1.5 flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-900">

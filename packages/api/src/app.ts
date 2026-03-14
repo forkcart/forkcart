@@ -48,6 +48,10 @@ import {
   ProductTranslationService,
   CouponRepository,
   CouponService,
+  WishlistRepository,
+  WishlistService,
+  ProductReviewRepository,
+  ProductReviewService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
@@ -83,6 +87,8 @@ import { createTranslationRoutes, createPublicTranslationRoutes } from './routes
 import { createProductTranslationRoutes } from './routes/v1/product-translations';
 import { createCacheRoutes } from './routes/v1/cache';
 import { createCouponRoutes, createPublicCouponRoutes } from './routes/v1/coupons';
+import { createWishlistRoutes } from './routes/v1/wishlists';
+import { createProductReviewRoutes, createAdminReviewRoutes } from './routes/v1/reviews';
 import { createUserRoutes } from './routes/v1/users';
 import { requireRole } from './middleware/permissions';
 import { flattenTranslations } from '@forkcart/i18n';
@@ -164,6 +170,8 @@ export async function createApp(db: Database) {
   const userRepository = new UserRepository(db);
   const shippingRepository = new ShippingRepository(db);
   const couponRepository = new CouponRepository(db);
+  const wishlistRepository = new WishlistRepository(db);
+  const productReviewRepository = new ProductReviewRepository(db);
 
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
@@ -174,7 +182,12 @@ export async function createApp(db: Database) {
   const orderService = new OrderService({ orderRepository, eventBus });
   const customerService = new CustomerService({ customerRepository, eventBus });
   const mediaService = new MediaService({ mediaRepository, eventBus, storagePath, baseUrl });
-  const cartService = new CartService({ cartRepository, eventBus });
+  // productTranslationService injected below after it's created
+  const cartService = new CartService({
+    cartRepository,
+    eventBus,
+    productTranslationService: null,
+  });
   const paymentService = new PaymentService({
     paymentRepository,
     paymentProviderRegistry,
@@ -186,6 +199,8 @@ export async function createApp(db: Database) {
 
   const shippingService = new ShippingService({ shippingRepository, eventBus });
   const couponService = new CouponService({ couponRepository });
+  const wishlistService = new WishlistService({ wishlistRepository });
+  const productReviewService = new ProductReviewService({ productReviewRepository });
 
   // Product translations
   const productTranslationRepository = new ProductTranslationRepository(db);
@@ -203,6 +218,9 @@ export async function createApp(db: Database) {
       };
     },
   });
+
+  // Inject product translations into cart service (late binding — both created now)
+  cartService.setProductTranslationService(productTranslationService);
 
   // i18n translations
   const translationRepository = new TranslationRepository(db);
@@ -403,6 +421,7 @@ export async function createApp(db: Database) {
   v1.route('/translations', createTranslationRoutes(translationService));
   v1.route('/cache', createCacheRoutes());
   v1.route('/coupons', createCouponRoutes(couponService));
+  v1.route('/reviews', createAdminReviewRoutes(productReviewService));
   v1.route('/users', createUserRoutes(authService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
@@ -414,6 +433,18 @@ export async function createApp(db: Database) {
 
   // Public translations API (no auth — must be mounted BEFORE /api/v1 to avoid auth middleware)
   app.route('/api/v1/public/translations', createPublicTranslationRoutes(translationService));
+
+  // Wishlist routes (customer auth — mounted publicly to avoid admin auth)
+  app.route(
+    '/api/v1/public/wishlists',
+    createWishlistRoutes(wishlistService, productService, customerAuthService),
+  );
+
+  // Public product review routes (get = public, post = customer auth)
+  app.route(
+    '/api/v1/public/products',
+    createProductReviewRoutes(productReviewService, customerAuthService),
+  );
 
   // Public coupon routes (no auth)
   app.route('/api/v1/public/coupons', createPublicCouponRoutes(couponService));
