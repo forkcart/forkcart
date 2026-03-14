@@ -49,7 +49,7 @@ export function PageBuilderEditor({
   saving,
 }: PageBuilderEditorProps) {
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-full flex-col">
       <Editor resolver={resolver} enabled>
         <Toolbar
           onSave={onSave}
