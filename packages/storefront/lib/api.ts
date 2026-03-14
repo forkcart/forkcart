@@ -2,19 +2,46 @@ import type { Product, Category, Cart, PaginatedResponse, ApiResponse } from '@f
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
-/** Get locale for Accept-Language header.
- *  Client: reads from localStorage (set by i18n provider) → navigator.language → env default.
- *  Server: reads from env default (NEXT_PUBLIC_DEFAULT_LOCALE). */
+/** Cached default locale from API (fetched once per server lifetime / client session) */
+let _cachedDefaultLocale: string | null = null;
+let _defaultLocalePromise: Promise<string> | null = null;
+
+/** Fetch the shop's default locale from the API (cached) */
+async function fetchDefaultLocale(): Promise<string> {
+  if (_cachedDefaultLocale) return _cachedDefaultLocale;
+  if (_defaultLocalePromise) return _defaultLocalePromise;
+  _defaultLocalePromise = fetch(`${API_URL}/api/v1/public/translations`)
+    .then((r) =>
+      r.ok ? (r.json() as Promise<{ data: Array<{ locale: string; isDefault?: boolean }> }>) : null,
+    )
+    .then((json) => {
+      const def = json?.data?.find((l) => l.isDefault);
+      _cachedDefaultLocale = def?.locale ?? 'en';
+      return _cachedDefaultLocale;
+    })
+    .catch(() => {
+      _cachedDefaultLocale = 'en';
+      return 'en';
+    });
+  return _defaultLocalePromise;
+}
+
+/** Get locale for Accept-Language header (sync — uses cache or fallback).
+ *  Client: localStorage (i18n state) → cached API default → 'en'.
+ *  Server: cached API default → 'en'. */
 function getLocaleForHeader(): string {
   if (typeof window !== 'undefined') {
     const stored = localStorage.getItem('forkcart_locale');
     if (stored) return stored;
-    return navigator.language?.split('-')[0] || process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] || 'en';
   }
-  return process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] || 'en';
+  return _cachedDefaultLocale || 'en';
 }
 
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+  // Ensure default locale is cached before first API call (server-side)
+  if (!_cachedDefaultLocale && typeof window === 'undefined') {
+    await fetchDefaultLocale();
+  }
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     ...options,
     headers: {

@@ -12,10 +12,15 @@ const TRANSLATIONS_URL = `${API_BASE_URL}/api/v1/public/translations`;
  * Client-side i18n wrapper.
  * Fetches the shop's default language from the API, then falls back to 'en'.
  */
-const ENV_DEFAULT_LOCALE = process.env['NEXT_PUBLIC_DEFAULT_LOCALE'] || 'en';
-
 export function I18nWrapper({ children }: { children: ReactNode }) {
-  const [defaultLocale, setDefaultLocale] = useState(ENV_DEFAULT_LOCALE);
+  const [defaultLocale, setDefaultLocale] = useState(() => {
+    // On client, check localStorage first for instant correct locale
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('forkcart_locale');
+      if (stored) return stored;
+    }
+    return 'en';
+  });
 
   useEffect(() => {
     fetch(TRANSLATIONS_URL)
