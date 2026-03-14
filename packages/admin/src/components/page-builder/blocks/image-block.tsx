@@ -67,11 +67,7 @@ export const ImageBlock: UserComponent<ImageBlockProps> = ({
     content
   );
 
-  return (
-    <StyledBlock className={cn('w-full', className)}>
-      {wrapper}
-    </StyledBlock>
-  );
+  return <StyledBlock className={cn('w-full', className)}>{wrapper}</StyledBlock>;
 };
 
 function ImageBlockSettings() {

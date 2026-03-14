@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+import { stylesToCSS, type BlockStyles } from '../shared/block-styles';
 
 export interface ContainerProps {
   children?: React.ReactNode;
@@ -10,6 +11,7 @@ export interface ContainerProps {
   layout?: 'stack' | 'grid-2' | 'grid-3' | 'grid-4' | 'flex-row';
   gap?: number;
   alignItems?: 'start' | 'center' | 'end' | 'stretch';
+  styles?: BlockStyles;
 }
 
 const maxWidthMap: Record<string, string> = {
@@ -47,8 +49,10 @@ export function RenderContainer({
   layout = 'stack',
   gap = 16,
   alignItems = 'stretch',
+  styles,
 }: ContainerProps) {
   const lStyle = layoutStyles[layout] ?? layoutStyles.stack;
+  const extraStyles = styles ? stylesToCSS(styles) : {};
 
   return (
     <div
@@ -62,6 +66,7 @@ export function RenderContainer({
         paddingTop: paddingY,
         paddingBottom: paddingY,
         backgroundColor: backgroundColor !== 'transparent' ? backgroundColor : undefined,
+        ...extraStyles,
       }}
     >
       {children}

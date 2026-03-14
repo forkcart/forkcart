@@ -2,6 +2,7 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 import { Mail } from 'lucide-react';
 
@@ -25,71 +26,66 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full rounded-xl px-8 py-12 md:px-16', className)}
-      style={{ backgroundColor }}
-    >
-      <div className={cn('mx-auto max-w-2xl', layout === 'stacked' ? 'text-center' : '')}>
-        <Mail className="mx-auto mb-4 h-8 w-8" style={{ color: textColor, opacity: 0.7 }} />
-        <h2
-          className={cn(
-            'text-2xl font-bold outline-none md:text-3xl',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-          )}
-          style={{ color: textColor }}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) =>
-            setProp((p: NewsletterProps) => (p.title = e.currentTarget.textContent ?? ''))
-          }
-        >
-          {title}
-        </h2>
-        {subtitle && (
-          <p
+    <StyledBlock className={cn('w-full rounded-xl px-8 py-12 md:px-16', className)}>
+      <div style={{ backgroundColor, width: '100%' }}>
+        <div className={cn('mx-auto max-w-2xl', layout === 'stacked' ? 'text-center' : '')}>
+          <Mail className="mx-auto mb-4 h-8 w-8" style={{ color: textColor, opacity: 0.7 }} />
+          <h2
             className={cn(
-              'mt-3 text-base outline-none',
+              'text-2xl font-bold outline-none md:text-3xl',
               selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
             )}
-            style={{ color: textColor, opacity: 0.8 }}
+            style={{ color: textColor }}
             contentEditable={selected}
             suppressContentEditableWarning
             onBlur={(e) =>
-              setProp((p: NewsletterProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+              setProp((p: NewsletterProps) => (p.title = e.currentTarget.textContent ?? ''))
             }
           >
-            {subtitle}
-          </p>
-        )}
-        <div
-          className={cn(
-            'mt-6',
-            layout === 'inline'
-              ? 'flex flex-col gap-3 sm:flex-row'
-              : 'flex flex-col items-center gap-3 sm:flex-row sm:justify-center',
+            {title}
+          </h2>
+          {subtitle && (
+            <p
+              className={cn(
+                'mt-3 text-base outline-none',
+                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              )}
+              style={{ color: textColor, opacity: 0.8 }}
+              contentEditable={selected}
+              suppressContentEditableWarning
+              onBlur={(e) =>
+                setProp((p: NewsletterProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+              }
+            >
+              {subtitle}
+            </p>
           )}
-        >
-          <input
-            type="email"
-            placeholder="Enter your email"
-            className="w-full rounded-lg border-0 px-4 py-3 text-sm text-gray-900 placeholder-gray-500 sm:max-w-xs"
-            onClick={(e) => e.preventDefault()}
-          />
-          <button className="whitespace-nowrap rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
-            {buttonText}
-          </button>
+          <div
+            className={cn(
+              'mt-6',
+              layout === 'inline'
+                ? 'flex flex-col gap-3 sm:flex-row'
+                : 'flex flex-col items-center gap-3 sm:flex-row sm:justify-center',
+            )}
+          >
+            <input
+              type="email"
+              placeholder="Enter your email"
+              className="w-full rounded-lg border-0 px-4 py-3 text-sm text-gray-900 placeholder-gray-500 sm:max-w-xs"
+              onClick={(e) => e.preventDefault()}
+            />
+            <button className="whitespace-nowrap rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+              {buttonText}
+            </button>
+          </div>
         </div>
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 

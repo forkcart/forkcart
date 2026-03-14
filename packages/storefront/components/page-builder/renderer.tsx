@@ -78,7 +78,8 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
   // Apply user-defined block styles if present
   const blockStyles = props.styles as BlockStyles | undefined;
   const styleCSS = blockStyles ? stylesToCSS(blockStyles) : undefined;
-  const hasStyles = styleCSS && Object.keys(styleCSS).length > 0;
+  const hasStyles =
+    styleCSS && Object.values(styleCSS).some((v) => v !== undefined && v !== 0 && v !== '');
 
   const rendered = (() => {
     switch (name) {
@@ -214,7 +215,8 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
     }
   })();
 
-  // Wrap with style div if block has custom styles (Container handles its own)
+  // Wrap with style div if block has custom styles
+  // Container applies styles internally, so skip wrapping it
   if (hasStyles && name !== 'Container') {
     return <div style={styleCSS}>{rendered}</div>;
   }
