@@ -64,7 +64,9 @@ export default function PageEditorPage() {
     try {
       await apiClient(`/pages/${page.id}/publish`, { method: 'PUT' });
       setPage((prev) => (prev ? { ...prev, status: 'published' } : prev));
-    } catch {
+      alert('Page published!');
+    } catch (error) {
+      console.error('[PageEditor] Failed to publish:', error);
       alert('Failed to publish page');
     }
   }, [page]);
@@ -123,6 +125,7 @@ export default function PageEditorPage() {
         onPublish={handlePublish}
         onPreview={handlePreview}
         pageTitle={page.title}
+        pageStatus={page.status}
         saving={saving}
       />
     </div>
