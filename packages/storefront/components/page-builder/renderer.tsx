@@ -9,6 +9,8 @@ import { RenderSpacer } from './blocks/spacer';
 import { RenderColumns } from './blocks/columns';
 import { RenderProductGrid } from './blocks/product-grid';
 import { RenderCategoryGrid } from './blocks/category-grid';
+import { RenderFeaturedProduct } from './blocks/featured-product';
+import { RenderNewsletter } from './blocks/newsletter';
 
 /**
  * Craft.js serialized node shape
@@ -119,6 +121,16 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
           <RenderCategoryGrid {...(props as any)} />
         </Suspense>
       );
+
+    case 'FeaturedProduct':
+      return (
+        <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-gray-100" />}>
+          <RenderFeaturedProduct {...(props as any)} />
+        </Suspense>
+      );
+
+    case 'Newsletter':
+      return <RenderNewsletter {...(props as any)} />;
 
     // Fallback for unknown blocks: just render children if any
     default:
