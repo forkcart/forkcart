@@ -114,7 +114,9 @@ export class SearchService {
     return `${this.mediaBaseUrl}/uploads${path.startsWith('/') ? '' : '/'}${path}`;
   }
 
-  /** Get translated product names for a list of product IDs (default locale) */
+  /** Get translated product names for a list of product IDs.
+   *  Always resolves to the DB default locale — the provided locale is used
+   *  only if it matches an existing language, otherwise falls back to default. */
   private async getTranslatedNames(
     productIds: string[],
     locale?: string,
@@ -122,14 +124,18 @@ export class SearchService {
     if (!this.db || productIds.length === 0) return new Map();
     try {
       const { sql: dsql } = await import('drizzle-orm');
-      // Use provided locale or fall back to default
-      let resolvedLocale = locale;
-      if (!resolvedLocale) {
-        const [langRow] = await this.db.execute<{ locale: string }>(
-          dsql`SELECT locale FROM languages WHERE is_default = true LIMIT 1`,
+      // Always get the default locale from DB
+      const [langRow] = await this.db.execute<{ locale: string }>(
+        dsql`SELECT locale FROM languages WHERE is_default = true LIMIT 1`,
+      );
+      if (!langRow) return new Map();
+      // Use requested locale if it exists in languages table, otherwise default
+      let resolvedLocale = langRow.locale;
+      if (locale && locale !== langRow.locale) {
+        const [match] = await this.db.execute<{ locale: string }>(
+          dsql`SELECT locale FROM languages WHERE locale = ${locale} LIMIT 1`,
         );
-        if (!langRow) return new Map();
-        resolvedLocale = langRow.locale;
+        if (match) resolvedLocale = match.locale;
       }
       const locale_ = resolvedLocale;
 
@@ -234,8 +240,8 @@ export class SearchService {
       }
     }
 
-    // Apply translations if locale provided
-    if (options.locale && rankedData.length > 0) {
+    // Always apply translations (uses default locale if none specified)
+    if (rankedData.length > 0) {
       const ids = rankedData.map((p) => p.id);
       const nameMap = await this.getTranslatedNames(ids, options.locale);
       for (const p of rankedData) {
