@@ -45,7 +45,9 @@ export const IconGrid: UserComponent<IconGridProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <section
@@ -64,8 +66,40 @@ export const IconGrid: UserComponent<IconGridProps> = ({
             )}
           >
             <span className={iconSizeClasses[iconSize]}>{item.icon}</span>
-            <h3 className="text-lg font-semibold text-gray-900">{item.title}</h3>
-            <p className="text-sm text-gray-500">{item.description}</p>
+            <h3
+              className={cn(
+                'text-lg font-semibold text-gray-900 outline-none',
+                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              )}
+              contentEditable={selected}
+              suppressContentEditableWarning
+              onBlur={(e) =>
+                setProp((p: IconGridProps) => {
+                  const list = [...(p.items ?? defaultItems)];
+                  list[idx] = { ...list[idx]!, title: e.currentTarget.textContent ?? '' };
+                  p.items = list;
+                })
+              }
+            >
+              {item.title}
+            </h3>
+            <p
+              className={cn(
+                'text-sm text-gray-500 outline-none',
+                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              )}
+              contentEditable={selected}
+              suppressContentEditableWarning
+              onBlur={(e) =>
+                setProp((p: IconGridProps) => {
+                  const list = [...(p.items ?? defaultItems)];
+                  list[idx] = { ...list[idx]!, description: e.currentTarget.textContent ?? '' };
+                  p.items = list;
+                })
+              }
+            >
+              {item.description}
+            </p>
           </div>
         ))}
       </div>

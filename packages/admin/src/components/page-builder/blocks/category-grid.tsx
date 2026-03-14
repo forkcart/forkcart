@@ -21,7 +21,9 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   const gridCols: Record<number, string> = {
     2: 'grid-cols-2',
@@ -36,7 +38,21 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
       }}
       className={cn('w-full py-8', className)}
     >
-      {title && <h2 className="mb-6 text-2xl font-bold text-gray-900">{title}</h2>}
+      {title && (
+        <h2
+          className={cn(
+            'mb-6 text-2xl font-bold text-gray-900 outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: CategoryGridProps) => (p.title = e.currentTarget.textContent ?? ''))
+          }
+        >
+          {title}
+        </h2>
+      )}
       <div className={cn('grid gap-4', gridCols[columns])}>
         {Array.from({ length: limit }, (_, i) => (
           <div

@@ -25,7 +25,9 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <div
@@ -37,11 +39,33 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
     >
       <div className={cn('mx-auto max-w-2xl', layout === 'stacked' ? 'text-center' : '')}>
         <Mail className="mx-auto mb-4 h-8 w-8" style={{ color: textColor, opacity: 0.7 }} />
-        <h2 className="text-2xl font-bold md:text-3xl" style={{ color: textColor }}>
+        <h2
+          className={cn(
+            'text-2xl font-bold outline-none md:text-3xl',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          style={{ color: textColor }}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: NewsletterProps) => (p.title = e.currentTarget.textContent ?? ''))
+          }
+        >
           {title}
         </h2>
         {subtitle && (
-          <p className="mt-3 text-base" style={{ color: textColor, opacity: 0.8 }}>
+          <p
+            className={cn(
+              'mt-3 text-base outline-none',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            style={{ color: textColor, opacity: 0.8 }}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: NewsletterProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+            }
+          >
             {subtitle}
           </p>
         )}

@@ -23,7 +23,9 @@ export const FeaturedProduct: UserComponent<FeaturedProductProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <div
@@ -60,7 +62,21 @@ export const FeaturedProduct: UserComponent<FeaturedProductProps> = ({
             <div className="h-8 w-24 rounded bg-gray-300" />
             <button className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white">
               <ShoppingCart className="h-4 w-4" />
-              {ctaText}
+              <span
+                className={cn(
+                  'outline-none',
+                  selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                )}
+                contentEditable={selected}
+                suppressContentEditableWarning
+                onBlur={(e) =>
+                  setProp(
+                    (p: FeaturedProductProps) => (p.ctaText = e.currentTarget.textContent ?? ''),
+                  )
+                }
+              >
+                {ctaText}
+              </span>
             </button>
           </div>
           {productSlug ? (

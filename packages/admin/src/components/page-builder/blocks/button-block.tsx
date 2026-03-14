@@ -36,7 +36,9 @@ export const ButtonBlock: UserComponent<ButtonBlockProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <div
@@ -56,7 +58,19 @@ export const ButtonBlock: UserComponent<ButtonBlockProps> = ({
         )}
         onClick={(e) => e.preventDefault()}
       >
-        {text}
+        <span
+          className={cn(
+            'outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: ButtonBlockProps) => (p.text = e.currentTarget.textContent ?? ''))
+          }
+        >
+          {text}
+        </span>
       </a>
     </div>
   );

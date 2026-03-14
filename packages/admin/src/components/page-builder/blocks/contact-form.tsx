@@ -24,7 +24,9 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <section
@@ -34,8 +36,36 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
       className={cn('mx-auto w-full max-w-2xl px-6 py-16', className)}
       style={{ backgroundColor }}
     >
-      {title && <h2 className="mb-2 text-center text-2xl font-bold text-gray-900">{title}</h2>}
-      {subtitle && <p className="mb-8 text-center text-gray-500">{subtitle}</p>}
+      {title && (
+        <h2
+          className={cn(
+            'mb-2 text-center text-2xl font-bold text-gray-900 outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: ContactFormProps) => (p.title = e.currentTarget.textContent ?? ''))
+          }
+        >
+          {title}
+        </h2>
+      )}
+      {subtitle && (
+        <p
+          className={cn(
+            'mb-8 text-center text-gray-500 outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: ContactFormProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+          }
+        >
+          {subtitle}
+        </p>
+      )}
       <form
         className="space-y-4"
         onSubmit={(e) => {

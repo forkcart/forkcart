@@ -24,7 +24,9 @@ export const Banner: UserComponent<BannerProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <div
@@ -35,7 +37,17 @@ export const Banner: UserComponent<BannerProps> = ({
       style={{ backgroundColor, color: textColor }}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-center gap-3">
-        <p className="text-sm font-medium">{text}</p>
+        <p
+          className={cn(
+            'text-sm font-medium outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) => setProp((p: BannerProps) => (p.text = e.currentTarget.textContent ?? ''))}
+        >
+          {text}
+        </p>
         {linkText && (
           <a
             href={linkUrl}
