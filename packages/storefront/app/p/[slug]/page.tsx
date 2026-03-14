@@ -36,6 +36,12 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound();
   }
 
+  // System pages (product, cart, checkout etc.) are not directly accessible via /p/
+  // They are used as templates by their respective routes (/product/[slug], /cart, etc.)
+  if (page.pageType && page.pageType !== 'custom') {
+    notFound();
+  }
+
   return (
     <main>
       <PageRenderer content={page.content} />
