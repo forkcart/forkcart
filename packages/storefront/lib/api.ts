@@ -168,6 +168,7 @@ export async function getPublicPopularSearches(): Promise<{
 export async function getTrendingProducts(): Promise<{ data: TrendingProductItem[] }> {
   const res = await fetch(`${API_URL}/api/v1/public/search/trending`, {
     next: { revalidate: 60 },
+    headers: { 'Accept-Language': getBrowserLocale() },
   });
   if (!res.ok) return { data: [] };
   return res.json() as Promise<{ data: TrendingProductItem[] }>;
