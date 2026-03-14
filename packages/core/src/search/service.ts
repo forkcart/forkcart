@@ -240,7 +240,7 @@ export class SearchService {
       const nameMap = await this.getTranslatedNames(ids, options.locale);
       for (const p of rankedData) {
         const translated = nameMap.get(p.id);
-        if (translated) (p as Record<string, unknown>).name = translated;
+        if (translated) (p as unknown as Record<string, unknown>).name = translated;
       }
     }
 
