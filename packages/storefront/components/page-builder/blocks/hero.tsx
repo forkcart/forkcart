@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { localePath } from '@/lib/navigation';
 
 export interface HeroProps {
   title?: string;
@@ -14,6 +15,7 @@ export interface HeroProps {
   alignment?: 'left' | 'center' | 'right';
   textColor?: string;
   className?: string;
+  locale?: string;
 }
 
 const heightClasses: Record<string, string> = {
@@ -35,6 +37,7 @@ export function RenderHero({
   alignment = 'center',
   textColor = '#ffffff',
   className,
+  locale,
 }: HeroProps) {
   return (
     <section
@@ -72,7 +75,7 @@ export function RenderHero({
         )}
         {ctaText && ctaLink && (
           <Link
-            href={ctaLink}
+            href={localePath(ctaLink, locale ?? 'en')}
             className="inline-block rounded-lg bg-white px-8 py-3 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-100"
           >
             {ctaText}

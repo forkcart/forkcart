@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { LocaleLink } from '@/components/locale-link';
 
 interface BannerProps {
   text?: string;
@@ -12,6 +12,7 @@ interface BannerProps {
   textColor?: string;
   dismissible?: boolean;
   className?: string;
+  locale?: string;
 }
 
 export function RenderBanner({
@@ -35,13 +36,13 @@ export function RenderBanner({
       <div className="mx-auto flex max-w-6xl items-center justify-center gap-3">
         <p className="text-sm font-medium">{text}</p>
         {linkText && linkUrl && (
-          <Link
+          <LocaleLink
             href={linkUrl}
             className="shrink-0 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
             style={{ color: textColor }}
           >
             {linkText} →
-          </Link>
+          </LocaleLink>
         )}
       </div>
       {dismissible && (

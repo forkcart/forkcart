@@ -7,6 +7,8 @@ interface DynamicPageRendererProps {
   dynamicBlockType: string;
   /** The actual dynamic content to inject where the dynamic block is */
   children: React.ReactNode;
+  /** Current locale for locale-aware links in PB blocks */
+  locale?: string;
 }
 
 /**
@@ -20,6 +22,7 @@ export function DynamicPageRenderer({
   content,
   dynamicBlockType,
   children,
+  locale,
 }: DynamicPageRendererProps) {
   if (!content || typeof content !== 'object') {
     return <>{children}</>;
@@ -48,7 +51,7 @@ export function DynamicPageRenderer({
     // No dynamic block found — render PB content above, then children
     return (
       <>
-        <PageRenderer content={content} />
+        <PageRenderer content={content} locale={locale} />
         {children}
       </>
     );
@@ -65,9 +68,9 @@ export function DynamicPageRenderer({
 
   return (
     <>
-      {beforeContent && <PageRenderer content={beforeContent} />}
+      {beforeContent && <PageRenderer content={beforeContent} locale={locale} />}
       {children}
-      {afterContent && <PageRenderer content={afterContent} />}
+      {afterContent && <PageRenderer content={afterContent} locale={locale} />}
     </>
   );
 }

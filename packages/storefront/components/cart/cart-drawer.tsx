@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import Image from 'next/image';
+import { LocaleLink } from '@/components/locale-link';
 import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from './cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
@@ -106,13 +106,13 @@ export function CartDrawer() {
 
                     <div className="flex flex-1 flex-col">
                       <div className="flex items-start justify-between">
-                        <Link
+                        <LocaleLink
                           href={`/product/${item.productSlug}`}
                           onClick={() => setCartOpen(false)}
                           className="text-sm font-medium text-gray-900 hover:underline"
                         >
                           {item.productName}
-                        </Link>
+                        </LocaleLink>
                         <button
                           onClick={() => removeItem(item.id)}
                           className="ml-2 rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
@@ -155,13 +155,13 @@ export function CartDrawer() {
                 <span className="text-sm text-gray-600">{t('cart.subtotal')}</span>
                 <span className="text-lg font-bold">{formatPrice(subtotal)}</span>
               </div>
-              <Link
+              <LocaleLink
                 href="/checkout"
                 onClick={() => setCartOpen(false)}
                 className="block w-full rounded-lg bg-gray-900 py-3 text-center text-sm font-semibold text-white transition hover:bg-gray-800"
               >
                 {t('cart.checkout')}
-              </Link>
+              </LocaleLink>
               <button
                 onClick={() => setCartOpen(false)}
                 className="mt-2 block w-full py-2 text-center text-sm text-gray-500 hover:text-gray-700"

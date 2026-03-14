@@ -1,11 +1,12 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, useEffect, useCallback } from 'react';
 import { Search, ShoppingBag, Menu, X, User } from 'lucide-react';
 import { useCart } from '@/components/cart/cart-provider';
 import { useAuth } from '@/components/auth/auth-provider';
-import { useTranslation, LanguageSwitcher } from '@forkcart/i18n/react';
+import { useTranslation } from '@forkcart/i18n/react';
+import { LocaleLink } from '@/components/locale-link';
+import { StorefrontLanguageSwitcher } from '@/components/i18n/language-switcher';
 import { SearchOverlay } from './search-overlay';
 
 export function Header() {
@@ -36,24 +37,24 @@ export function Header() {
         <div className="container-page">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
-            <Link href="/" className="text-xl font-bold tracking-tight">
+            <LocaleLink href="/" className="text-xl font-bold tracking-tight">
               ForkCart
-            </Link>
+            </LocaleLink>
 
             {/* Desktop Nav */}
             <nav className="hidden items-center gap-8 md:flex">
-              <Link
+              <LocaleLink
                 href="/"
                 className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
               >
                 {t('nav.home')}
-              </Link>
-              <Link
+              </LocaleLink>
+              <LocaleLink
                 href="/products"
                 className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
               >
                 {t('nav.shop')}
-              </Link>
+              </LocaleLink>
             </nav>
 
             {/* Actions */}
@@ -70,14 +71,14 @@ export function Header() {
                 </kbd>
               </button>
 
-              <LanguageSwitcher className="hidden rounded-md border bg-transparent px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 md:block" />
+              <StorefrontLanguageSwitcher className="hidden rounded-md border bg-transparent px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 md:block" />
 
-              <Link
+              <LocaleLink
                 href={customer ? '/account' : '/account/login'}
                 className="rounded-md p-2 text-gray-600 hover:bg-gray-100"
               >
                 <User className="h-5 w-5" />
-              </Link>
+              </LocaleLink>
 
               <button
                 onClick={() => setCartOpen(true)}
@@ -103,22 +104,22 @@ export function Header() {
           {/* Mobile Nav */}
           {mobileOpen && (
             <nav className="border-t pb-4 pt-2 md:hidden">
-              <Link
+              <LocaleLink
                 href="/"
                 onClick={() => setMobileOpen(false)}
                 className="block py-2 text-sm font-medium text-gray-600"
               >
                 {t('nav.home')}
-              </Link>
-              <Link
+              </LocaleLink>
+              <LocaleLink
                 href="/products"
                 onClick={() => setMobileOpen(false)}
                 className="block py-2 text-sm font-medium text-gray-600"
               >
                 {t('nav.shop')}
-              </Link>
+              </LocaleLink>
               <div className="pt-2">
-                <LanguageSwitcher className="w-full rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
+                <StorefrontLanguageSwitcher className="w-full rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
               </div>
             </nav>
           )}
