@@ -11,6 +11,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@craftjs/core": "^0.2.12",
+    "@craftjs/layers": "^0.2.7",
     "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
     "@tanstack/react-query": "^5.62.0",

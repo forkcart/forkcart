@@ -7,3 +7,4 @@ export * from './common';
 export * from './media';
 export * from './tax';
 export * from './seo';
+export * from './page';
