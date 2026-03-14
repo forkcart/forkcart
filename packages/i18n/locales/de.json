@@ -265,6 +265,23 @@
     "newsletterSubtext": "Erhalte Updates zu neuen Produkten und Angeboten",
     "subscribe": "Abonnieren"
   },
+  "wishlist": {
+    "title": "Wunschliste",
+    "empty": "Deine Wunschliste ist leer",
+    "loginRequired": "Bitte melde dich an, um deine Wunschliste zu sehen",
+    "browseProducts": "Produkte entdecken"
+  },
+  "reviews": {
+    "noReviews": "Noch keine Bewertungen. Sei der Erste!",
+    "writeReview": "Bewertung schreiben",
+    "submitted": "Vielen Dank! Deine Bewertung wurde eingereicht und wird geprüft.",
+    "rating": "Bewertung",
+    "titleLabel": "Titel",
+    "titlePlaceholder": "Gib deiner Bewertung einen Titel",
+    "contentLabel": "Deine Bewertung",
+    "contentPlaceholder": "Teile deine Erfahrung mit diesem Produkt...",
+    "submit": "Bewertung absenden"
+  },
   "errors": {
     "notFound": "Seite nicht gefunden",
     "serverError": "Interner Serverfehler",
