@@ -3,6 +3,7 @@
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
+import { ImageUpload } from '../image-upload';
 
 export interface ImageBlockProps {
   src?: string;
@@ -88,16 +89,11 @@ function ImageBlockSettings() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <label className="mb-1 block text-sm font-medium">Image URL</label>
-        <input
-          type="url"
-          placeholder="https://..."
-          className="w-full rounded border p-2 text-sm"
-          value={props.src ?? ''}
-          onChange={(e) => setProp((p: ImageBlockProps) => (p.src = e.target.value))}
-        />
-      </div>
+      <ImageUpload
+        label="Image"
+        value={props.src ?? ''}
+        onChange={(url) => setProp((p: ImageBlockProps) => (p.src = url))}
+      />
       <div>
         <label className="mb-1 block text-sm font-medium">Alt Text</label>
         <input
