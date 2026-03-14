@@ -182,6 +182,7 @@ export interface Page {
   slug: string;
   status: string;
   content: unknown;
+  pageType: string | null;
   seoTitle: string | null;
   seoDescription: string | null;
   ogImage: string | null;
