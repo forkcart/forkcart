@@ -12,6 +12,7 @@ export interface CartServiceDeps {
   cartRepository: CartRepository;
   eventBus: EventBus;
   productTranslationService?: ProductTranslationService | null;
+  mediaBaseUrl?: string;
 }
 
 /** Formatted cart item with product details and computed prices */
@@ -48,11 +49,13 @@ interface CartResponse {
 export class CartService {
   private readonly repo: CartRepository;
   private readonly events: EventBus;
+  private readonly mediaBaseUrl: string;
   private translationService: ProductTranslationService | null;
 
   constructor(deps: CartServiceDeps) {
     this.repo = deps.cartRepository;
     this.events = deps.eventBus;
+    this.mediaBaseUrl = deps.mediaBaseUrl ?? '';
     this.translationService = deps.productTranslationService ?? null;
   }
 
@@ -310,7 +313,8 @@ export class CartService {
       // Price from DB — NEVER trust client
       const unitPrice = item.variant?.price ?? item.product.price;
       const totalPrice = unitPrice * item.quantity;
-      const productImage = await this.repo.getProductImage(item.productId);
+      const rawImage = await this.repo.getProductImage(item.productId);
+      const productImage = rawImage ? `${this.mediaBaseUrl}${rawImage}` : null;
 
       // Use translated name if locale is provided
       let productName = item.product.name;
