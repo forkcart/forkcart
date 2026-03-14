@@ -20,3 +20,5 @@ export * from './coupons';
 export * from './product-impressions';
 export * from './wishlists';
 export * from './product-reviews';
+export * from './pages';
+export * from './page-translations';

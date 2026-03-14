@@ -52,6 +52,8 @@ import {
   WishlistService,
   ProductReviewRepository,
   ProductReviewService,
+  PageRepository,
+  PageService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
@@ -90,6 +92,7 @@ import { createCouponRoutes, createPublicCouponRoutes } from './routes/v1/coupon
 import { createWishlistRoutes } from './routes/v1/wishlists';
 import { createProductReviewRoutes, createAdminReviewRoutes } from './routes/v1/reviews';
 import { createUserRoutes } from './routes/v1/users';
+import { createPageRoutes } from './routes/v1/pages';
 import { requireRole } from './middleware/permissions';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -171,6 +174,7 @@ export async function createApp(db: Database) {
   const shippingRepository = new ShippingRepository(db);
   const couponRepository = new CouponRepository(db);
   const wishlistRepository = new WishlistRepository(db);
+  const pageRepository = new PageRepository(db);
   const productReviewRepository = new ProductReviewRepository(db);
 
   // Initialize payment provider registry
@@ -201,6 +205,7 @@ export async function createApp(db: Database) {
   const shippingService = new ShippingService({ shippingRepository, eventBus });
   const couponService = new CouponService({ couponRepository });
   const wishlistService = new WishlistService({ wishlistRepository });
+  const pageService = new PageService({ pageRepository, eventBus });
   const productReviewService = new ProductReviewService({ productReviewRepository });
 
   // Product translations
@@ -424,6 +429,7 @@ export async function createApp(db: Database) {
   v1.route('/coupons', createCouponRoutes(couponService));
   v1.route('/reviews', createAdminReviewRoutes(productReviewService));
   v1.route('/users', createUserRoutes(authService));
+  v1.route('/pages', createPageRoutes(pageService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));

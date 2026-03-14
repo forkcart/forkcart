@@ -19,4 +19,5 @@ export * from './product-translations/index';
 export * from './coupons/index';
 export * from './wishlists/index';
 export * from './product-reviews/index';
+export * from './pages/index';
 export { createLogger } from './lib/logger';
