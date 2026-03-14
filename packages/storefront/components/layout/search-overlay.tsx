@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, TrendingUp, ArrowRight } from 'lucide-react';
-import { useTranslation } from '@forkcart/i18n/react';
+import { useTranslation, useLocale } from '@forkcart/i18n/react';
 import { formatPrice } from '@forkcart/shared';
 import {
   instantSearch,
@@ -20,6 +20,7 @@ interface SearchOverlayProps {
 
 export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   const { t } = useTranslation();
+  const locale = useLocale();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -40,7 +41,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
 
     const timer = setTimeout(() => inputRef.current?.focus(), 50);
 
-    Promise.all([getPublicPopularSearches(), getTrendingProducts()])
+    Promise.all([getPublicPopularSearches(), getTrendingProducts(locale)])
       .then(([pop, trend]) => {
         setPopularSearches(pop.data);
         setTrending(trend.data);
@@ -54,7 +55,7 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
       });
 
     return () => clearTimeout(timer);
-  }, [open]);
+  }, [open, locale]);
 
   // Reset state when closing
   useEffect(() => {
@@ -67,25 +68,28 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   }, [open]);
 
   // Debounced instant search
-  const doSearch = useCallback(async (q: string) => {
-    if (q.trim().length < 2) {
-      setResults([]);
-      setTotalResults(0);
-      setLoading(false);
-      return;
-    }
+  const doSearch = useCallback(
+    async (q: string) => {
+      if (q.trim().length < 2) {
+        setResults([]);
+        setTotalResults(0);
+        setLoading(false);
+        return;
+      }
 
-    setLoading(true);
-    try {
-      const res = await instantSearch(q.trim());
-      setResults(res.data);
-      setTotalResults(res.data.length);
-    } catch {
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+      setLoading(true);
+      try {
+        const res = await instantSearch(q.trim(), locale);
+        setResults(res.data);
+        setTotalResults(res.data.length);
+      } catch {
+        setResults([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [locale],
+  );
 
   function handleChange(value: string) {
     setQuery(value);
