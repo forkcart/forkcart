@@ -76,6 +76,11 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Page GET routes are public (storefront page rendering)
+    if (path.startsWith('/api/v1/pages') && c.req.method === 'GET') {
+      return next();
+    }
+
     const authHeader = c.req.header('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return c.json(
