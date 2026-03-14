@@ -139,6 +139,7 @@ export const LOCALE_FLAGS: Record<string, string> = {
 
 interface I18nContextValue {
   locale: Locale;
+  defaultLocale: Locale;
   setLocale: (locale: Locale) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
   supportedLocales: Locale[];
@@ -273,7 +274,9 @@ export function I18nProvider({
   );
 
   return (
-    <I18nContext.Provider value={{ locale, setLocale, t, supportedLocales: allLocales }}>
+    <I18nContext.Provider
+      value={{ locale, defaultLocale, setLocale, t, supportedLocales: allLocales }}
+    >
       {children}
     </I18nContext.Provider>
   );
@@ -287,6 +290,10 @@ export function useTranslation() {
 
 export function useLocale() {
   return useTranslation().locale;
+}
+
+export function useDefaultLocale() {
+  return useTranslation().defaultLocale;
 }
 
 /** Language switcher with flag dropdown */
