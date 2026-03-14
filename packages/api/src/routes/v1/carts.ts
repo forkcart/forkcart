@@ -22,6 +22,11 @@ const QuickCartSchema = z.object({
   sessionId: z.string().optional(),
 });
 
+/** Extract locale from Hono context (set by i18n middleware) */
+function getLocale(c: { get: (key: string) => unknown }): string | undefined {
+  return (c.get('locale') as string) ?? undefined;
+}
+
 /** Cart API routes */
 export function createCartRoutes(cartService: CartService) {
   const router = new Hono();
@@ -30,20 +35,28 @@ export function createCartRoutes(cartService: CartService) {
   router.post('/quick', async (c) => {
     const body = await c.req.json();
     const input = QuickCartSchema.parse(body);
+    const locale = getLocale(c);
 
-    const cart = await cartService.create({
-      sessionId: input.sessionId ?? `quick_${Date.now()}`,
-    });
+    const cart = await cartService.create(
+      {
+        sessionId: input.sessionId ?? `quick_${Date.now()}`,
+      },
+      locale,
+    );
 
     const errors: Array<{ productId: string; error: string }> = [];
 
     for (const item of input.items) {
       try {
-        await cartService.addItem(cart.id, {
-          productId: item.productId,
-          quantity: item.quantity,
-          variantId: item.variantId,
-        });
+        await cartService.addItem(
+          cart.id,
+          {
+            productId: item.productId,
+            quantity: item.quantity,
+            variantId: item.variantId,
+          },
+          locale,
+        );
       } catch (err) {
         errors.push({
           productId: item.productId,
@@ -52,7 +65,7 @@ export function createCartRoutes(cartService: CartService) {
       }
     }
 
-    const updatedCart = await cartService.getById(cart.id);
+    const updatedCart = await cartService.getById(cart.id, locale);
 
     if (updatedCart.items.length === 0) {
       return c.json(
@@ -80,14 +93,14 @@ export function createCartRoutes(cartService: CartService) {
     const body = await c.req.json();
     const input = CreateCartSchema.parse(body);
 
-    const cart = await cartService.create(input);
+    const cart = await cartService.create(input, getLocale(c));
     return c.json({ data: cart }, 201);
   });
 
   /** Get cart by ID */
   router.get('/:id', async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
-    const cart = await cartService.getById(id);
+    const cart = await cartService.getById(id, getLocale(c));
     return c.json({ data: cart });
   });
 
@@ -97,7 +110,7 @@ export function createCartRoutes(cartService: CartService) {
     const body = await c.req.json();
     const input = AddCartItemSchema.parse(body);
 
-    const cart = await cartService.addItem(id, input);
+    const cart = await cartService.addItem(id, input, getLocale(c));
     return c.json({ data: cart }, 201);
   });
 
@@ -108,7 +121,7 @@ export function createCartRoutes(cartService: CartService) {
     const body = await c.req.json();
     const input = UpdateCartItemSchema.parse(body);
 
-    const cart = await cartService.updateItem(id, itemId, input);
+    const cart = await cartService.updateItem(id, itemId, input, getLocale(c));
     return c.json({ data: cart });
   });
 
@@ -117,14 +130,14 @@ export function createCartRoutes(cartService: CartService) {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const { id: itemId } = IdParamSchema.parse({ id: c.req.param('itemId') });
 
-    const cart = await cartService.removeItem(id, itemId);
+    const cart = await cartService.removeItem(id, itemId, getLocale(c));
     return c.json({ data: cart });
   });
 
   /** Clear cart (remove all items) */
   router.delete('/:id', async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
-    const cart = await cartService.clear(id);
+    const cart = await cartService.clear(id, getLocale(c));
     return c.json({ data: cart });
   });
 

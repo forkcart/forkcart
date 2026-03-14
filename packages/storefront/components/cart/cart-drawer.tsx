@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from './cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
@@ -86,8 +87,22 @@ export function CartDrawer() {
               <div className="space-y-4">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4 rounded-lg border p-3">
-                    {/* Placeholder image */}
-                    <div className="h-16 w-16 flex-shrink-0 rounded-md bg-gray-100" />
+                    {/* Product image */}
+                    <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-100">
+                      {item.productImage ? (
+                        <Image
+                          src={item.productImage}
+                          alt={item.productName}
+                          fill
+                          className="object-cover"
+                          sizes="64px"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center">
+                          <ShoppingBag className="h-6 w-6 text-gray-300" />
+                        </div>
+                      )}
+                    </div>
 
                     <div className="flex flex-1 flex-col">
                       <div className="flex items-start justify-between">
