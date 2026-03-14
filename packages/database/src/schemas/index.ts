@@ -22,3 +22,4 @@ export * from './wishlists';
 export * from './product-reviews';
 export * from './pages';
 export * from './page-translations';
+export * from './theme-settings';

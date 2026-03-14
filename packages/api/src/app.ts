@@ -93,6 +93,7 @@ import { createWishlistRoutes } from './routes/v1/wishlists';
 import { createProductReviewRoutes, createAdminReviewRoutes } from './routes/v1/reviews';
 import { createUserRoutes } from './routes/v1/users';
 import { createPageRoutes } from './routes/v1/pages';
+import { createThemeSettingsRoutes } from './routes/v1/theme-settings';
 import { requireRole } from './middleware/permissions';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -430,6 +431,7 @@ export async function createApp(db: Database) {
   v1.route('/reviews', createAdminReviewRoutes(productReviewService));
   v1.route('/users', createUserRoutes(authService));
   v1.route('/pages', createPageRoutes(pageService));
+  v1.route('/theme-settings', createThemeSettingsRoutes(db));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));

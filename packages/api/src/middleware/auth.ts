@@ -81,6 +81,11 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Theme settings GET is public (storefront needs design tokens)
+    if (path.startsWith('/api/v1/theme-settings') && c.req.method === 'GET') {
+      return next();
+    }
+
     const authHeader = c.req.header('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return c.json(

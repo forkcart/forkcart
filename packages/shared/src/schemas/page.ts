@@ -4,6 +4,20 @@ import { z } from 'zod';
 export const PageStatusSchema = z.enum(['draft', 'published', 'archived']);
 export type PageStatus = z.infer<typeof PageStatusSchema>;
 
+/** Page type — system pages cannot be deleted */
+export const PageTypeSchema = z.enum([
+  'custom',
+  'homepage',
+  'product',
+  'cart',
+  'checkout',
+  'account',
+  'error404',
+  'search',
+  'category',
+]);
+export type PageType = z.infer<typeof PageTypeSchema>;
+
 /** Create page input */
 export const CreatePageSchema = z.object({
   title: z.string().min(1).max(255),
