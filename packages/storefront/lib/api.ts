@@ -201,6 +201,15 @@ export async function getHomepage(): Promise<Page | null> {
   return res.data;
 }
 
+export async function getPageByType(pageType: string): Promise<Page | null> {
+  try {
+    const res = await fetchApi<ApiResponse<Page | null>>(`/pages/by-type/${pageType}`);
+    return res.data;
+  } catch {
+    return null;
+  }
+}
+
 // Cart operations (client-side)
 export async function getCart(sessionId: string): Promise<Cart> {
   const res = await fetch(`${API_URL}/api/v1/cart`, {

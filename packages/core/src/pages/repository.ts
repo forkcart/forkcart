@@ -66,6 +66,16 @@ export class PageRepository {
     return result ?? null;
   }
 
+  async findByPageType(pageType: string) {
+    const result = await this.db.query.pages.findFirst({
+      where: and(eq(pages.pageType, pageType), eq(pages.status, 'published')),
+      with: {
+        translations: true,
+      },
+    });
+    return result ?? null;
+  }
+
   async findMany(filter: PageFilter, pagination: Pagination) {
     const conditions = [];
 
