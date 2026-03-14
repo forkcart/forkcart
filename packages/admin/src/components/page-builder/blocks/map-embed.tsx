@@ -2,6 +2,7 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface MapEmbedProps {
@@ -21,17 +22,8 @@ export const MapEmbed: UserComponent<MapEmbedProps> = ({
   borderRadius = 12,
   className,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full px-6 py-8', className)}
-    >
+    <StyledBlock className={cn('w-full px-6 py-8', className)}>
       <iframe
         src={getMapUrl(query)}
         width="100%"
@@ -42,7 +34,7 @@ export const MapEmbed: UserComponent<MapEmbedProps> = ({
         referrerPolicy="no-referrer-when-downgrade"
         title="Map"
       />
-    </div>
+    </StyledBlock>
   );
 };
 
