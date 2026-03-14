@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface VideoEmbedProps {
@@ -43,19 +45,10 @@ export const VideoEmbed: UserComponent<VideoEmbedProps> = ({
   maxWidth = 'lg',
   className,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   const embedUrl = url ? getEmbedUrl(url) : null;
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('mx-auto w-full px-6 py-8', maxWidthClasses[maxWidth], className)}
-    >
+    <StyledBlock className={cn('mx-auto w-full px-6 py-8', maxWidthClasses[maxWidth], className)}>
       {embedUrl ? (
         <div className={cn('w-full overflow-hidden rounded-lg', aspectClasses[aspectRatio])}>
           <iframe
@@ -76,7 +69,7 @@ export const VideoEmbed: UserComponent<VideoEmbedProps> = ({
           Paste a YouTube or Vimeo URL
         </div>
       )}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -133,6 +126,8 @@ function VideoEmbedSettings() {
           <option value="full">Full Width</option>
         </select>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

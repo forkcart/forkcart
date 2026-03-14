@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface TextBlockProps {
@@ -26,24 +28,22 @@ export const TextBlock: UserComponent<TextBlockProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <p
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn(fontSizeClasses[fontSize], 'leading-relaxed', className)}
-      style={{ textAlign: alignment, color: color || undefined }}
-      contentEditable={selected}
-      suppressContentEditableWarning
-      onBlur={(e) => setProp((p: TextBlockProps) => (p.text = e.currentTarget.textContent ?? ''))}
-    >
-      {text}
-    </p>
+    <StyledBlock>
+      <p
+        className={cn(fontSizeClasses[fontSize], 'leading-relaxed', className)}
+        style={{ textAlign: alignment, color: color || undefined }}
+        contentEditable={selected}
+        suppressContentEditableWarning
+        onBlur={(e) => setProp((p: TextBlockProps) => (p.text = e.currentTarget.textContent ?? ''))}
+      >
+        {text}
+      </p>
+    </StyledBlock>
   );
 };
 
@@ -107,6 +107,8 @@ function TextBlockSettings() {
           onChange={(e) => setProp((p: TextBlockProps) => (p.color = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

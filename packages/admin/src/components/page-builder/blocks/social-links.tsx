@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface SocialLink {
@@ -37,38 +39,30 @@ export const SocialLinks: UserComponent<SocialLinksProps> = ({
   color = '#374151',
   className,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full px-6 py-8', className)}
-      style={{ textAlign: alignment }}
-    >
-      <div className={cn('inline-flex gap-3')}>
-        {links.map((link, idx) => (
-          <a
-            key={idx}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={cn(
-              'flex items-center justify-center rounded-full border transition-colors hover:bg-gray-100',
-              sizeClasses[size],
-            )}
-            style={{ color }}
-            title={link.platform}
-            onClick={(e) => e.preventDefault()}
-          >
-            {link.icon}
-          </a>
-        ))}
+    <StyledBlock className={cn('w-full px-6 py-8', className)}>
+      <div style={{ textAlign: alignment }}>
+        <div className={cn('inline-flex gap-3')}>
+          {links.map((link, idx) => (
+            <a
+              key={idx}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={cn(
+                'flex items-center justify-center rounded-full border transition-colors hover:bg-gray-100',
+                sizeClasses[size],
+              )}
+              style={{ color }}
+              title={link.platform}
+              onClick={(e) => e.preventDefault()}
+            >
+              {link.icon}
+            </a>
+          ))}
+        </div>
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -194,6 +188,8 @@ function SocialLinksSettings() {
       >
         + Add Link
       </button>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

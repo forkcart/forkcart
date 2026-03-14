@@ -2,6 +2,8 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface ContactFormProps {
   title?: string;
@@ -23,110 +25,105 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <section
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('mx-auto w-full max-w-2xl px-6 py-16', className)}
-      style={{ backgroundColor }}
-    >
-      {title && (
-        <h2
-          className={cn(
-            'mb-2 text-center text-2xl font-bold text-gray-900 outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-          )}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) =>
-            setProp((p: ContactFormProps) => (p.title = e.currentTarget.textContent ?? ''))
-          }
-        >
-          {title}
-        </h2>
-      )}
-      {subtitle && (
-        <p
-          className={cn(
-            'mb-8 text-center text-gray-500 outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-          )}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) =>
-            setProp((p: ContactFormProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
-          }
-        >
-          {subtitle}
-        </p>
-      )}
-      <form
-        className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault();
-          alert('Contact form submitted (frontend-only demo)');
-        }}
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-            <input
-              type="text"
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="Your name"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-            <input
-              type="email"
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="you@example.com"
-            />
-          </div>
-        </div>
-        {showPhone && (
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
-            <input
-              type="tel"
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="+1 (555) 000-0000"
-            />
-          </div>
+    <StyledBlock className={cn('mx-auto w-full max-w-2xl px-6 py-16', className)}>
+      <section style={{ backgroundColor }}>
+        {title && (
+          <h2
+            className={cn(
+              'mb-2 text-center text-2xl font-bold text-gray-900 outline-none',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: ContactFormProps) => (p.title = e.currentTarget.textContent ?? ''))
+            }
+          >
+            {title}
+          </h2>
         )}
-        {showSubject && (
+        {subtitle && (
+          <p
+            className={cn(
+              'mb-8 text-center text-gray-500 outline-none',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: ContactFormProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+            }
+          >
+            {subtitle}
+          </p>
+        )}
+        <form
+          className="space-y-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            alert('Contact form submitted (frontend-only demo)');
+          }}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
+              <input
+                type="text"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Your name"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+          {showPhone && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+              <input
+                type="tel"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="+1 (555) 000-0000"
+              />
+            </div>
+          )}
+          {showSubject && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
+              <input
+                type="text"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="How can we help?"
+              />
+            </div>
+          )}
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
-            <input
-              type="text"
+            <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
+            <textarea
+              rows={5}
               className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="How can we help?"
+              placeholder="Your message..."
             />
           </div>
-        )}
-        <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
-          <textarea
-            rows={5}
-            className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Your message..."
-          />
-        </div>
-        <button
-          type="submit"
-          className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
-        >
-          {buttonText}
-        </button>
-      </form>
-    </section>
+          <button
+            type="submit"
+            className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          >
+            {buttonText}
+          </button>
+        </form>
+      </section>
+    </StyledBlock>
   );
 };
 
@@ -194,6 +191,8 @@ function ContactFormSettings() {
           onChange={(e) => setProp((p: ContactFormProps) => (p.backgroundColor = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

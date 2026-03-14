@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface TestimonialItem {
@@ -71,95 +73,90 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <section
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full px-6 py-16', className)}
-      style={{ backgroundColor }}
-    >
-      <div className="mx-auto max-w-6xl">
-        <div className={cn('grid gap-8', gridClasses[columns])}>
-          {items.map((item, idx) => (
-            <div key={idx} className="rounded-xl bg-white p-6 shadow-sm">
-              {showRating && item.rating && <StarRating rating={item.rating} />}
-              <p
-                className={cn(
-                  'mt-4 text-gray-600 outline-none',
-                  selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-                )}
-                contentEditable={selected}
-                suppressContentEditableWarning
-                onBlur={(e) =>
-                  setProp((p: TestimonialsProps) => {
-                    const list = [...(p.items ?? defaultItems)];
-                    list[idx] = { ...list[idx]!, content: e.currentTarget.textContent ?? '' };
-                    p.items = list;
-                  })
-                }
-              >
-                &ldquo;{item.content}&rdquo;
-              </p>
-              <div className="mt-4 flex items-center gap-3">
-                {item.avatar ? (
-                  <img
-                    src={item.avatar}
-                    alt={item.name}
-                    className="h-10 w-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
-                    {item.name.charAt(0)}
+    <StyledBlock className={cn('w-full px-6 py-16', className)}>
+      <div style={{ backgroundColor }}>
+        <div className="mx-auto max-w-6xl">
+          <div className={cn('grid gap-8', gridClasses[columns])}>
+            {items.map((item, idx) => (
+              <div key={idx} className="rounded-xl bg-white p-6 shadow-sm">
+                {showRating && item.rating && <StarRating rating={item.rating} />}
+                <p
+                  className={cn(
+                    'mt-4 text-gray-600 outline-none',
+                    selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                  )}
+                  contentEditable={selected}
+                  suppressContentEditableWarning
+                  onBlur={(e) =>
+                    setProp((p: TestimonialsProps) => {
+                      const list = [...(p.items ?? defaultItems)];
+                      list[idx] = { ...list[idx]!, content: e.currentTarget.textContent ?? '' };
+                      p.items = list;
+                    })
+                  }
+                >
+                  &ldquo;{item.content}&rdquo;
+                </p>
+                <div className="mt-4 flex items-center gap-3">
+                  {item.avatar ? (
+                    <img
+                      src={item.avatar}
+                      alt={item.name}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                      {item.name.charAt(0)}
+                    </div>
+                  )}
+                  <div>
+                    <p
+                      className={cn(
+                        'text-sm font-semibold text-gray-900 outline-none',
+                        selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                      )}
+                      contentEditable={selected}
+                      suppressContentEditableWarning
+                      onBlur={(e) =>
+                        setProp((p: TestimonialsProps) => {
+                          const list = [...(p.items ?? defaultItems)];
+                          list[idx] = { ...list[idx]!, name: e.currentTarget.textContent ?? '' };
+                          p.items = list;
+                        })
+                      }
+                    >
+                      {item.name}
+                    </p>
+                    <p
+                      className={cn(
+                        'text-xs text-gray-500 outline-none',
+                        selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                      )}
+                      contentEditable={selected}
+                      suppressContentEditableWarning
+                      onBlur={(e) =>
+                        setProp((p: TestimonialsProps) => {
+                          const list = [...(p.items ?? defaultItems)];
+                          list[idx] = { ...list[idx]!, role: e.currentTarget.textContent ?? '' };
+                          p.items = list;
+                        })
+                      }
+                    >
+                      {item.role}
+                    </p>
                   </div>
-                )}
-                <div>
-                  <p
-                    className={cn(
-                      'text-sm font-semibold text-gray-900 outline-none',
-                      selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-                    )}
-                    contentEditable={selected}
-                    suppressContentEditableWarning
-                    onBlur={(e) =>
-                      setProp((p: TestimonialsProps) => {
-                        const list = [...(p.items ?? defaultItems)];
-                        list[idx] = { ...list[idx]!, name: e.currentTarget.textContent ?? '' };
-                        p.items = list;
-                      })
-                    }
-                  >
-                    {item.name}
-                  </p>
-                  <p
-                    className={cn(
-                      'text-xs text-gray-500 outline-none',
-                      selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-                    )}
-                    contentEditable={selected}
-                    suppressContentEditableWarning
-                    onBlur={(e) =>
-                      setProp((p: TestimonialsProps) => {
-                        const list = [...(p.items ?? defaultItems)];
-                        list[idx] = { ...list[idx]!, role: e.currentTarget.textContent ?? '' };
-                        p.items = list;
-                      })
-                    }
-                  >
-                    {item.role}
-                  </p>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
-    </section>
+    </StyledBlock>
   );
 };
 
@@ -279,6 +276,8 @@ function TestimonialsSettings() {
       >
         + Add Testimonial
       </button>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

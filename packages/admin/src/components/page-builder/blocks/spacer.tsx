@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface SpacerProps {
@@ -9,23 +11,18 @@ export interface SpacerProps {
 }
 
 export const Spacer: UserComponent<SpacerProps> = ({ height = 40, className }) => {
-  const {
-    connectors: { connect },
-    selected,
-  } = useNode((state) => ({ selected: state.events.selected }));
+  const { selected } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
+    <StyledBlock
       className={cn(
         'w-full',
         selected && 'border border-dashed border-blue-300 bg-blue-50/30',
         className,
       )}
-      style={{ height }}
-    />
+    >
+      <div style={{ height }} />
+    </StyledBlock>
   );
 };
 
@@ -47,6 +44,8 @@ function SpacerSettings() {
         value={props.height ?? 40}
         onChange={(e) => setProp((p: SpacerProps) => (p.height = Number(e.target.value)))}
       />
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

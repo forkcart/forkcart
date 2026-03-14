@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 import { ImageUpload } from '../image-upload';
 
@@ -39,76 +41,83 @@ export const Hero: UserComponent<HeroProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <section
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
+    <StyledBlock
       className={cn(
         'relative flex w-full items-center overflow-hidden',
         heightClasses[height],
         className,
       )}
-      style={{ backgroundColor }}
     >
-      {backgroundImage && (
-        <>
-          <img
-            src={backgroundImage}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity / 100 }} />
-        </>
-      )}
       <div
-        className={cn('relative z-10 mx-auto w-full max-w-6xl px-6')}
-        style={{ textAlign: alignment }}
+        style={{
+          backgroundColor,
+          position: 'relative',
+          display: 'flex',
+          alignItems: 'center',
+          width: '100%',
+          minHeight: 'inherit',
+          overflow: 'hidden',
+        }}
       >
-        <h1
-          className={cn(
-            'mb-4 text-4xl font-bold outline-none md:text-5xl lg:text-6xl',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-          )}
-          style={{ color: textColor }}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) => setProp((p: HeroProps) => (p.title = e.currentTarget.textContent ?? ''))}
+        {backgroundImage && (
+          <>
+            <img
+              src={backgroundImage}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black" style={{ opacity: overlayOpacity / 100 }} />
+          </>
+        )}
+        <div
+          className={cn('relative z-10 mx-auto w-full max-w-6xl px-6')}
+          style={{ textAlign: alignment }}
         >
-          {title}
-        </h1>
-        {subtitle && (
-          <p
+          <h1
             className={cn(
-              'mb-8 text-lg outline-none md:text-xl',
+              'mb-4 text-4xl font-bold outline-none md:text-5xl lg:text-6xl',
               selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
             )}
-            style={{ color: textColor, opacity: 0.9 }}
+            style={{ color: textColor }}
             contentEditable={selected}
             suppressContentEditableWarning
-            onBlur={(e) =>
-              setProp((p: HeroProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
-            }
+            onBlur={(e) => setProp((p: HeroProps) => (p.title = e.currentTarget.textContent ?? ''))}
           >
-            {subtitle}
-          </p>
-        )}
-        {ctaText && (
-          <a
-            href={ctaLink}
-            className="inline-block rounded-lg bg-white px-8 py-3 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-100"
-            onClick={(e) => e.preventDefault()}
-          >
-            {ctaText}
-          </a>
-        )}
+            {title}
+          </h1>
+          {subtitle && (
+            <p
+              className={cn(
+                'mb-8 text-lg outline-none md:text-xl',
+                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              )}
+              style={{ color: textColor, opacity: 0.9 }}
+              contentEditable={selected}
+              suppressContentEditableWarning
+              onBlur={(e) =>
+                setProp((p: HeroProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+              }
+            >
+              {subtitle}
+            </p>
+          )}
+          {ctaText && (
+            <a
+              href={ctaLink}
+              className="inline-block rounded-lg bg-white px-8 py-3 text-lg font-semibold text-gray-900 transition-colors hover:bg-gray-100"
+              onClick={(e) => e.preventDefault()}
+            >
+              {ctaText}
+            </a>
+          )}
+        </div>
       </div>
-    </section>
+    </StyledBlock>
   );
 };
 
@@ -228,6 +237,8 @@ function HeroSettings() {
           ))}
         </div>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface IconGridItem {
@@ -44,18 +46,12 @@ export const IconGrid: UserComponent<IconGridProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <section
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('mx-auto w-full max-w-6xl px-6 py-12', className)}
-    >
+    <StyledBlock className={cn('mx-auto w-full max-w-6xl px-6 py-12', className)}>
       <div className={cn('grid gap-8', gridClasses[columns])}>
         {items.map((item, idx) => (
           <div
@@ -103,7 +99,7 @@ export const IconGrid: UserComponent<IconGridProps> = ({
           </div>
         ))}
       </div>
-    </section>
+    </StyledBlock>
   );
 };
 
@@ -239,6 +235,8 @@ function IconGridSettings() {
       >
         + Add Feature
       </button>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

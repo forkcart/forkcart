@@ -3,6 +3,8 @@
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
 import { FolderTree } from 'lucide-react';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface CategoryGridProps {
   title?: string;
@@ -20,7 +22,6 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
@@ -32,12 +33,7 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
   };
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full py-8', className)}
-    >
+    <StyledBlock className={cn('w-full py-8', className)}>
       {title && (
         <h2
           className={cn(
@@ -74,7 +70,7 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
       <p className="mt-3 text-center text-xs text-gray-400">
         ↑ Category Grid Preview — {limit} categories
       </p>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -142,6 +138,8 @@ function CategoryGridSettings() {
           <option value={8}>8</option>
         </select>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

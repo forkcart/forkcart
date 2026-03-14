@@ -2,6 +2,8 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface BannerProps {
   text?: string;
@@ -23,52 +25,49 @@ export const Banner: UserComponent<BannerProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('relative w-full px-4 py-3 text-center', className)}
-      style={{ backgroundColor, color: textColor }}
-    >
-      <div className="mx-auto flex max-w-6xl items-center justify-center gap-3">
-        <p
-          className={cn(
-            'text-sm font-medium outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+    <StyledBlock className={cn('relative w-full px-4 py-3 text-center', className)}>
+      <div style={{ backgroundColor, color: textColor }}>
+        <div className="mx-auto flex max-w-6xl items-center justify-center gap-3">
+          <p
+            className={cn(
+              'text-sm font-medium outline-none',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: BannerProps) => (p.text = e.currentTarget.textContent ?? ''))
+            }
+          >
+            {text}
+          </p>
+          {linkText && (
+            <a
+              href={linkUrl}
+              className="shrink-0 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
+              style={{ color: textColor }}
+              onClick={(e) => e.preventDefault()}
+            >
+              {linkText} →
+            </a>
           )}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) => setProp((p: BannerProps) => (p.text = e.currentTarget.textContent ?? ''))}
-        >
-          {text}
-        </p>
-        {linkText && (
-          <a
-            href={linkUrl}
-            className="shrink-0 text-sm font-semibold underline underline-offset-2 hover:opacity-80"
+        </div>
+        {dismissible && (
+          <button
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60 hover:opacity-100"
             style={{ color: textColor }}
             onClick={(e) => e.preventDefault()}
           >
-            {linkText} →
-          </a>
+            ✕
+          </button>
         )}
       </div>
-      {dismissible && (
-        <button
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-sm opacity-60 hover:opacity-100"
-          style={{ color: textColor }}
-          onClick={(e) => e.preventDefault()}
-        >
-          ✕
-        </button>
-      )}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -139,6 +138,8 @@ function BannerSettings() {
           Dismissible
         </label>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

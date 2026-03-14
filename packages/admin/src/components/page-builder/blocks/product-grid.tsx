@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 import { Package } from 'lucide-react';
 
@@ -27,7 +29,6 @@ export const ProductGrid: UserComponent<ProductGridProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
@@ -39,12 +40,7 @@ export const ProductGrid: UserComponent<ProductGridProps> = ({
   };
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full py-8', className)}
-    >
+    <StyledBlock className={cn('w-full py-8', className)}>
       {title && (
         <h2
           className={cn(
@@ -78,7 +74,7 @@ export const ProductGrid: UserComponent<ProductGridProps> = ({
         ↑ Product Grid Preview — {limit} {source} products
         {source === 'category' && categorySlug && ` from "${categorySlug}"`}
       </p>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -175,6 +171,8 @@ function ProductGridSettings() {
           Show Add to Cart Button
         </label>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

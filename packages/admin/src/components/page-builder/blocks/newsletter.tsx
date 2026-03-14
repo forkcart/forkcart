@@ -1,6 +1,7 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
 import { cn } from '@/lib/utils';
 import { Mail } from 'lucide-react';
 
@@ -164,6 +165,8 @@ function NewsletterSettings() {
           />
         </div>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

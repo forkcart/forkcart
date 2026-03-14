@@ -3,6 +3,8 @@
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
 import { Package, ShoppingCart } from 'lucide-react';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface FeaturedProductProps {
   productSlug?: string;
@@ -22,71 +24,66 @@ export const FeaturedProduct: UserComponent<FeaturedProductProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full overflow-hidden rounded-xl', className)}
-      style={{ backgroundColor }}
-    >
-      <div
-        className={cn(
-          'flex flex-col items-center gap-8 p-8 md:flex-row md:p-12',
-          layout === 'right' && 'md:flex-row-reverse',
-        )}
-      >
-        {/* Image placeholder */}
-        <div className="flex aspect-square w-full max-w-md items-center justify-center rounded-lg bg-white shadow-sm">
-          <Package className="h-20 w-20 text-gray-200" />
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 space-y-4">
-          <span className="text-sm font-medium uppercase tracking-wider text-blue-600">
-            Featured
-          </span>
-          <div className="h-8 w-3/4 rounded bg-gray-300" />
-          {showDescription && (
-            <>
-              <div className="h-4 w-full rounded bg-gray-200" />
-              <div className="h-4 w-5/6 rounded bg-gray-200" />
-            </>
+    <StyledBlock className={cn('w-full overflow-hidden rounded-xl', className)}>
+      <div style={{ backgroundColor }}>
+        <div
+          className={cn(
+            'flex flex-col items-center gap-8 p-8 md:flex-row md:p-12',
+            layout === 'right' && 'md:flex-row-reverse',
           )}
-          <div className="flex items-center gap-4 pt-2">
-            <div className="h-8 w-24 rounded bg-gray-300" />
-            <button className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white">
-              <ShoppingCart className="h-4 w-4" />
-              <span
-                className={cn(
-                  'outline-none',
-                  selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
-                )}
-                contentEditable={selected}
-                suppressContentEditableWarning
-                onBlur={(e) =>
-                  setProp(
-                    (p: FeaturedProductProps) => (p.ctaText = e.currentTarget.textContent ?? ''),
-                  )
-                }
-              >
-                {ctaText}
-              </span>
-            </button>
+        >
+          {/* Image placeholder */}
+          <div className="flex aspect-square w-full max-w-md items-center justify-center rounded-lg bg-white shadow-sm">
+            <Package className="h-20 w-20 text-gray-200" />
           </div>
-          {productSlug ? (
-            <p className="text-xs text-gray-400">Product: /{productSlug}</p>
-          ) : (
-            <p className="text-xs text-gray-400">Set a product slug in settings →</p>
-          )}
+
+          {/* Content */}
+          <div className="flex-1 space-y-4">
+            <span className="text-sm font-medium uppercase tracking-wider text-blue-600">
+              Featured
+            </span>
+            <div className="h-8 w-3/4 rounded bg-gray-300" />
+            {showDescription && (
+              <>
+                <div className="h-4 w-full rounded bg-gray-200" />
+                <div className="h-4 w-5/6 rounded bg-gray-200" />
+              </>
+            )}
+            <div className="flex items-center gap-4 pt-2">
+              <div className="h-8 w-24 rounded bg-gray-300" />
+              <button className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white">
+                <ShoppingCart className="h-4 w-4" />
+                <span
+                  className={cn(
+                    'outline-none',
+                    selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                  )}
+                  contentEditable={selected}
+                  suppressContentEditableWarning
+                  onBlur={(e) =>
+                    setProp(
+                      (p: FeaturedProductProps) => (p.ctaText = e.currentTarget.textContent ?? ''),
+                    )
+                  }
+                >
+                  {ctaText}
+                </span>
+              </button>
+            </div>
+            {productSlug ? (
+              <p className="text-xs text-gray-400">Product: /{productSlug}</p>
+            ) : (
+              <p className="text-xs text-gray-400">Set a product slug in settings →</p>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -156,6 +153,8 @@ function FeaturedProductSettings() {
         />
         Show Description
       </label>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

@@ -2,6 +2,8 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface ButtonBlockProps {
   text?: string;
@@ -35,44 +37,39 @@ export const ButtonBlock: UserComponent<ButtonBlockProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full', className)}
-      style={{ textAlign: alignment }}
-    >
-      <a
-        href={link}
-        className={cn(
-          'inline-block rounded-md border font-medium transition-colors',
-          variantClasses[variant],
-          sizeClasses[size],
-          fullWidth && 'block w-full text-center',
-        )}
-        onClick={(e) => e.preventDefault()}
-      >
-        <span
+    <StyledBlock className={cn('w-full', className)}>
+      <div style={{ textAlign: alignment }}>
+        <a
+          href={link}
           className={cn(
-            'outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            'inline-block rounded-md border font-medium transition-colors',
+            variantClasses[variant],
+            sizeClasses[size],
+            fullWidth && 'block w-full text-center',
           )}
-          contentEditable={selected}
-          suppressContentEditableWarning
-          onBlur={(e) =>
-            setProp((p: ButtonBlockProps) => (p.text = e.currentTarget.textContent ?? ''))
-          }
+          onClick={(e) => e.preventDefault()}
         >
-          {text}
-        </span>
-      </a>
-    </div>
+          <span
+            className={cn(
+              'outline-none',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: ButtonBlockProps) => (p.text = e.currentTarget.textContent ?? ''))
+            }
+          >
+            {text}
+          </span>
+        </a>
+      </div>
+    </StyledBlock>
   );
 };
 
@@ -164,6 +161,8 @@ function ButtonBlockSettings() {
           Full Width
         </label>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
