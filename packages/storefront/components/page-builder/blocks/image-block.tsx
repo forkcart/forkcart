@@ -62,13 +62,13 @@ export function RenderImageBlock({
       </div>
     );
 
-  if (link) {
-    return (
-      <Link href={link} className="block">
-        {content}
-      </Link>
-    );
-  }
+  const wrapped = link ? (
+    <Link href={link} className="block">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
 
-  return content;
+  return <div className="mx-auto w-full max-w-6xl px-6">{wrapped}</div>;
 }

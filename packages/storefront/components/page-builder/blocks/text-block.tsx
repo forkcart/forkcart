@@ -23,15 +23,17 @@ export function RenderTextBlock({
   className,
 }: TextBlockProps) {
   return (
-    <p
-      className={cn(
-        fontSizeClasses[fontSize] ?? fontSizeClasses.base,
-        'leading-relaxed',
-        className,
-      )}
-      style={{ textAlign: alignment, color: color || undefined }}
-    >
-      {text}
-    </p>
+    <div className="mx-auto w-full max-w-6xl px-6">
+      <p
+        className={cn(
+          fontSizeClasses[fontSize] ?? fontSizeClasses.base,
+          'leading-relaxed',
+          className,
+        )}
+        style={{ textAlign: alignment, color: color || undefined }}
+      >
+        {text}
+      </p>
+    </div>
   );
 }
