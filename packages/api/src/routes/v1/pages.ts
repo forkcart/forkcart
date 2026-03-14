@@ -32,6 +32,13 @@ export function createPageRoutes(pageService: PageService) {
     return c.json({ data: page });
   });
 
+  /** Get page by page_type (e.g. cart, checkout, product, account, error404) */
+  router.get('/by-type/:pageType', async (c) => {
+    const pageType = c.req.param('pageType');
+    const page = await pageService.getByPageType(pageType);
+    return c.json({ data: page });
+  });
+
   /** Get page by ID or slug */
   router.get('/:idOrSlug', async (c) => {
     const idOrSlug = c.req.param('idOrSlug');

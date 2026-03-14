@@ -46,6 +46,10 @@ export class PageService {
     return this.repo.findHomepage();
   }
 
+  async getByPageType(pageType: string) {
+    return this.repo.findByPageType(pageType);
+  }
+
   async list(filter: PageFilter, pagination: Pagination) {
     return this.repo.findMany(filter, pagination);
   }
