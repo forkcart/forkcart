@@ -72,7 +72,9 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <section
@@ -87,7 +89,23 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
           {items.map((item, idx) => (
             <div key={idx} className="rounded-xl bg-white p-6 shadow-sm">
               {showRating && item.rating && <StarRating rating={item.rating} />}
-              <p className="mt-4 text-gray-600">&ldquo;{item.content}&rdquo;</p>
+              <p
+                className={cn(
+                  'mt-4 text-gray-600 outline-none',
+                  selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                )}
+                contentEditable={selected}
+                suppressContentEditableWarning
+                onBlur={(e) =>
+                  setProp((p: TestimonialsProps) => {
+                    const list = [...(p.items ?? defaultItems)];
+                    list[idx] = { ...list[idx]!, content: e.currentTarget.textContent ?? '' };
+                    p.items = list;
+                  })
+                }
+              >
+                &ldquo;{item.content}&rdquo;
+              </p>
               <div className="mt-4 flex items-center gap-3">
                 {item.avatar ? (
                   <img
@@ -101,8 +119,40 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
                   </div>
                 )}
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                  <p className="text-xs text-gray-500">{item.role}</p>
+                  <p
+                    className={cn(
+                      'text-sm font-semibold text-gray-900 outline-none',
+                      selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                    )}
+                    contentEditable={selected}
+                    suppressContentEditableWarning
+                    onBlur={(e) =>
+                      setProp((p: TestimonialsProps) => {
+                        const list = [...(p.items ?? defaultItems)];
+                        list[idx] = { ...list[idx]!, name: e.currentTarget.textContent ?? '' };
+                        p.items = list;
+                      })
+                    }
+                  >
+                    {item.name}
+                  </p>
+                  <p
+                    className={cn(
+                      'text-xs text-gray-500 outline-none',
+                      selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                    )}
+                    contentEditable={selected}
+                    suppressContentEditableWarning
+                    onBlur={(e) =>
+                      setProp((p: TestimonialsProps) => {
+                        const list = [...(p.items ?? defaultItems)];
+                        list[idx] = { ...list[idx]!, role: e.currentTarget.textContent ?? '' };
+                        p.items = list;
+                      })
+                    }
+                  >
+                    {item.role}
+                  </p>
                 </div>
               </div>
             </div>

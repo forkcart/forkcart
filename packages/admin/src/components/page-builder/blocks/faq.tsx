@@ -37,12 +37,18 @@ const defaultItems: FaqItem[] = [
 
 function AccordionItem({
   item,
+  idx,
   isOpen,
   onToggle,
+  selected,
+  setProp,
 }: {
   item: FaqItem;
+  idx: number;
   isOpen: boolean;
   onToggle: () => void;
+  selected?: boolean;
+  setProp: (cb: (props: FaqProps) => void) => void;
 }) {
   return (
     <div className="border-b last:border-b-0">
@@ -51,12 +57,47 @@ function AccordionItem({
         onClick={onToggle}
         type="button"
       >
-        {item.question}
+        <span
+          className={cn(
+            'outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: FaqProps) => {
+              const list = [...(p.items ?? defaultItems)];
+              list[idx] = { ...list[idx]!, question: e.currentTarget.textContent ?? '' };
+              p.items = list;
+            })
+          }
+          onClick={(e) => selected && e.stopPropagation()}
+        >
+          {item.question}
+        </span>
         <ChevronDown
           className={cn('h-4 w-4 shrink-0 transition-transform', isOpen && 'rotate-180')}
         />
       </button>
-      {isOpen && <p className="pb-4 text-sm text-gray-600">{item.answer}</p>}
+      {isOpen && (
+        <p
+          className={cn(
+            'pb-4 text-sm text-gray-600 outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) =>
+            setProp((p: FaqProps) => {
+              const list = [...(p.items ?? defaultItems)];
+              list[idx] = { ...list[idx]!, answer: e.currentTarget.textContent ?? '' };
+              p.items = list;
+            })
+          }
+        >
+          {item.answer}
+        </p>
+      )}
     </div>
   );
 }
@@ -69,7 +110,9 @@ export const Faq: UserComponent<FaqProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   const [openItems, setOpenItems] = useState<Set<number>>(new Set());
 
@@ -92,15 +135,30 @@ export const Faq: UserComponent<FaqProps> = ({
       }}
       className={cn('mx-auto w-full max-w-3xl px-6 py-16', className)}
     >
-      {title && <h2 className="mb-8 text-center text-2xl font-bold text-gray-900">{title}</h2>}
+      {title && (
+        <h2
+          className={cn(
+            'mb-8 text-center text-2xl font-bold text-gray-900 outline-none',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) => setProp((p: FaqProps) => (p.title = e.currentTarget.textContent ?? ''))}
+        >
+          {title}
+        </h2>
+      )}
       <div className="rounded-lg border">
         <div className="divide-y px-6">
           {items.map((item, idx) => (
             <AccordionItem
               key={idx}
               item={item}
+              idx={idx}
               isOpen={openItems.has(idx)}
               onToggle={() => toggleItem(idx)}
+              selected={selected}
+              setProp={setProp}
             />
           ))}
         </div>

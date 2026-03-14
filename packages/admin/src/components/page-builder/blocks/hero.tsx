@@ -39,7 +39,9 @@ export const Hero: UserComponent<HeroProps> = ({
 }) => {
   const {
     connectors: { connect },
-  } = useNode();
+    selected,
+    actions: { setProp },
+  } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
     <section
@@ -68,13 +70,30 @@ export const Hero: UserComponent<HeroProps> = ({
         style={{ textAlign: alignment }}
       >
         <h1
-          className="mb-4 text-4xl font-bold md:text-5xl lg:text-6xl"
+          className={cn(
+            'mb-4 text-4xl font-bold outline-none md:text-5xl lg:text-6xl',
+            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+          )}
           style={{ color: textColor }}
+          contentEditable={selected}
+          suppressContentEditableWarning
+          onBlur={(e) => setProp((p: HeroProps) => (p.title = e.currentTarget.textContent ?? ''))}
         >
           {title}
         </h1>
         {subtitle && (
-          <p className="mb-8 text-lg md:text-xl" style={{ color: textColor, opacity: 0.9 }}>
+          <p
+            className={cn(
+              'mb-8 text-lg outline-none md:text-xl',
+              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            )}
+            style={{ color: textColor, opacity: 0.9 }}
+            contentEditable={selected}
+            suppressContentEditableWarning
+            onBlur={(e) =>
+              setProp((p: HeroProps) => (p.subtitle = e.currentTarget.textContent ?? ''))
+            }
+          >
             {subtitle}
           </p>
         )}
