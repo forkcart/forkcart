@@ -16,6 +16,15 @@ import { ProductGrid } from './blocks/product-grid';
 import { CategoryGrid } from './blocks/category-grid';
 import { FeaturedProduct } from './blocks/featured-product';
 import { Newsletter } from './blocks/newsletter';
+import { Testimonials } from './blocks/testimonials';
+import { Faq } from './blocks/faq';
+import { VideoEmbed } from './blocks/video-embed';
+import { Divider } from './blocks/divider';
+import { IconGrid } from './blocks/icon-grid';
+import { ContactForm } from './blocks/contact-form';
+import { MapEmbed } from './blocks/map-embed';
+import { SocialLinks } from './blocks/social-links';
+import { Banner } from './blocks/banner';
 
 /** All block components registered with Craft.js */
 const resolver = {
@@ -31,6 +40,15 @@ const resolver = {
   CategoryGrid,
   FeaturedProduct,
   Newsletter,
+  Testimonials,
+  Faq,
+  VideoEmbed,
+  Divider,
+  IconGrid,
+  ContactForm,
+  MapEmbed,
+  SocialLinks,
+  Banner,
 };
 
 interface PageBuilderEditorProps {

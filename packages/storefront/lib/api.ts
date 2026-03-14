@@ -181,6 +181,7 @@ export interface Page {
   content: unknown;
   seoTitle: string | null;
   seoDescription: string | null;
+  ogImage: string | null;
   isHomepage: boolean;
   sortOrder: number;
   createdAt: string;

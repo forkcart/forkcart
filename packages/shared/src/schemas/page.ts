@@ -18,6 +18,7 @@ export const CreatePageSchema = z.object({
   content: z.unknown().optional(),
   seoTitle: z.string().max(255).optional(),
   seoDescription: z.string().max(500).optional(),
+  ogImage: z.string().max(500).optional(),
   isHomepage: z.boolean().default(false),
   sortOrder: z.number().int().default(0),
 });

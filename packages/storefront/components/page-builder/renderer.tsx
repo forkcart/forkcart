@@ -11,6 +11,15 @@ import { RenderProductGrid } from './blocks/product-grid';
 import { RenderCategoryGrid } from './blocks/category-grid';
 import { RenderFeaturedProduct } from './blocks/featured-product';
 import { RenderNewsletter } from './blocks/newsletter';
+import { RenderTestimonials } from './blocks/testimonials';
+import { RenderFaq } from './blocks/faq';
+import { RenderVideoEmbed } from './blocks/video-embed';
+import { RenderDivider } from './blocks/divider';
+import { RenderIconGrid } from './blocks/icon-grid';
+import { RenderContactForm } from './blocks/contact-form';
+import { RenderMapEmbed } from './blocks/map-embed';
+import { RenderSocialLinks } from './blocks/social-links';
+import { RenderBanner } from './blocks/banner';
 
 /**
  * Craft.js serialized node shape
@@ -66,31 +75,31 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
 
   switch (name) {
     case 'Container':
-      return <RenderContainer {...(props as any)}>{children}</RenderContainer>;
+      return <RenderContainer {...(props as Record<string, unknown>)}>{children}</RenderContainer>;
 
     case 'Heading':
-      return <RenderHeading {...(props as any)} />;
+      return <RenderHeading {...(props as Record<string, unknown>)} />;
 
     case 'TextBlock':
     case 'Text':
-      return <RenderTextBlock {...(props as any)} />;
+      return <RenderTextBlock {...(props as Record<string, unknown>)} />;
 
     case 'ImageBlock':
     case 'Image':
-      return <RenderImageBlock {...(props as any)} />;
+      return <RenderImageBlock {...(props as Record<string, unknown>)} />;
 
     case 'ButtonBlock':
     case 'Button':
-      return <RenderButtonBlock {...(props as any)} />;
+      return <RenderButtonBlock {...(props as Record<string, unknown>)} />;
 
     case 'Hero':
-      return <RenderHero {...(props as any)} />;
+      return <RenderHero {...(props as Record<string, unknown>)} />;
 
     case 'Spacer':
-      return <RenderSpacer {...(props as any)} />;
+      return <RenderSpacer {...(props as Record<string, unknown>)} />;
 
     case 'Columns':
-      return <RenderColumns {...(props as any)}>{children}</RenderColumns>;
+      return <RenderColumns {...(props as Record<string, unknown>)}>{children}</RenderColumns>;
 
     case 'ProductGrid':
       return (
@@ -103,7 +112,7 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
             </div>
           }
         >
-          <RenderProductGrid {...(props as any)} />
+          <RenderProductGrid {...(props as Record<string, unknown>)} />
         </Suspense>
       );
 
@@ -118,19 +127,46 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
             </div>
           }
         >
-          <RenderCategoryGrid {...(props as any)} />
+          <RenderCategoryGrid {...(props as Record<string, unknown>)} />
         </Suspense>
       );
 
     case 'FeaturedProduct':
       return (
         <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-gray-100" />}>
-          <RenderFeaturedProduct {...(props as any)} />
+          <RenderFeaturedProduct {...(props as Record<string, unknown>)} />
         </Suspense>
       );
 
     case 'Newsletter':
-      return <RenderNewsletter {...(props as any)} />;
+      return <RenderNewsletter {...(props as Record<string, unknown>)} />;
+
+    case 'Testimonials':
+      return <RenderTestimonials {...(props as Record<string, unknown>)} />;
+
+    case 'Faq':
+      return <RenderFaq {...(props as Record<string, unknown>)} />;
+
+    case 'VideoEmbed':
+      return <RenderVideoEmbed {...(props as Record<string, unknown>)} />;
+
+    case 'Divider':
+      return <RenderDivider {...(props as Record<string, unknown>)} />;
+
+    case 'IconGrid':
+      return <RenderIconGrid {...(props as Record<string, unknown>)} />;
+
+    case 'ContactForm':
+      return <RenderContactForm {...(props as Record<string, unknown>)} />;
+
+    case 'MapEmbed':
+      return <RenderMapEmbed {...(props as Record<string, unknown>)} />;
+
+    case 'SocialLinks':
+      return <RenderSocialLinks {...(props as Record<string, unknown>)} />;
+
+    case 'Banner':
+      return <RenderBanner {...(props as Record<string, unknown>)} />;
 
     // Fallback for unknown blocks: just render children if any
     default:
@@ -163,7 +199,9 @@ export function PageRenderer({ content }: { content: unknown }) {
   // If ROOT is itself a Container, render with its props
   if (rootName === 'Container' || rootName === 'div') {
     return (
-      <RenderContainer {...(rootProps as any)}>{renderChildren(data, allChildIds)}</RenderContainer>
+      <RenderContainer {...(rootProps as Record<string, unknown>)}>
+        {renderChildren(data, allChildIds)}
+      </RenderContainer>
     );
   }
 

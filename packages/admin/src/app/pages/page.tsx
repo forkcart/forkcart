@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
 import { Plus, Edit, Trash2, Globe, FileText, Home } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { TemplateModal } from '@/components/page-builder/templates/template-modal';
+import type { PageTemplate } from '@/components/page-builder/templates/index';
 
 interface Page {
   id: string;
@@ -27,6 +29,7 @@ const statusBadge: Record<string, string> = {
 export default function PagesListPage() {
   const [pages, setPages] = useState<Page[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -44,15 +47,20 @@ export default function PagesListPage() {
     }
   }
 
-  async function handleCreate() {
+  async function handleCreateWithTemplate(template: PageTemplate, title: string, slug: string) {
     try {
+      const body: Record<string, unknown> = { title, slug };
+      if (template.content) {
+        body.content = JSON.parse(template.content);
+      }
       const data = await apiClient<{ data: Page }>('/pages', {
         method: 'POST',
-        body: JSON.stringify({ title: 'New Page', slug: `page-${Date.now()}` }),
+        body: JSON.stringify(body),
       });
+      setShowTemplateModal(false);
       router.push(`/pages/${data.data.id}`);
-    } catch (err) {
-      alert('Failed to create page');
+    } catch {
+      alert('Failed to create page. The slug may already be in use.');
     }
   }
 
@@ -85,7 +93,7 @@ export default function PagesListPage() {
           <p className="text-sm text-gray-500">Manage your store pages with the visual editor</p>
         </div>
         <button
-          onClick={handleCreate}
+          onClick={() => setShowTemplateModal(true)}
           className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
         >
           <Plus className="h-4 w-4" />
@@ -101,7 +109,7 @@ export default function PagesListPage() {
             Create your first page with the drag-and-drop editor
           </p>
           <button
-            onClick={handleCreate}
+            onClick={() => setShowTemplateModal(true)}
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
@@ -141,7 +149,7 @@ export default function PagesListPage() {
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
                     <code className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
-                      /{page.slug}
+                      /p/{page.slug}
                     </code>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
@@ -192,6 +200,12 @@ export default function PagesListPage() {
           </table>
         </div>
       )}
+
+      <TemplateModal
+        open={showTemplateModal}
+        onClose={() => setShowTemplateModal(false)}
+        onSelect={handleCreateWithTemplate}
+      />
     </div>
   );
 }

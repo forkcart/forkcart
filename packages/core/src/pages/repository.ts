@@ -11,6 +11,7 @@ export interface CreatePageInput {
   content?: unknown;
   seoTitle?: string;
   seoDescription?: string;
+  ogImage?: string;
   isHomepage?: boolean;
   sortOrder?: number;
 }
@@ -22,6 +23,7 @@ export interface UpdatePageInput {
   content?: unknown;
   seoTitle?: string | null;
   seoDescription?: string | null;
+  ogImage?: string | null;
   isHomepage?: boolean;
   sortOrder?: number;
 }
