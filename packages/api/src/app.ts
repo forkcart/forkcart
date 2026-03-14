@@ -95,6 +95,7 @@ import { createUserRoutes } from './routes/v1/users';
 import { createPageRoutes } from './routes/v1/pages';
 import { createThemeSettingsRoutes } from './routes/v1/theme-settings';
 import { requireRole } from './middleware/permissions';
+import { autoCacheInvalidation } from './middleware/cache-invalidation';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -382,6 +383,9 @@ export async function createApp(db: Database) {
 
   // Auth middleware — protects all routes except /health and /auth/login
   app.use('*', createAuthMiddleware(authService));
+
+  // Auto-invalidate storefront cache on admin mutations
+  app.use('/api/v1/*', autoCacheInvalidation());
 
   // Mount v1 routes
   const v1 = new Hono();
