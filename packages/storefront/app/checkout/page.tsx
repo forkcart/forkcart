@@ -165,7 +165,9 @@ function CheckoutPage() {
           }
         },
       )
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.error('[Checkout] Failed to load shipping addresses:', error);
+      });
   }, [customer, token]);
 
   // Fetch available payment providers

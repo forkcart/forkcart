@@ -169,7 +169,10 @@ export async function trackImpression(params: {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
-  }).catch(() => {});
+  }).catch((error: unknown) => {
+    // Intentionally silent: search tracking is analytics, should not break UX
+    console.error('[API] Failed to track search event:', error);
+  });
 }
 
 // Page types

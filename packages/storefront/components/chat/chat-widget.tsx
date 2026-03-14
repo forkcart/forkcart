@@ -367,7 +367,9 @@ export function ChatWidget() {
           setMessages(res.data.messages);
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.error('[ChatWidget] Failed to load chat messages:', error);
+      });
   }, [sessionId, open]);
 
   // Scroll to bottom on new messages

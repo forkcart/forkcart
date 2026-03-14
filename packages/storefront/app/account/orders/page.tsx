@@ -39,7 +39,9 @@ export default function OrdersPage() {
           setOrders(data.data ?? []);
         }
       })
-      .catch(() => {})
+      .catch((error: unknown) => {
+        console.error('[Orders] Failed to load order history:', error);
+      })
       .finally(() => setLoading(false));
   }, [token]);
 

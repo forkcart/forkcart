@@ -61,7 +61,10 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
             images: data.data.images ?? initialProduct.images,
           });
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Intentionally silent: fallback to initialProduct (SSR data) is fine
+        console.error('[ProductContent] Failed to refresh product data:', error);
+      });
   }, [locale, initialProduct.slug]); // eslint-disable-line react-hooks/exhaustive-deps
   const inStock = product.inventoryQuantity > 0 || !product.trackInventory;
   const images = product.images?.sort((a, b) => a.sortOrder - b.sortOrder) ?? [];

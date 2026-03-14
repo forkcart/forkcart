@@ -8,11 +8,11 @@ services:
       POSTGRES_PASSWORD: forkcart
       POSTGRES_DB: forkcart
     ports:
-      - "5432:5432"
+      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U forkcart"]
+      test: ['CMD-SHELL', 'pg_isready -U forkcart']
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,13 +24,13 @@ services:
     container_name: forkcart-api
     restart: unless-stopped
     ports:
-      - "4000:4000"
+      - '4000:4000'
     environment:
       DATABASE_URL: postgresql://forkcart:forkcart@postgres:5432/forkcart
-      API_PORT: "4000"
-      API_HOST: "0.0.0.0"
-      SESSION_SECRET: "change-me-in-production"
-      LOG_LEVEL: "info"
+      API_PORT: '4000'
+      API_HOST: '0.0.0.0'
+      SESSION_SECRET: 'change-me-in-production'
+      LOG_LEVEL: 'info'
     depends_on:
       postgres:
         condition: service_healthy
@@ -42,7 +42,7 @@ services:
     container_name: forkcart-admin
     restart: unless-stopped
     ports:
-      - "3001:3000"
+      - '3001:3000'
     environment:
       NEXT_PUBLIC_API_URL: http://api:4000
     depends_on:
@@ -55,7 +55,7 @@ services:
     container_name: forkcart-storefront
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - '3000:3000'
     environment:
       NEXT_PUBLIC_STOREFRONT_API_URL: http://api:4000
     depends_on:

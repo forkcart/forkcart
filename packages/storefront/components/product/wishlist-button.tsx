@@ -28,7 +28,9 @@ export function WishlistButton({ productId, size = 'sm', className = '' }: Wishl
           setIsWished(data.data.some((item) => item.productId === productId));
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.error('[WishlistButton] Failed to check wishlist status:', error);
+      });
   }, [token, customer, productId]);
 
   const toggle = useCallback(
