@@ -172,9 +172,7 @@ export default function PagesListPage() {
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-2">
                       {page.isHomepage && <Home className="h-4 w-4 text-blue-500" />}
-                      {isSystemPage(page) && (
-                        <Lock className="h-3.5 w-3.5 text-gray-400" />
-                      )}
+                      {isSystemPage(page) && <Lock className="h-3.5 w-3.5 text-gray-400" />}
                       <span className="text-sm font-medium text-gray-900">{page.title}</span>
                       {page.pageType !== 'custom' && pageTypeBadge[page.pageType]?.label && (
                         <span
