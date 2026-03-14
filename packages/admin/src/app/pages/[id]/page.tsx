@@ -71,9 +71,10 @@ export default function PageEditorPage() {
 
   const handlePreview = useCallback(() => {
     if (!page) return;
-    // Homepage previews at root, other pages at /p/slug
-    const previewUrl = page.isHomepage ? '/' : `/p/${page.slug}`;
-    window.open(previewUrl, '_blank');
+    const storefrontUrl =
+      process.env['NEXT_PUBLIC_STOREFRONT_URL'] ?? 'https://forkcart.heynyx.dev';
+    const path = page.isHomepage ? '/' : `/p/${page.slug}`;
+    window.open(`${storefrontUrl}${path}`, '_blank');
   }, [page]);
 
   if (loading) {
