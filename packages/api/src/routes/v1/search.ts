@@ -51,6 +51,7 @@ export function createSearchRoutes(searchService: SearchService) {
     const query = c.req.query();
     const params = SearchQuerySchema.parse(query);
 
+    const locale = c.req.header('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim();
     const result = await searchService.search(params.q, {
       category: params.category,
       priceMin: params.priceMin,
@@ -59,6 +60,7 @@ export function createSearchRoutes(searchService: SearchService) {
       limit: params.limit,
       offset: params.offset,
       sessionId: c.req.header('X-Session-Id') ?? undefined,
+      locale,
     });
 
     return c.json({
@@ -157,7 +159,8 @@ export function createPublicSearchRoutes(searchService: SearchService) {
   router.get('/instant', async (c) => {
     const query = c.req.query();
     const params = InstantQuerySchema.parse(query);
-    const results = await searchService.instantSearch(params.q);
+    const locale = c.req.header('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim();
+    const results = await searchService.instantSearch(params.q, locale);
     return c.json({ data: results });
   });
 
@@ -169,7 +172,8 @@ export function createPublicSearchRoutes(searchService: SearchService) {
 
   /** Trending products */
   router.get('/trending', async (c) => {
-    const trending = await searchService.getTrendingProducts(10);
+    const locale = c.req.header('Accept-Language')?.split(',')[0]?.split('-')[0]?.trim();
+    const trending = await searchService.getTrendingProducts(10, locale);
     return c.json({ data: trending });
   });
 

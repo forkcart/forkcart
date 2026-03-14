@@ -2,11 +2,18 @@ import type { Product, Category, Cart, PaginatedResponse, ApiResponse } from '@f
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
+/** Get browser locale for Accept-Language header */
+function getBrowserLocale(): string {
+  if (typeof navigator === 'undefined') return 'en';
+  return navigator.language?.split('-')[0] || 'en';
+}
+
 async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      'Accept-Language': getBrowserLocale(),
       ...options?.headers,
     },
     next: { revalidate: 60 },
@@ -131,10 +138,18 @@ export interface TrendingProductItem {
 }
 
 /** Public search API — instant search for overlay */
-export async function instantSearch(query: string): Promise<{ data: InstantSearchItem[] }> {
+export async function instantSearch(
+  query: string,
+  locale?: string,
+): Promise<{ data: InstantSearchItem[] }> {
+  const langHeader =
+    locale || (typeof navigator !== 'undefined' ? navigator.language?.split('-')[0] : 'en') || 'en';
   const res = await fetch(
     `${API_URL}/api/v1/public/search/instant?q=${encodeURIComponent(query)}`,
-    { next: { revalidate: 0 } },
+    {
+      next: { revalidate: 0 },
+      headers: { 'Accept-Language': langHeader },
+    },
   );
   if (!res.ok) return { data: [] };
   return res.json() as Promise<{ data: InstantSearchItem[] }>;
