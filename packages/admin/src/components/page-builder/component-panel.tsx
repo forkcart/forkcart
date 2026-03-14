@@ -28,6 +28,13 @@ import {
   CreditCard as CreditCardIcon,
   User as UserIcon,
   Search as SearchIcon,
+  Image as ImageIcon,
+  Type as TypeIcon,
+  DollarSign as DollarSignIcon,
+  FileText as FileTextIcon,
+  Tag as TagIcon,
+  Star as StarIcon,
+  Package as PackageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Container } from './blocks/container';
@@ -56,6 +63,16 @@ import { DynamicCart } from './blocks/dynamic-cart';
 import { DynamicCheckout } from './blocks/dynamic-checkout';
 import { DynamicAccount } from './blocks/dynamic-account';
 import { DynamicSearch } from './blocks/dynamic-search';
+import {
+  ProductImagesBlock,
+  ProductTitleBlock,
+  ProductPriceBlock,
+  AddToCartBlock,
+  ProductDescriptionBlock,
+  ProductReviewsBlock,
+  RelatedProductsBlock,
+  ProductShortDescBlock,
+} from './blocks/product-blocks';
 
 interface BlockDefinition {
   label: string;
@@ -114,6 +131,54 @@ const blocks: BlockDefinition[] = [
     icon: <ShoppingBag className="h-5 w-5" />,
     category: 'dynamic',
     create: () => <DynamicProductDetail />,
+  },
+  {
+    label: '📸 Images',
+    icon: <ImageIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductImagesBlock />,
+  },
+  {
+    label: '📝 Title',
+    icon: <TypeIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductTitleBlock />,
+  },
+  {
+    label: '💰 Price',
+    icon: <DollarSignIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductPriceBlock />,
+  },
+  {
+    label: '🛒 Add to Cart',
+    icon: <ShoppingBag className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <AddToCartBlock />,
+  },
+  {
+    label: '📄 Description',
+    icon: <FileTextIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductDescriptionBlock />,
+  },
+  {
+    label: '💬 Short Desc',
+    icon: <TagIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductShortDescBlock />,
+  },
+  {
+    label: '⭐ Reviews',
+    icon: <StarIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <ProductReviewsBlock />,
+  },
+  {
+    label: '📦 Related',
+    icon: <PackageIcon className="h-5 w-5" />,
+    category: 'dynamic',
+    create: () => <RelatedProductsBlock />,
   },
   {
     label: 'Shopping Cart',

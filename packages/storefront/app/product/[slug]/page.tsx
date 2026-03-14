@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { getProductBySlug, getPageByType } from '@/lib/api';
 import { ProductContent, ProductNotFound } from './product-content';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/json-ld';
-import { DynamicPageRenderer } from '@/components/page-builder/dynamic-page-renderer';
+import { ProductPageRenderer } from '@/components/page-builder/product-page-renderer';
 
 const BASE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'http://localhost:3000';
 
@@ -40,7 +40,7 @@ export default async function ProductPage({ params }: Props) {
     return <ProductNotFound />;
   }
 
-  const productEl = (
+  const seoEl = (
     <>
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd
@@ -50,7 +50,6 @@ export default async function ProductPage({ params }: Props) {
           { name: product.name, url: `/product/${product.slug}` },
         ]}
       />
-      <ProductContent product={product} />
     </>
   );
 
@@ -58,11 +57,20 @@ export default async function ProductPage({ params }: Props) {
   const pbPage = await getPageByType('product');
   if (pbPage?.content) {
     return (
-      <DynamicPageRenderer content={pbPage.content} dynamicBlockType="DynamicProductDetail">
-        {productEl}
-      </DynamicPageRenderer>
+      <>
+        {seoEl}
+        <div className="container-page py-12">
+          <ProductPageRenderer content={pbPage.content} product={product} />
+        </div>
+      </>
     );
   }
 
-  return productEl;
+  // Fallback: hardcoded product layout
+  return (
+    <>
+      {seoEl}
+      <ProductContent product={product} />
+    </>
+  );
 }

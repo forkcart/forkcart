@@ -26,3 +26,22 @@ export { DynamicCart, type DynamicCartProps } from './dynamic-cart';
 export { DynamicCheckout } from './dynamic-checkout';
 export { DynamicAccount } from './dynamic-account';
 export { DynamicSearch } from './dynamic-search';
+
+// Product page sub-blocks — individual editable product elements
+export {
+  ProductImagesBlock,
+  type ProductImagesBlockProps,
+  ProductTitleBlock,
+  type ProductTitleBlockProps,
+  ProductPriceBlock,
+  type ProductPriceBlockProps,
+  AddToCartBlock,
+  type AddToCartBlockProps,
+  ProductDescriptionBlock,
+  type ProductDescriptionBlockProps,
+  ProductReviewsBlock,
+  type ProductReviewsBlockProps,
+  RelatedProductsBlock,
+  type RelatedProductsBlockProps,
+  ProductShortDescBlock,
+} from './product-blocks';
