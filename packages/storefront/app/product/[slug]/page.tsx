@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { getProductBySlug } from '@/lib/api';
 import { ProductContent, ProductNotFound } from './product-content';
+import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/json-ld';
+
+const BASE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'http://localhost:3000';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -13,6 +16,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title: product.name,
       description: product.shortDescription ?? product.description?.slice(0, 160) ?? undefined,
+      alternates: {
+        canonical: `${BASE_URL}/product/${slug}`,
+      },
       openGraph: {
         title: product.name,
         description: product.shortDescription ?? undefined,
@@ -33,5 +39,17 @@ export default async function ProductPage({ params }: Props) {
     return <ProductNotFound />;
   }
 
-  return <ProductContent product={product} />;
+  return (
+    <>
+      <ProductJsonLd product={product} />
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: '/' },
+          { name: 'Products', url: '/category/all' },
+          { name: product.name, url: `/product/${product.slug}` },
+        ]}
+      />
+      <ProductContent product={product} />
+    </>
+  );
 }
