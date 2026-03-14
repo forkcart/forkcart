@@ -2,6 +2,7 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { StyleSettings, stylesToCSS, type BlockStyles } from '../shared/style-settings';
 
 export interface ContainerProps {
   children?: React.ReactNode;
@@ -13,6 +14,7 @@ export interface ContainerProps {
   layout?: 'stack' | 'grid-2' | 'grid-3' | 'grid-4' | 'flex-row';
   gap?: number;
   alignItems?: 'start' | 'center' | 'end' | 'stretch';
+  styles?: BlockStyles;
 }
 
 const maxWidthMap: Record<string, string> = {
@@ -50,6 +52,7 @@ export const Container: UserComponent<ContainerProps> = ({
   layout = 'stack',
   gap = 16,
   alignItems = 'stretch',
+  styles = {},
 }) => {
   const {
     connectors: { connect },
@@ -72,6 +75,7 @@ export const Container: UserComponent<ContainerProps> = ({
         paddingTop: paddingY,
         paddingBottom: paddingY,
         backgroundColor: backgroundColor !== 'transparent' ? backgroundColor : undefined,
+        ...stylesToCSS(styles),
       }}
     >
       {children}
@@ -183,6 +187,8 @@ function ContainerSettings() {
           onChange={(e) => setProp((p: ContainerProps) => (p.backgroundColor = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Suspense } from 'react';
+import { stylesToCSS, type BlockStyles } from './shared/block-styles';
 import { RenderContainer } from './blocks/container';
 import { RenderHeading } from './blocks/heading';
 import { RenderTextBlock } from './blocks/text-block';
@@ -74,135 +75,150 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
   const allChildIds = [...childIds, ...linkedNodeIds];
   const children = allChildIds.length > 0 ? renderChildren(data, allChildIds) : undefined;
 
-  switch (name) {
-    case 'Container':
-      return <RenderContainer {...(props as Record<string, unknown>)}>{children}</RenderContainer>;
+  // Apply user-defined block styles if present
+  const blockStyles = props.styles as BlockStyles | undefined;
+  const styleCSS = blockStyles ? stylesToCSS(blockStyles) : undefined;
+  const hasStyles = styleCSS && Object.keys(styleCSS).length > 0;
 
-    case 'Heading':
-      return <RenderHeading {...(props as Record<string, unknown>)} />;
+  const rendered = (() => {
+    switch (name) {
+      case 'Container':
+        return (
+          <RenderContainer {...(props as Record<string, unknown>)}>{children}</RenderContainer>
+        );
 
-    case 'TextBlock':
-    case 'Text':
-      return <RenderTextBlock {...(props as Record<string, unknown>)} />;
+      case 'Heading':
+        return <RenderHeading {...(props as Record<string, unknown>)} />;
 
-    case 'ImageBlock':
-    case 'Image':
-      return <RenderImageBlock {...(props as Record<string, unknown>)} />;
+      case 'TextBlock':
+      case 'Text':
+        return <RenderTextBlock {...(props as Record<string, unknown>)} />;
 
-    case 'ButtonBlock':
-    case 'Button':
-      return <RenderButtonBlock {...(props as Record<string, unknown>)} />;
+      case 'ImageBlock':
+      case 'Image':
+        return <RenderImageBlock {...(props as Record<string, unknown>)} />;
 
-    case 'Hero':
-      return <RenderHero {...(props as Record<string, unknown>)} />;
+      case 'ButtonBlock':
+      case 'Button':
+        return <RenderButtonBlock {...(props as Record<string, unknown>)} />;
 
-    case 'Spacer':
-      return <RenderSpacer {...(props as Record<string, unknown>)} />;
+      case 'Hero':
+        return <RenderHero {...(props as Record<string, unknown>)} />;
 
-    case 'Columns':
-      return <RenderColumns {...(props as Record<string, unknown>)}>{children}</RenderColumns>;
+      case 'Spacer':
+        return <RenderSpacer {...(props as Record<string, unknown>)} />;
 
-    case 'ProductGrid':
-      return (
-        <Suspense
-          fallback={
-            <div className="grid animate-pulse grid-cols-4 gap-6">
-              {Array.from({ length: (props.limit as number) ?? 4 }).map((_, i) => (
-                <div key={i} className="aspect-square rounded-lg bg-gray-100" />
-              ))}
-            </div>
-          }
-        >
-          <RenderProductGrid {...(props as Record<string, unknown>)} />
-        </Suspense>
-      );
+      case 'Columns':
+        return <RenderColumns {...(props as Record<string, unknown>)}>{children}</RenderColumns>;
 
-    case 'CategoryGrid':
-      return (
-        <Suspense
-          fallback={
-            <div className="grid animate-pulse grid-cols-3 gap-6">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="h-40 rounded-xl bg-gray-100" />
-              ))}
-            </div>
-          }
-        >
-          <RenderCategoryGrid {...(props as Record<string, unknown>)} />
-        </Suspense>
-      );
+      case 'ProductGrid':
+        return (
+          <Suspense
+            fallback={
+              <div className="grid animate-pulse grid-cols-4 gap-6">
+                {Array.from({ length: (props.limit as number) ?? 4 }).map((_, i) => (
+                  <div key={i} className="aspect-square rounded-lg bg-gray-100" />
+                ))}
+              </div>
+            }
+          >
+            <RenderProductGrid {...(props as Record<string, unknown>)} />
+          </Suspense>
+        );
 
-    case 'FeaturedProduct':
-      return (
-        <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-gray-100" />}>
-          <RenderFeaturedProduct {...(props as Record<string, unknown>)} />
-        </Suspense>
-      );
+      case 'CategoryGrid':
+        return (
+          <Suspense
+            fallback={
+              <div className="grid animate-pulse grid-cols-3 gap-6">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-40 rounded-xl bg-gray-100" />
+                ))}
+              </div>
+            }
+          >
+            <RenderCategoryGrid {...(props as Record<string, unknown>)} />
+          </Suspense>
+        );
 
-    case 'Newsletter':
-      return <RenderNewsletter {...(props as Record<string, unknown>)} />;
+      case 'FeaturedProduct':
+        return (
+          <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-gray-100" />}>
+            <RenderFeaturedProduct {...(props as Record<string, unknown>)} />
+          </Suspense>
+        );
 
-    case 'Testimonials':
-      return <RenderTestimonials {...(props as Record<string, unknown>)} />;
+      case 'Newsletter':
+        return <RenderNewsletter {...(props as Record<string, unknown>)} />;
 
-    case 'Faq':
-      return <RenderFaq {...(props as Record<string, unknown>)} />;
+      case 'Testimonials':
+        return <RenderTestimonials {...(props as Record<string, unknown>)} />;
 
-    case 'VideoEmbed':
-      return <RenderVideoEmbed {...(props as Record<string, unknown>)} />;
+      case 'Faq':
+        return <RenderFaq {...(props as Record<string, unknown>)} />;
 
-    case 'Divider':
-      return <RenderDivider {...(props as Record<string, unknown>)} />;
+      case 'VideoEmbed':
+        return <RenderVideoEmbed {...(props as Record<string, unknown>)} />;
 
-    case 'IconGrid':
-      return <RenderIconGrid {...(props as Record<string, unknown>)} />;
+      case 'Divider':
+        return <RenderDivider {...(props as Record<string, unknown>)} />;
 
-    case 'ContactForm':
-      return <RenderContactForm {...(props as Record<string, unknown>)} />;
+      case 'IconGrid':
+        return <RenderIconGrid {...(props as Record<string, unknown>)} />;
 
-    case 'MapEmbed':
-      return <RenderMapEmbed {...(props as Record<string, unknown>)} />;
+      case 'ContactForm':
+        return <RenderContactForm {...(props as Record<string, unknown>)} />;
 
-    case 'SocialLinks':
-      return <RenderSocialLinks {...(props as Record<string, unknown>)} />;
+      case 'MapEmbed':
+        return <RenderMapEmbed {...(props as Record<string, unknown>)} />;
 
-    case 'Banner':
-      return <RenderBanner {...(props as Record<string, unknown>)} />;
+      case 'SocialLinks':
+        return <RenderSocialLinks {...(props as Record<string, unknown>)} />;
 
-    // Dynamic shop blocks — render a slot marker that routes pick up
-    case 'DynamicProductDetail':
-      return <div data-dynamic-block="product-detail" />;
-    // Product sub-blocks — render real product components when in product context
-    case 'ProductImagesBlock':
-      return <ProductBlockSlot block="images" props={props} />;
-    case 'ProductTitleBlock':
-      return <ProductBlockSlot block="title" props={props} />;
-    case 'ProductPriceBlock':
-      return <ProductBlockSlot block="price" props={props} />;
-    case 'AddToCartBlock':
-      return <ProductBlockSlot block="addToCart" props={props} />;
-    case 'ProductDescriptionBlock':
-      return <ProductBlockSlot block="description" props={props} />;
-    case 'ProductShortDescBlock':
-      return <ProductBlockSlot block="shortDesc" props={props} />;
-    case 'ProductReviewsBlock':
-      return <ProductBlockSlot block="reviews" props={props} />;
-    case 'RelatedProductsBlock':
-      return <ProductBlockSlot block="related" props={props} />;
-    case 'DynamicCart':
-      return <div data-dynamic-block="cart" />;
-    case 'DynamicCheckout':
-      return <div data-dynamic-block="checkout" />;
-    case 'DynamicAccount':
-      return <div data-dynamic-block="account" />;
-    case 'DynamicSearch':
-      return <div data-dynamic-block="search" />;
+      case 'Banner':
+        return <RenderBanner {...(props as Record<string, unknown>)} />;
 
-    // Fallback for unknown blocks: just render children if any
-    default:
-      if (children) return <div>{children}</div>;
-      return null;
+      // Dynamic shop blocks — render a slot marker that routes pick up
+      case 'DynamicProductDetail':
+        return <div data-dynamic-block="product-detail" />;
+      // Product sub-blocks — render real product components when in product context
+      case 'ProductImagesBlock':
+        return <ProductBlockSlot block="images" props={props} />;
+      case 'ProductTitleBlock':
+        return <ProductBlockSlot block="title" props={props} />;
+      case 'ProductPriceBlock':
+        return <ProductBlockSlot block="price" props={props} />;
+      case 'AddToCartBlock':
+        return <ProductBlockSlot block="addToCart" props={props} />;
+      case 'ProductDescriptionBlock':
+        return <ProductBlockSlot block="description" props={props} />;
+      case 'ProductShortDescBlock':
+        return <ProductBlockSlot block="shortDesc" props={props} />;
+      case 'ProductReviewsBlock':
+        return <ProductBlockSlot block="reviews" props={props} />;
+      case 'RelatedProductsBlock':
+        return <ProductBlockSlot block="related" props={props} />;
+      case 'DynamicCart':
+        return <div data-dynamic-block="cart" />;
+      case 'DynamicCheckout':
+        return <div data-dynamic-block="checkout" />;
+      case 'DynamicAccount':
+        return <div data-dynamic-block="account" />;
+      case 'DynamicSearch':
+        return <div data-dynamic-block="search" />;
+
+      // Fallback for unknown blocks: just render children if any
+      default:
+        if (children) return <div>{children}</div>;
+        return null;
+    }
+  })();
+
+  // Wrap with style div if block has custom styles (Container handles its own)
+  if (hasStyles && name !== 'Container') {
+    return <div style={styleCSS}>{rendered}</div>;
   }
+  return rendered;
 }
 
 /**
