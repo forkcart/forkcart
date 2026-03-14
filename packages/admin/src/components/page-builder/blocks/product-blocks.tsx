@@ -3,6 +3,8 @@
 import { useNode, type UserComponent } from '@craftjs/core';
 import { ShoppingBag, Star, Minus, Plus, Heart } from 'lucide-react';
 import { usePreviewProduct } from '../hooks/use-preview-product';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 function formatPrice(cents: number, currency = 'EUR'): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
@@ -19,18 +21,11 @@ export interface ProductImagesBlockProps {
 export const ProductImagesBlock: UserComponent<ProductImagesBlockProps> = ({
   layout = 'gallery',
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
   const product = usePreviewProduct();
   const hasImages = product?.images && product.images.length > 0;
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-    >
+    <StyledBlock>
       <div className="aspect-square overflow-hidden rounded-2xl bg-gray-100">
         {hasImages ? (
           <img
@@ -65,7 +60,7 @@ export const ProductImagesBlock: UserComponent<ProductImagesBlockProps> = ({
           ))}
         </div>
       )}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -114,6 +109,8 @@ function ProductImagesSettings() {
           <option value="3:4">Portrait (3:4)</option>
         </select>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -131,18 +128,11 @@ export const ProductTitleBlock: UserComponent<ProductTitleBlockProps> = ({
   showWishlist = true,
   titleSize = 'lg',
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
   const product = usePreviewProduct();
   const sizeClass = { sm: 'text-xl', md: 'text-2xl', lg: 'text-3xl', xl: 'text-4xl' }[titleSize];
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-    >
+    <StyledBlock>
       {showSku && product?.sku && (
         <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
           SKU: {product.sku}
@@ -158,7 +148,7 @@ export const ProductTitleBlock: UserComponent<ProductTitleBlockProps> = ({
           </button>
         )}
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -214,6 +204,8 @@ function ProductTitleSettings() {
           <option value="xl">Extra Large</option>
         </select>
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -230,20 +222,13 @@ export const ProductPriceBlock: UserComponent<ProductPriceBlockProps> = ({
   showComparePrice = true,
   showStock = true,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
   const product = usePreviewProduct();
   const price = product ? formatPrice(product.price, product.currency) : '€0.00';
   const hasDiscount = product?.compareAtPrice && product.compareAtPrice > product.price;
   const inStock = product ? product.inventoryQuantity > 0 || !product.trackInventory : true;
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-    >
+    <StyledBlock>
       <div className="flex items-baseline gap-3">
         <span className="text-2xl font-bold text-gray-900">{price}</span>
         {showComparePrice && hasDiscount && (
@@ -267,7 +252,7 @@ export const ProductPriceBlock: UserComponent<ProductPriceBlockProps> = ({
           )}
         </div>
       )}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -306,6 +291,8 @@ function ProductPriceSettings() {
         />
         Show Stock Status
       </label>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -323,17 +310,8 @@ export const AddToCartBlock: UserComponent<AddToCartBlockProps> = ({
   buttonStyle = 'full',
   buttonText = 'Add to Cart',
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className="flex items-center gap-4"
-    >
+    <StyledBlock className="flex items-center gap-4">
       {showQuantity && (
         <div className="flex items-center rounded-lg border">
           <button className="flex h-11 w-11 items-center justify-center text-gray-500" disabled>
@@ -354,7 +332,7 @@ export const AddToCartBlock: UserComponent<AddToCartBlockProps> = ({
         <ShoppingBag className="h-4 w-4" />
         {buttonText}
       </button>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -406,6 +384,8 @@ function AddToCartSettings() {
           onChange={(e) => setProp((p: AddToCartBlockProps) => (p.buttonText = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -421,18 +401,10 @@ export const ProductDescriptionBlock: UserComponent<ProductDescriptionBlockProps
   showHeading = true,
   headingText = 'Description',
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
   const product = usePreviewProduct();
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className="border-t pt-8"
-    >
+    <StyledBlock className="border-t pt-8">
       {showHeading && (
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-900">
           {headingText}
@@ -441,7 +413,7 @@ export const ProductDescriptionBlock: UserComponent<ProductDescriptionBlockProps
       <div className="mt-3 text-sm leading-relaxed text-gray-600">
         {product?.description ?? 'Product description will appear here.'}
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -484,6 +456,8 @@ function ProductDescriptionSettings() {
           />
         </div>
       )}
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -499,17 +473,8 @@ export const ProductReviewsBlock: UserComponent<ProductReviewsBlockProps> = ({
   showForm = true,
   showRating = true,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className="border-t pt-8 mt-10"
-    >
+    <StyledBlock className="border-t pt-8 mt-10">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-900">Reviews</h2>
       </div>
@@ -529,14 +494,52 @@ export const ProductReviewsBlock: UserComponent<ProductReviewsBlockProps> = ({
           Review form will appear here
         </div>
       )}
-    </div>
+    </StyledBlock>
   );
 };
 
 ProductReviewsBlock.craft = {
   displayName: 'Product Reviews',
   props: { showForm: true, showRating: true },
+  related: { settings: ProductReviewsSettings },
 };
+
+function ProductReviewsSettings() {
+  const {
+    actions: { setProp },
+    showForm,
+    showRating,
+  } = useNode((node) => ({
+    showForm: node.data.props.showForm,
+    showRating: node.data.props.showRating,
+  }));
+  return (
+    <div className="space-y-3">
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={showForm}
+          onChange={(e) =>
+            setProp((p: ProductReviewsBlockProps) => (p.showForm = e.target.checked))
+          }
+        />
+        Show Review Form
+      </label>
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={showRating}
+          onChange={(e) =>
+            setProp((p: ProductReviewsBlockProps) => (p.showRating = e.target.checked))
+          }
+        />
+        Show Rating Stars
+      </label>
+      <hr className="my-2" />
+      <StyleSettings />
+    </div>
+  );
+}
 
 // ─── Related Products ────────────────────────────────────────────────────────
 
@@ -550,19 +553,15 @@ export const RelatedProductsBlock: UserComponent<RelatedProductsBlockProps> = ({
   columns = 4,
   title = 'Related Products',
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className="border-t pt-8"
-    >
+    <StyledBlock className="border-t pt-8">
       <h2 className="mb-6 text-lg font-semibold text-gray-900">{title}</h2>
-      <div className={`grid gap-6 grid-cols-2 lg:grid-cols-${columns}`}>
+      <div
+        className="grid gap-6"
+        style={{
+          gridTemplateColumns: `repeat(auto-fit, minmax(min(100%, ${columns <= 2 ? 200 : 160}px), 1fr))`,
+        }}
+      >
         {Array.from({ length: columns }).map((_, i) => (
           <div key={i} className="group">
             <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
@@ -582,7 +581,7 @@ export const RelatedProductsBlock: UserComponent<RelatedProductsBlockProps> = ({
           </div>
         ))}
       </div>
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -640,6 +639,8 @@ function RelatedProductsSettings() {
           }
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
@@ -647,23 +648,25 @@ function RelatedProductsSettings() {
 // ─── Product Short Description ───────────────────────────────────────────────
 
 export const ProductShortDescBlock: UserComponent = () => {
-  const {
-    connectors: { connect },
-  } = useNode();
   const product = usePreviewProduct();
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-    >
+    <StyledBlock>
       <p className="text-gray-600">{product?.shortDescription ?? 'Short product description'}</p>
-    </div>
+    </StyledBlock>
   );
 };
 
 ProductShortDescBlock.craft = {
   displayName: 'Short Description',
   props: {},
+  related: { settings: ShortDescSettings },
 };
+
+function ShortDescSettings() {
+  return (
+    <div className="space-y-3">
+      <StyleSettings />
+    </div>
+  );
+}
