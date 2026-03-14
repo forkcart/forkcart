@@ -2,11 +2,10 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useTranslation, Flag, LOCALE_NAMES } from '@forkcart/i18n/react';
-import { defaultLocale, supportedLocales } from '@/lib/i18n-config';
 import { useState, useRef, useEffect } from 'react';
 
 export function StorefrontLanguageSwitcher({ className }: { className?: string }) {
-  const { locale, supportedLocales: locales } = useTranslation();
+  const { locale, defaultLocale, supportedLocales: locales } = useTranslation();
   const router = useRouter();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -23,14 +22,14 @@ export function StorefrontLanguageSwitcher({ className }: { className?: string }
   const switchLocale = (newLocale: string) => {
     // Remove current locale prefix from pathname
     let basePath = pathname;
-    for (const loc of supportedLocales) {
+    for (const loc of locales) {
       if (pathname.startsWith(`/${loc}/`) || pathname === `/${loc}`) {
         basePath = pathname.slice(loc.length + 1) || '/';
         break;
       }
     }
 
-    // Build new path
+    // Build new path — default locale has no prefix
     const newPath = newLocale === defaultLocale ? basePath : `/${newLocale}${basePath}`;
 
     localStorage.setItem('forkcart_locale', newLocale);
