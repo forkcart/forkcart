@@ -21,6 +21,7 @@ export const pages = pgTable(
     content: jsonb('content'),
     seoTitle: varchar('seo_title', { length: 255 }),
     seoDescription: text('seo_description'),
+    ogImage: varchar('og_image', { length: 500 }),
     isHomepage: boolean('is_homepage').notNull().default(false),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

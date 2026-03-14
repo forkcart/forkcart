@@ -15,6 +15,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return {
       title: page.seoTitle ?? page.title,
       description: page.seoDescription ?? undefined,
+      openGraph: page.ogImage ? { images: [{ url: page.ogImage }] } : undefined,
     };
   } catch {
     return { title: 'Page Not Found' };

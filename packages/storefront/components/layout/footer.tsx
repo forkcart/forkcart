@@ -33,12 +33,12 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="#" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link href="/p/about-us" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.about')}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link href="/p/contact" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.contact')}
                 </Link>
               </li>
@@ -50,17 +50,23 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="#" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link
+                  href="/p/privacy-policy"
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
                   {t('footer.privacy')}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link
+                  href="/p/terms-of-service"
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
                   {t('footer.terms')}
                 </Link>
               </li>
               <li>
-                <Link href="#" className="text-sm text-gray-500 hover:text-gray-900">
+                <Link href="/p/imprint" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.imprint')}
                 </Link>
               </li>
