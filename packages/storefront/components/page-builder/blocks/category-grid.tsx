@@ -1,14 +1,21 @@
 import Link from 'next/link';
 import { getCategories } from '@/lib/api';
+import { localePath } from '@/lib/navigation';
 import type { Category } from '@forkcart/shared';
 
 export interface CategoryGridProps {
   columns?: 2 | 3 | 4;
   title?: string;
   className?: string;
+  locale?: string;
 }
 
-export async function RenderCategoryGrid({ columns = 3, title, className }: CategoryGridProps) {
+export async function RenderCategoryGrid({
+  columns = 3,
+  title,
+  className,
+  locale,
+}: CategoryGridProps) {
   let categories: Category[] = [];
 
   try {
@@ -32,7 +39,7 @@ export async function RenderCategoryGrid({ columns = 3, title, className }: Cate
         {categories.map((category) => (
           <Link
             key={category.id}
-            href={`/category/${category.slug}`}
+            href={localePath(`/category/${category.slug}`, locale ?? 'en')}
             className="group block rounded-xl border border-gray-200 bg-white p-6 transition-shadow hover:shadow-lg"
           >
             <h3 className="text-lg font-semibold text-gray-900 transition group-hover:text-accent">

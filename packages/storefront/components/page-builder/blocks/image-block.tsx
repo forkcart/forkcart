@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { localePath } from '@/lib/navigation';
 
 export interface ImageBlockProps {
   src?: string;
@@ -10,6 +11,7 @@ export interface ImageBlockProps {
   borderRadius?: number;
   link?: string;
   className?: string;
+  locale?: string;
 }
 
 const aspectRatioClasses: Record<string, string> = {
@@ -27,6 +29,7 @@ export function RenderImageBlock({
   borderRadius = 0,
   link,
   className,
+  locale,
 }: ImageBlockProps) {
   if (!src) return null;
 
@@ -63,7 +66,7 @@ export function RenderImageBlock({
     );
 
   const wrapped = link ? (
-    <Link href={link} className="block">
+    <Link href={localePath(link, locale ?? 'en')} className="block">
       {content}
     </Link>
   ) : (

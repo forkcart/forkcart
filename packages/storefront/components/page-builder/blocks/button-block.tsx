@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { localePath } from '@/lib/navigation';
 
 export interface ButtonBlockProps {
   text?: string;
@@ -9,6 +10,7 @@ export interface ButtonBlockProps {
   alignment?: 'left' | 'center' | 'right';
   fullWidth?: boolean;
   className?: string;
+  locale?: string;
 }
 
 const variantClasses: Record<string, string> = {
@@ -31,6 +33,7 @@ export function RenderButtonBlock({
   alignment = 'center',
   fullWidth = false,
   className,
+  locale,
 }: ButtonBlockProps) {
   return (
     <div
@@ -38,7 +41,7 @@ export function RenderButtonBlock({
       style={{ textAlign: alignment }}
     >
       <Link
-        href={link}
+        href={localePath(link, locale ?? 'en')}
         className={cn(
           'inline-block rounded-md border font-medium transition-colors',
           variantClasses[variant] ?? variantClasses.primary,

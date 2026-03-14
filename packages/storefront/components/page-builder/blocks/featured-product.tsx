@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { localePath } from '@/lib/navigation';
 
 interface FeaturedProductProps {
   productSlug?: string;
@@ -9,6 +10,7 @@ interface FeaturedProductProps {
   backgroundColor?: string;
   showDescription?: boolean;
   ctaText?: string;
+  locale?: string;
 }
 
 async function fetchProduct(slug: string) {
@@ -31,6 +33,7 @@ export async function RenderFeaturedProduct({
   backgroundColor = '#f9fafb',
   showDescription = true,
   ctaText = 'View Product',
+  locale,
 }: FeaturedProductProps) {
   if (!productSlug) return null;
 
@@ -70,7 +73,7 @@ export async function RenderFeaturedProduct({
           <div className="flex items-center gap-4 pt-2">
             <span className="text-2xl font-bold text-gray-900">€{price}</span>
             <Link
-              href={`/product/${product.slug}`}
+              href={localePath(`/product/${product.slug}`, locale ?? 'en')}
               className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-gray-800"
             >
               <ShoppingCart className="h-4 w-4" />

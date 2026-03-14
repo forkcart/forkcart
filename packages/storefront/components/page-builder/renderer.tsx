@@ -54,15 +54,23 @@ function getResolvedName(node: CraftNode): string {
 /**
  * Recursively renders children node IDs.
  */
-function renderChildren(data: CraftData, childIds: string[]): React.ReactNode {
-  return childIds.map((id) => <RenderNode key={id} data={data} nodeId={id} />);
+function renderChildren(data: CraftData, childIds: string[], locale?: string): React.ReactNode {
+  return childIds.map((id) => <RenderNode key={id} data={data} nodeId={id} locale={locale} />);
 }
 
 /**
  * Renders a single Craft.js node and its children.
  * Server-compatible — no Craft.js runtime needed.
  */
-function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
+function RenderNode({
+  data,
+  nodeId,
+  locale,
+}: {
+  data: CraftData;
+  nodeId: string;
+  locale?: string;
+}) {
   const node = data[nodeId];
   if (!node || node.hidden) return null;
 
@@ -73,7 +81,7 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
   const childIds = node.nodes ?? [];
   const linkedNodeIds = node.linkedNodes ? Object.values(node.linkedNodes) : [];
   const allChildIds = [...childIds, ...linkedNodeIds];
-  const children = allChildIds.length > 0 ? renderChildren(data, allChildIds) : undefined;
+  const children = allChildIds.length > 0 ? renderChildren(data, allChildIds, locale) : undefined;
 
   // Apply user-defined block styles if present
   const blockStyles = props.styles as BlockStyles | undefined;
@@ -97,14 +105,14 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
 
       case 'ImageBlock':
       case 'Image':
-        return <RenderImageBlock {...(props as Record<string, unknown>)} />;
+        return <RenderImageBlock {...(props as Record<string, unknown>)} locale={locale} />;
 
       case 'ButtonBlock':
       case 'Button':
-        return <RenderButtonBlock {...(props as Record<string, unknown>)} />;
+        return <RenderButtonBlock {...(props as Record<string, unknown>)} locale={locale} />;
 
       case 'Hero':
-        return <RenderHero {...(props as Record<string, unknown>)} />;
+        return <RenderHero {...(props as Record<string, unknown>)} locale={locale} />;
 
       case 'Spacer':
         return <RenderSpacer {...(props as Record<string, unknown>)} />;
@@ -138,14 +146,14 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
               </div>
             }
           >
-            <RenderCategoryGrid {...(props as Record<string, unknown>)} />
+            <RenderCategoryGrid {...(props as Record<string, unknown>)} locale={locale} />
           </Suspense>
         );
 
       case 'FeaturedProduct':
         return (
           <Suspense fallback={<div className="h-80 animate-pulse rounded-xl bg-gray-100" />}>
-            <RenderFeaturedProduct {...(props as Record<string, unknown>)} />
+            <RenderFeaturedProduct {...(props as Record<string, unknown>)} locale={locale} />
           </Suspense>
         );
 
@@ -177,7 +185,7 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
         return <RenderSocialLinks {...(props as Record<string, unknown>)} />;
 
       case 'Banner':
-        return <RenderBanner {...(props as Record<string, unknown>)} />;
+        return <RenderBanner {...(props as Record<string, unknown>)} locale={locale} />;
 
       // Dynamic shop blocks — render a slot marker that routes pick up
       case 'DynamicProductDetail':
@@ -229,7 +237,7 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
  * Takes Craft.js serialized JSON and renders it as pure HTML/React.
  * No Craft.js runtime required — fully server-side renderable.
  */
-export function PageRenderer({ content }: { content: unknown }) {
+export function PageRenderer({ content, locale }: { content: unknown; locale?: string }) {
   if (!content || typeof content !== 'object') return null;
 
   const data = content as CraftData;
@@ -248,11 +256,11 @@ export function PageRenderer({ content }: { content: unknown }) {
   if (rootName === 'Container' || rootName === 'div') {
     return (
       <RenderContainer {...(rootProps as Record<string, unknown>)}>
-        {renderChildren(data, allChildIds)}
+        {renderChildren(data, allChildIds, locale)}
       </RenderContainer>
     );
   }
 
   // Otherwise just render children directly
-  return <>{renderChildren(data, allChildIds)}</>;
+  return <>{renderChildren(data, allChildIds, locale)}</>;
 }

@@ -153,6 +153,8 @@ interface I18nProviderProps {
   translations: Record<Locale, TranslationDict>;
   /** Optional API base URL for dynamic translations (e.g. http://localhost:4000/api/v1/public/translations) */
   apiBaseUrl?: string;
+  /** When set, use this locale instead of guessing from localStorage / browser */
+  initialLocale?: string;
 }
 
 export function I18nProvider({
@@ -161,8 +163,10 @@ export function I18nProvider({
   supportedLocales = ['en'],
   translations,
   apiBaseUrl,
+  initialLocale,
 }: I18nProviderProps) {
   const [locale, setLocaleState] = useState<Locale>(() => {
+    if (initialLocale) return initialLocale;
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('forkcart_locale');
       // Allow stored locale even if not yet in supportedLocales (API locales load async)
@@ -172,6 +176,13 @@ export function I18nProvider({
     }
     return defaultLocale;
   });
+
+  // Sync when initialLocale changes (e.g. URL-based navigation)
+  useEffect(() => {
+    if (initialLocale && initialLocale !== locale) {
+      setLocaleState(initialLocale);
+    }
+  }, [initialLocale]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Dynamic API overrides (flat keys from DB)
   const [apiOverrides, setApiOverrides] = useState<Record<string, FlatTranslations>>({});

@@ -1,7 +1,7 @@
 'use client';
 
-import Link from 'next/link';
 import { useTranslation } from '@forkcart/i18n/react';
+import { LocaleLink } from '@/components/locale-link';
 
 export function Footer() {
   const { t } = useTranslation();
@@ -16,14 +16,14 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="/products" className="text-sm text-gray-500 hover:text-gray-900">
+                <LocaleLink href="/products" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.allProducts')}
-                </Link>
+                </LocaleLink>
               </li>
               <li>
-                <Link href="/search" className="text-sm text-gray-500 hover:text-gray-900">
+                <LocaleLink href="/search" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('common.search')}
-                </Link>
+                </LocaleLink>
               </li>
             </ul>
           </div>
@@ -33,14 +33,17 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link href="/p/about-us" className="text-sm text-gray-500 hover:text-gray-900">
+                <LocaleLink
+                  href="/p/about-us"
+                  className="text-sm text-gray-500 hover:text-gray-900"
+                >
                   {t('footer.about')}
-                </Link>
+                </LocaleLink>
               </li>
               <li>
-                <Link href="/p/contact" className="text-sm text-gray-500 hover:text-gray-900">
+                <LocaleLink href="/p/contact" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.contact')}
-                </Link>
+                </LocaleLink>
               </li>
             </ul>
           </div>
@@ -50,25 +53,25 @@ export function Footer() {
             </h3>
             <ul className="mt-4 space-y-2">
               <li>
-                <Link
+                <LocaleLink
                   href="/p/privacy-policy"
                   className="text-sm text-gray-500 hover:text-gray-900"
                 >
                   {t('footer.privacy')}
-                </Link>
+                </LocaleLink>
               </li>
               <li>
-                <Link
+                <LocaleLink
                   href="/p/terms-of-service"
                   className="text-sm text-gray-500 hover:text-gray-900"
                 >
                   {t('footer.terms')}
-                </Link>
+                </LocaleLink>
               </li>
               <li>
-                <Link href="/p/imprint" className="text-sm text-gray-500 hover:text-gray-900">
+                <LocaleLink href="/p/imprint" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.imprint')}
-                </Link>
+                </LocaleLink>
               </li>
             </ul>
           </div>
@@ -93,7 +96,10 @@ export function Footer() {
           </div>
         </div>
         <div className="mt-12 border-t pt-6 text-center text-xs text-gray-400">
-          {t('footer.copyright', { year: new Date().getFullYear(), shopName: 'ForkCart' })}
+          {t('footer.copyright', {
+            year: new Date().getFullYear(),
+            shopName: 'ForkCart',
+          })}
         </div>
       </div>
     </footer>

@@ -3,7 +3,7 @@
 import { PageRenderer } from './renderer';
 import { formatPrice } from '@forkcart/shared';
 import { useTranslation } from '@forkcart/i18n/react';
-import { AddToCartButton } from '@/app/product/[slug]/add-to-cart-button';
+import { AddToCartButton } from '@/app/[locale]/product/[slug]/add-to-cart-button';
 import { WishlistButton } from '@/components/product/wishlist-button';
 import { ProductReviews } from '@/components/product/product-reviews';
 import { useState, useEffect } from 'react';
@@ -35,6 +35,7 @@ interface ProductData {
 interface ProductPageRendererProps {
   content: unknown;
   product: ProductData;
+  locale?: string;
 }
 
 /**
@@ -42,14 +43,14 @@ interface ProductPageRendererProps {
  * injected into dynamic block slots. Re-fetches product with
  * the active locale so translations are applied.
  */
-export function ProductPageRenderer({ content, product }: ProductPageRendererProps) {
+export function ProductPageRenderer({ content, product, locale }: ProductPageRendererProps) {
   if (!content || typeof content !== 'object') {
     return null;
   }
 
   return (
     <LocalizedProductProvider initialProduct={product}>
-      <PageRenderer content={content} />
+      <PageRenderer content={content} locale={locale} />
     </LocalizedProductProvider>
   );
 }

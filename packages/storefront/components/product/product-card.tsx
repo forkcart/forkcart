@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import { LocaleLink } from '@/components/locale-link';
 import { formatPrice } from '@forkcart/shared';
 import type { Product } from '@forkcart/shared';
 import { WishlistButton } from './wishlist-button';
@@ -21,7 +21,7 @@ export function ProductCard({ product, averageRating, reviewCount }: ProductCard
   const mainImage = product.images?.sort((a, b) => a.sortOrder - b.sortOrder)[0];
 
   return (
-    <Link href={`/product/${product.slug}`} className="group relative block">
+    <LocaleLink href={`/product/${product.slug}`} className="group relative block">
       <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
         {mainImage ? (
           <img
@@ -72,6 +72,6 @@ export function ProductCard({ product, averageRating, reviewCount }: ProductCard
           )}
         </div>
       </div>
-    </Link>
+    </LocaleLink>
   );
 }

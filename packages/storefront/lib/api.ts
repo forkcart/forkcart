@@ -37,17 +37,19 @@ function getLocaleForHeader(): string {
   return _cachedDefaultLocale || 'en';
 }
 
-async function fetchApi<T>(path: string, options?: RequestInit): Promise<T> {
+async function fetchApi<T>(path: string, options?: RequestInit & { locale?: string }): Promise<T> {
   // Ensure default locale is cached before first API call (server-side)
   if (!_cachedDefaultLocale && typeof window === 'undefined') {
     await fetchDefaultLocale();
   }
+  const locale = options?.locale || getLocaleForHeader();
+  const { locale: _discarded, ...fetchOptions } = options ?? {};
   const res = await fetch(`${API_URL}/api/v1${path}`, {
-    ...options,
+    ...fetchOptions,
     headers: {
       'Content-Type': 'application/json',
-      'Accept-Language': getLocaleForHeader(),
-      ...options?.headers,
+      'Accept-Language': locale,
+      ...fetchOptions?.headers,
     },
     next: { revalidate: 60 },
   });
