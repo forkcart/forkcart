@@ -187,6 +187,7 @@ export async function createApp(db: Database) {
     cartRepository,
     eventBus,
     productTranslationService: null,
+    mediaBaseUrl: baseUrl,
   });
   const paymentService = new PaymentService({
     paymentRepository,
