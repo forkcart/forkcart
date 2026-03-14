@@ -1,0 +1,137 @@
+{
+  "ROOT": {
+    "type": { "resolvedName": "Container" },
+    "isCanvas": true,
+    "props": { "paddingX": 0, "paddingY": 0, "maxWidth": "full", "backgroundColor": "transparent" },
+    "displayName": "Container",
+    "custom": {},
+    "hidden": false,
+    "nodes": ["hero1", "categories1", "spacer1", "products1", "spacer2", "featured1", "spacer3", "newsletter1"],
+    "linkedNodes": {}
+  },
+  "hero1": {
+    "type": { "resolvedName": "Hero" },
+    "isCanvas": false,
+    "props": {
+      "title": "Your Store, Your Way",
+      "subtitle": "The open-source e-commerce platform that puts you in control. AI-powered, plugin-first, endlessly customizable.",
+      "ctaText": "Browse Products",
+      "ctaLink": "/products",
+      "backgroundImage": "",
+      "backgroundColor": "#0f172a",
+      "overlayOpacity": 40,
+      "height": "lg",
+      "alignment": "center",
+      "textColor": "#ffffff"
+    },
+    "displayName": "Hero Banner",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "categories1": {
+    "type": { "resolvedName": "CategoryGrid" },
+    "isCanvas": false,
+    "props": {
+      "title": "Shop by Category",
+      "columns": 4,
+      "limit": 4,
+      "style": "card"
+    },
+    "displayName": "Category Grid",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "spacer1": {
+    "type": { "resolvedName": "Spacer" },
+    "isCanvas": false,
+    "props": { "height": 32 },
+    "displayName": "Spacer",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "products1": {
+    "type": { "resolvedName": "ProductGrid" },
+    "isCanvas": false,
+    "props": {
+      "title": "Latest Products",
+      "columns": 4,
+      "limit": 8,
+      "source": "latest",
+      "categorySlug": "",
+      "showPrice": true,
+      "showButton": true
+    },
+    "displayName": "Product Grid",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "spacer2": {
+    "type": { "resolvedName": "Spacer" },
+    "isCanvas": false,
+    "props": { "height": 48 },
+    "displayName": "Spacer",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "featured1": {
+    "type": { "resolvedName": "FeaturedProduct" },
+    "isCanvas": false,
+    "props": {
+      "productSlug": "nyx-plush-lobster",
+      "layout": "left",
+      "backgroundColor": "#f0f9ff",
+      "showDescription": true,
+      "ctaText": "View Product"
+    },
+    "displayName": "Featured Product",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "spacer3": {
+    "type": { "resolvedName": "Spacer" },
+    "isCanvas": false,
+    "props": { "height": 48 },
+    "displayName": "Spacer",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  },
+  "newsletter1": {
+    "type": { "resolvedName": "Newsletter" },
+    "isCanvas": false,
+    "props": {
+      "title": "Stay Updated",
+      "subtitle": "Subscribe to our newsletter for the latest products and exclusive deals.",
+      "buttonText": "Subscribe",
+      "backgroundColor": "#0f172a",
+      "textColor": "#ffffff",
+      "layout": "stacked"
+    },
+    "displayName": "Newsletter",
+    "custom": {},
+    "hidden": false,
+    "nodes": [],
+    "linkedNodes": {},
+    "parent": "ROOT"
+  }
+}
