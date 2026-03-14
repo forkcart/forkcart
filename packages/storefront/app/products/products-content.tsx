@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, SlidersHorizontal, X } from 'lucide-react';
-import { useTranslation } from '@forkcart/i18n/react';
+import { useTranslation, useLocale } from '@forkcart/i18n/react';
 import { ProductCard } from '@/components/product/product-card';
+import { getProducts } from '@/lib/api';
 import type { Product } from '@forkcart/shared';
 import type { CategoryWithCount } from '@/lib/api';
 
@@ -51,11 +52,42 @@ export function ProductsContent({
   activeMaxPrice,
 }: ProductsContentProps) {
   const { t } = useTranslation();
+  const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [minPriceInput, setMinPriceInput] = useState(activeMinPrice);
   const [maxPriceInput, setMaxPriceInput] = useState(activeMaxPrice);
+  const [localizedProducts, setLocalizedProducts] = useState(products);
+
+  // Re-fetch products when locale changes (server-rendered with default locale)
+  useEffect(() => {
+    let cancelled = false;
+    getProducts({
+      page: currentPage,
+      limit: 24,
+      categoryId: activeCategoryId ?? undefined,
+      sortBy:
+        activeSort === 'price-asc' || activeSort === 'price-desc'
+          ? 'price'
+          : activeSort === 'name-asc'
+            ? 'name'
+            : 'createdAt',
+      sortDirection: activeSort === 'price-asc' || activeSort === 'name-asc' ? 'asc' : 'desc',
+      minPrice: activeMinPrice ? parseInt(activeMinPrice, 10) : undefined,
+      maxPrice: activeMaxPrice ? parseInt(activeMaxPrice, 10) : undefined,
+      status: 'active',
+    })
+      .then((res) => {
+        if (!cancelled) setLocalizedProducts(res.data);
+      })
+      .catch(() => {
+        // Keep server-rendered products as fallback
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, currentPage, activeCategoryId, activeSort, activeMinPrice, activeMaxPrice]);
 
   const updateParams = useCallback(
     (updates: Record<string, string>) => {
@@ -212,9 +244,9 @@ export function ProductsContent({
 
         {/* Product grid */}
         <div className="flex-1">
-          {products.length > 0 ? (
+          {localizedProducts.length > 0 ? (
             <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {products.map((product) => (
+              {localizedProducts.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
