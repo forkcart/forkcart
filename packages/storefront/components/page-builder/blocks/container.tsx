@@ -7,6 +7,9 @@ export interface ContainerProps {
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   backgroundColor?: string;
   className?: string;
+  layout?: 'stack' | 'grid-2' | 'grid-3' | 'grid-4' | 'flex-row';
+  gap?: number;
+  alignItems?: 'start' | 'center' | 'end' | 'stretch';
 }
 
 const maxWidthMap: Record<string, string> = {
@@ -17,6 +20,14 @@ const maxWidthMap: Record<string, string> = {
   full: 'max-w-full',
 };
 
+const layoutStyles: Record<string, React.CSSProperties> = {
+  stack: { display: 'flex', flexDirection: 'column' },
+  'grid-2': { display: 'grid', gridTemplateColumns: '1fr 1fr' },
+  'grid-3': { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' },
+  'grid-4': { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr' },
+  'flex-row': { display: 'flex', flexDirection: 'row' },
+};
+
 export function RenderContainer({
   children,
   paddingX = 16,
@@ -24,11 +35,19 @@ export function RenderContainer({
   maxWidth = 'xl',
   backgroundColor = 'transparent',
   className,
+  layout = 'stack',
+  gap = 16,
+  alignItems = 'stretch',
 }: ContainerProps) {
+  const lStyle = layoutStyles[layout] ?? layoutStyles.stack;
+
   return (
     <div
       className={cn('mx-auto w-full', maxWidthMap[maxWidth] ?? maxWidthMap.xl, className)}
       style={{
+        ...lStyle,
+        gap,
+        alignItems,
         paddingLeft: paddingX,
         paddingRight: paddingX,
         paddingTop: paddingY,
