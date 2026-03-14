@@ -26,7 +26,7 @@ export async function RenderCategoryGrid({ columns = 3, title, className }: Cate
   };
 
   return (
-    <div className={className}>
+    <section className={`mx-auto w-full max-w-6xl px-6 py-12 ${className ?? ''}`}>
       {title && <h2 className="mb-6 text-2xl font-bold text-gray-900">{title}</h2>}
       <div className={`grid gap-6 ${gridCols[columns] ?? gridCols[3]}`}>
         {categories.map((category) => (
@@ -44,6 +44,6 @@ export async function RenderCategoryGrid({ columns = 3, title, className }: Cate
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

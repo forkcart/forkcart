@@ -38,13 +38,13 @@ export async function RenderProductGrid({
   };
 
   return (
-    <div className={className}>
+    <section className={`mx-auto w-full max-w-6xl px-6 py-12 ${className ?? ''}`}>
       {title && <h2 className="mb-6 text-2xl font-bold text-gray-900">{title}</h2>}
       <div className={`grid gap-6 ${gridCols[columns] ?? gridCols[4]}`}>
         {products.map((product: any) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>
-    </div>
+    </section>
   );
 }

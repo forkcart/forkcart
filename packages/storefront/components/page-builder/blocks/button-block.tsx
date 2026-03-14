@@ -33,7 +33,10 @@ export function RenderButtonBlock({
   className,
 }: ButtonBlockProps) {
   return (
-    <div className={cn('w-full', className)} style={{ textAlign: alignment }}>
+    <div
+      className={cn('mx-auto w-full max-w-6xl px-6', className)}
+      style={{ textAlign: alignment }}
+    >
       <Link
         href={link}
         className={cn(

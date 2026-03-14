@@ -25,12 +25,16 @@ export function RenderHeading({
   color,
   className,
 }: HeadingProps) {
-  return React.createElement(
-    level,
-    {
-      className: cn(sizeClasses[level] ?? sizeClasses.h2, className),
-      style: { textAlign: alignment, color: color || undefined },
-    },
-    text,
+  return (
+    <div className="mx-auto w-full max-w-6xl px-6">
+      {React.createElement(
+        level,
+        {
+          className: cn(sizeClasses[level] ?? sizeClasses.h2, className),
+          style: { textAlign: alignment, color: color || undefined },
+        },
+        text,
+      )}
+    </div>
   );
 }
