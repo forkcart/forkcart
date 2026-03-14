@@ -172,6 +172,31 @@ export async function trackImpression(params: {
   }).catch(() => {});
 }
 
+// Page types
+export interface Page {
+  id: string;
+  title: string;
+  slug: string;
+  status: string;
+  content: unknown;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  isHomepage: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getPage(slug: string): Promise<Page> {
+  const res = await fetchApi<ApiResponse<Page>>(`/pages/${slug}`);
+  return res.data;
+}
+
+export async function getHomepage(): Promise<Page | null> {
+  const res = await fetchApi<ApiResponse<Page | null>>('/pages/homepage');
+  return res.data;
+}
+
 // Cart operations (client-side)
 export async function getCart(sessionId: string): Promise<Cart> {
   const res = await fetch(`${API_URL}/api/v1/cart`, {

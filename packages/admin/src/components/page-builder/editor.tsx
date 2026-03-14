@@ -12,6 +12,10 @@ import { ButtonBlock } from './blocks/button-block';
 import { Hero } from './blocks/hero';
 import { Columns } from './blocks/columns';
 import { Spacer } from './blocks/spacer';
+import { ProductGrid } from './blocks/product-grid';
+import { CategoryGrid } from './blocks/category-grid';
+import { FeaturedProduct } from './blocks/featured-product';
+import { Newsletter } from './blocks/newsletter';
 
 /** All block components registered with Craft.js */
 const resolver = {
@@ -23,6 +27,10 @@ const resolver = {
   Hero,
   Columns,
   Spacer,
+  ProductGrid,
+  CategoryGrid,
+  FeaturedProduct,
+  Newsletter,
 };
 
 interface PageBuilderEditorProps {
