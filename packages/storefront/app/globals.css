@@ -4,12 +4,59 @@
 
 @layer base {
   body {
-    @apply bg-white text-gray-900 antialiased;
+    background-color: var(--fc-bg, #ffffff);
+    color: var(--fc-text, #111827);
+    font-family: var(--fc-body-font, 'Inter'), sans-serif;
+    font-size: var(--fc-base-font-size, 16px);
+    font-weight: var(--fc-body-weight, 400);
+    @apply antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--fc-heading-font, 'Inter'), sans-serif;
+    font-weight: var(--fc-heading-weight, 700);
   }
 }
 
 @layer components {
   .container-page {
-    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+    max-width: var(--fc-container-max-width, 1280px);
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .fc-section-spacing {
+    padding-top: var(--fc-section-spacing, 64px);
+    padding-bottom: var(--fc-section-spacing, 64px);
+  }
+
+  .fc-btn-primary {
+    background-color: var(--fc-primary, #1f2937);
+    color: #fff;
+    border-radius: var(--fc-button-radius, 8px);
+    padding: var(--fc-button-padding-y, 12px) var(--fc-button-padding-x, 24px);
+  }
+
+  .fc-btn-secondary {
+    background-color: var(--fc-secondary, #3b82f6);
+    color: #fff;
+    border-radius: var(--fc-button-radius, 8px);
+    padding: var(--fc-button-padding-y, 12px) var(--fc-button-padding-x, 24px);
+  }
+
+  .fc-card {
+    border-radius: var(--fc-radius, 8px);
+  }
+
+  .fc-text-muted {
+    color: var(--fc-muted, #6b7280);
+  }
+
+  .fc-accent {
+    background-color: var(--fc-accent, #f59e0b);
   }
 }

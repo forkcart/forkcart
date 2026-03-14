@@ -22,6 +22,7 @@ export const pages = pgTable(
     seoTitle: varchar('seo_title', { length: 255 }),
     seoDescription: text('seo_description'),
     ogImage: varchar('og_image', { length: 500 }),
+    pageType: varchar('page_type', { length: 30 }).notNull().default('custom'),
     isHomepage: boolean('is_homepage').notNull().default(false),
     sortOrder: integer('sort_order').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -32,6 +33,7 @@ export const pages = pgTable(
     index('pages_slug_idx').on(table.slug),
     index('pages_status_idx').on(table.status),
     index('pages_is_homepage_idx').on(table.isHomepage),
+    index('pages_page_type_idx').on(table.pageType),
   ],
 );
 

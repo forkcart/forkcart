@@ -23,6 +23,12 @@ import {
 
 const SETTINGS_SECTIONS = [
   {
+    href: '/settings/theme',
+    label: 'Theme',
+    description: 'Colors, fonts, border-radius, spacing — global design tokens',
+    icon: Store,
+  },
+  {
     href: '/ai',
     label: 'AI & Chatbot',
     description: 'Configure AI provider, API key, chatbot settings',

@@ -7,6 +7,7 @@ import { AuthProvider } from '@/components/auth/auth-provider';
 import { ChatWidget } from '@/components/chat/chat-widget';
 import { CartDrawer } from '@/components/cart/cart-drawer';
 import { I18nWrapper } from '@/components/i18n/i18n-provider-wrapper';
+import { getThemeSettings, generateThemeCSS } from '@/lib/theme';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -25,9 +26,17 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const themeSettings = await getThemeSettings();
+  const themeCSS = generateThemeCSS(themeSettings);
+
   return (
     <html lang="en">
+      {themeCSS && (
+        <head>
+          <style dangerouslySetInnerHTML={{ __html: themeCSS }} />
+        </head>
+      )}
       <body className={`${inter.className} flex min-h-screen flex-col`}>
         <I18nWrapper>
           <AuthProvider>

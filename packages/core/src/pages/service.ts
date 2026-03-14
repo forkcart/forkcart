@@ -99,6 +99,11 @@ export class PageService {
       throw new NotFoundError('Page', id);
     }
 
+    // System pages cannot be deleted
+    if (page.pageType !== 'custom') {
+      throw new ConflictError(`System page "${page.title}" cannot be deleted`);
+    }
+
     await this.repo.delete(id);
     logger.info({ pageId: id }, 'Page deleted');
 

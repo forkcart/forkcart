@@ -4,20 +4,48 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/api-client';
-import { Plus, Edit, Trash2, Globe, FileText, Home } from 'lucide-react';
+import { Plus, Edit, Trash2, Globe, FileText, Home, Lock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TemplateModal } from '@/components/page-builder/templates/template-modal';
 import type { PageTemplate } from '@/components/page-builder/templates/index';
+
+type PageType =
+  | 'custom'
+  | 'homepage'
+  | 'product'
+  | 'cart'
+  | 'checkout'
+  | 'account'
+  | 'error404'
+  | 'search'
+  | 'category';
 
 interface Page {
   id: string;
   title: string;
   slug: string;
   status: 'draft' | 'published' | 'archived';
+  pageType: PageType;
   isHomepage: boolean;
   createdAt: string;
   updatedAt: string;
   publishedAt: string | null;
+}
+
+const pageTypeBadge: Record<PageType, { label: string; className: string }> = {
+  custom: { label: '', className: '' },
+  homepage: { label: 'Homepage', className: 'bg-blue-100 text-blue-800' },
+  product: { label: 'Product', className: 'bg-purple-100 text-purple-800' },
+  cart: { label: 'Cart', className: 'bg-orange-100 text-orange-800' },
+  checkout: { label: 'Checkout', className: 'bg-indigo-100 text-indigo-800' },
+  account: { label: 'Account', className: 'bg-teal-100 text-teal-800' },
+  error404: { label: '404', className: 'bg-red-100 text-red-800' },
+  search: { label: 'Search', className: 'bg-amber-100 text-amber-800' },
+  category: { label: 'Category', className: 'bg-emerald-100 text-emerald-800' },
+};
+
+function isSystemPage(page: Page): boolean {
+  return page.pageType !== 'custom';
 }
 
 const statusBadge: Record<string, string> = {
@@ -144,7 +172,20 @@ export default function PagesListPage() {
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-2">
                       {page.isHomepage && <Home className="h-4 w-4 text-blue-500" />}
+                      {isSystemPage(page) && (
+                        <Lock className="h-3.5 w-3.5 text-gray-400" title="System page" />
+                      )}
                       <span className="text-sm font-medium text-gray-900">{page.title}</span>
+                      {page.pageType !== 'custom' && pageTypeBadge[page.pageType]?.label && (
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium',
+                            pageTypeBadge[page.pageType].className,
+                          )}
+                        >
+                          {pageTypeBadge[page.pageType].label}
+                        </span>
+                      )}
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-6 py-4">
@@ -185,13 +226,15 @@ export default function PagesListPage() {
                           <Globe className="h-4 w-4" />
                         </a>
                       )}
-                      <button
-                        onClick={() => handleDelete(page.id)}
-                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {!isSystemPage(page) && (
+                        <button
+                          onClick={() => handleDelete(page.id)}
+                          className="rounded p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                          title="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
