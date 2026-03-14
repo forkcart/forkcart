@@ -71,7 +71,9 @@ export default function PageEditorPage() {
 
   const handlePreview = useCallback(() => {
     if (!page) return;
-    window.open(`/${page.slug}`, '_blank');
+    // Homepage previews at root, other pages at /p/slug
+    const previewUrl = page.isHomepage ? '/' : `/p/${page.slug}`;
+    window.open(previewUrl, '_blank');
   }, [page]);
 
   if (loading) {
