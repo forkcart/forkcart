@@ -1,9 +1,14 @@
-import { PageWrapper } from '@/components/page-builder/page-wrapper';
+import { getPageByType } from '@/lib/api';
+import { DynamicPageRenderer } from '@/components/page-builder/dynamic-page-renderer';
 
-export default function SearchLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <PageWrapper pageType="search" position="above">
-      {children}
-    </PageWrapper>
-  );
+export default async function SearchLayout({ children }: { children: React.ReactNode }) {
+  const pbPage = await getPageByType('search');
+  if (pbPage?.content) {
+    return (
+      <DynamicPageRenderer content={pbPage.content} dynamicBlockType="DynamicSearch">
+        {children}
+      </DynamicPageRenderer>
+    );
+  }
+  return <>{children}</>;
 }

@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
-import { getProductBySlug } from '@/lib/api';
+import { getProductBySlug, getPageByType } from '@/lib/api';
 import { ProductContent, ProductNotFound } from './product-content';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/json-ld';
+import { DynamicPageRenderer } from '@/components/page-builder/dynamic-page-renderer';
 
 const BASE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'http://localhost:3000';
 
@@ -39,7 +40,7 @@ export default async function ProductPage({ params }: Props) {
     return <ProductNotFound />;
   }
 
-  return (
+  const productEl = (
     <>
       <ProductJsonLd product={product} />
       <BreadcrumbJsonLd
@@ -52,4 +53,16 @@ export default async function ProductPage({ params }: Props) {
       <ProductContent product={product} />
     </>
   );
+
+  // Try to use Page Builder layout for product pages
+  const pbPage = await getPageByType('product');
+  if (pbPage?.content) {
+    return (
+      <DynamicPageRenderer content={pbPage.content} dynamicBlockType="DynamicProductDetail">
+        {productEl}
+      </DynamicPageRenderer>
+    );
+  }
+
+  return productEl;
 }

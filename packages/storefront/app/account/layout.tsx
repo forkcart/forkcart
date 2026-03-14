@@ -1,9 +1,14 @@
-import { PageWrapper } from '@/components/page-builder/page-wrapper';
+import { getPageByType } from '@/lib/api';
+import { DynamicPageRenderer } from '@/components/page-builder/dynamic-page-renderer';
 
-export default function AccountLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <PageWrapper pageType="account" position="above">
-      {children}
-    </PageWrapper>
-  );
+export default async function AccountLayout({ children }: { children: React.ReactNode }) {
+  const pbPage = await getPageByType('account');
+  if (pbPage?.content) {
+    return (
+      <DynamicPageRenderer content={pbPage.content} dynamicBlockType="DynamicAccount">
+        {children}
+      </DynamicPageRenderer>
+    );
+  }
+  return <>{children}</>;
 }

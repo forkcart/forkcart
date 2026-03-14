@@ -19,3 +19,10 @@ export { ContactForm, type ContactFormProps } from './contact-form';
 export { MapEmbed, type MapEmbedProps } from './map-embed';
 export { SocialLinks, type SocialLinksProps } from './social-links';
 export { Banner, type BannerProps } from './banner';
+
+// Dynamic blocks — render real shop functionality on the storefront
+export { DynamicProductDetail, type DynamicProductDetailProps } from './dynamic-product-detail';
+export { DynamicCart, type DynamicCartProps } from './dynamic-cart';
+export { DynamicCheckout } from './dynamic-checkout';
+export { DynamicAccount } from './dynamic-account';
+export { DynamicSearch } from './dynamic-search';

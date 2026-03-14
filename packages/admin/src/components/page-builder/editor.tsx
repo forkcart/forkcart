@@ -26,6 +26,11 @@ import { ContactForm } from './blocks/contact-form';
 import { MapEmbed } from './blocks/map-embed';
 import { SocialLinks } from './blocks/social-links';
 import { Banner } from './blocks/banner';
+import { DynamicProductDetail } from './blocks/dynamic-product-detail';
+import { DynamicCart } from './blocks/dynamic-cart';
+import { DynamicCheckout } from './blocks/dynamic-checkout';
+import { DynamicAccount } from './blocks/dynamic-account';
+import { DynamicSearch } from './blocks/dynamic-search';
 
 /** All block components registered with Craft.js */
 const resolver = {
@@ -50,6 +55,11 @@ const resolver = {
   MapEmbed,
   SocialLinks,
   Banner,
+  DynamicProductDetail,
+  DynamicCart,
+  DynamicCheckout,
+  DynamicAccount,
+  DynamicSearch,
 };
 
 interface PageBuilderEditorProps {
