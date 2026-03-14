@@ -2,6 +2,7 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { ImageUpload } from '../image-upload';
 
 export interface HeroProps {
   title?: string;
@@ -157,16 +158,11 @@ function HeroSettings() {
           />
         </div>
       </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium">Background Image URL</label>
-        <input
-          type="url"
-          placeholder="https://..."
-          className="w-full rounded border p-2 text-sm"
-          value={props.backgroundImage ?? ''}
-          onChange={(e) => setProp((p: HeroProps) => (p.backgroundImage = e.target.value))}
-        />
-      </div>
+      <ImageUpload
+        label="Background Image"
+        value={props.backgroundImage ?? ''}
+        onChange={(url) => setProp((p: HeroProps) => (p.backgroundImage = url))}
+      />
       <div>
         <label className="mb-1 block text-sm font-medium">Height</label>
         <select
