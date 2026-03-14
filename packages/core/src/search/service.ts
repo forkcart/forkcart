@@ -439,6 +439,16 @@ export class SearchService {
       }
     }
 
+    // Apply translations to all results (both ranked and fallback)
+    if (results.length > 0) {
+      const ids = results.map((r) => r.id);
+      const nameMap = await this.getTranslatedNames(ids, locale);
+      for (const r of results) {
+        const translated = nameMap.get(r.id);
+        if (translated) r.name = translated;
+      }
+    }
+
     return results.map((r) => ({
       ...r,
       imageUrl: this.resolveImageUrl(r.imageUrl),
