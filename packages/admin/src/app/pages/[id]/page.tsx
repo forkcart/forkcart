@@ -97,7 +97,7 @@ export default function PageEditorPage() {
   const initialContent = page.content ? JSON.stringify(page.content) : null;
 
   return (
-    <div className="h-screen">
+    <div className="flex h-full flex-col">
       <div className="flex h-10 items-center gap-2 border-b bg-gray-50 px-4">
         <Link
           href="/pages"
