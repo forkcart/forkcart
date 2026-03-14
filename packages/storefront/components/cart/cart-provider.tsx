@@ -242,7 +242,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           .then((data) => {
             if (data) setItems(data.data.items.map(serverItemToCartItem));
           })
-          .catch(() => {});
+          .catch((error: unknown) => {
+            console.error('[Cart] Failed to sync cart with server:', error);
+          });
       }
     },
     [serverCartId],
@@ -255,7 +257,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (serverCartId) {
         fetch(`${API_URL}/api/v1/carts/${serverCartId}/items/${itemId}`, {
           method: 'DELETE',
-        }).catch(() => {});
+        }).catch((error: unknown) => {
+          // Intentionally silent: item already removed from UI, server sync is best-effort
+          console.error('[Cart] Failed to remove item from server cart:', error);
+        });
       }
     },
     [serverCartId],
@@ -267,7 +272,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       fetch(`${API_URL}/api/v1/carts/${serverCartId}`, {
         method: 'DELETE',
         headers: apiHeaders(),
-      }).catch(() => {});
+      }).catch((error: unknown) => {
+        // Intentionally silent: cart already cleared locally, server cleanup is best-effort
+        console.error('[Cart] Failed to clear server cart:', error);
+      });
     }
     localStorage.removeItem('forkcart_cart_id');
     setServerCartId(null);

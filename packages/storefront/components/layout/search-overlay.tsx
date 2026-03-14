@@ -45,7 +45,13 @@ export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
         setPopularSearches(pop.data);
         setTrending(trend.data);
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Intentionally silent: search overlay still works without popular/trending data
+        console.error(
+          '[SearchOverlay] Failed to load popular searches or trending products:',
+          error,
+        );
+      });
 
     return () => clearTimeout(timer);
   }, [open]);

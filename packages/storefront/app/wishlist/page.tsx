@@ -44,7 +44,9 @@ export default function WishlistPage() {
       .then((data) => {
         if (data?.data) setItems(data.data);
       })
-      .catch(() => {})
+      .catch((error: unknown) => {
+        console.error('[Wishlist] Failed to load wishlist items:', error);
+      })
       .finally(() => setLoading(false));
   }, [token]);
 

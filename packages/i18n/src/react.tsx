@@ -188,7 +188,10 @@ export function I18nProvider({
           setApiLocales(data.data.map((l) => l.locale));
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Intentionally silent: i18n will work with bundled locales as fallback
+        console.error('[I18n] Failed to fetch available locales from API:', error);
+      });
   }, [apiBaseUrl]);
 
   // Merge static + API locales (deduplicated, stable order)

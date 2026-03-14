@@ -26,7 +26,10 @@ export function I18nWrapper({ children }: { children: ReactNode }) {
         const def = json?.data?.find((l) => l.isDefault);
         if (def) setDefaultLocale(def.locale);
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Intentionally silent: fallback locale will be used
+        console.error('[I18nProvider] Failed to fetch default locale:', error);
+      });
   }, []);
 
   return (

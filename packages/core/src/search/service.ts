@@ -204,7 +204,10 @@ export class SearchService {
         mode,
         resultsCount: result.total,
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        // Intentionally silent: event emission is fire-and-forget, search still works
+        console.error('[SearchService] Failed to emit SEARCH_PERFORMED event:', error);
+      });
 
     // Apply smart ranking when sorting by relevance
     let rankedData = result.data;
@@ -251,7 +254,12 @@ export class SearchService {
   /** Log a click on a search result */
   async logClick(searchId: string, productId: string): Promise<void> {
     await this.repo.logClick(searchId, productId);
-    this.events.emit(SEARCH_EVENTS.SEARCH_CLICK, { searchId, productId }).catch(() => {});
+    this.events
+      .emit(SEARCH_EVENTS.SEARCH_CLICK, { searchId, productId })
+      .catch((error: unknown) => {
+        // Intentionally silent: event emission is fire-and-forget
+        console.error('[SearchService] Failed to emit SEARCH_CLICK event:', error);
+      });
   }
 
   /** Log a search + click in one go (for instant search overlay clicks) */
