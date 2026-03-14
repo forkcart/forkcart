@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 
 export interface HeadingProps {
@@ -29,17 +31,12 @@ export const Heading: UserComponent<HeadingProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-    >
+    <StyledBlock>
       {React.createElement(
         level,
         {
@@ -52,7 +49,7 @@ export const Heading: UserComponent<HeadingProps> = ({
         },
         text,
       )}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -116,6 +113,8 @@ function HeadingSettings() {
           onChange={(e) => setProp((p: HeadingProps) => (p.color = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

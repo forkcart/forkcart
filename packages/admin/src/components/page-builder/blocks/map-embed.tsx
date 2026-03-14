@@ -1,6 +1,7 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
 import { cn } from '@/lib/utils';
 
 export interface MapEmbedProps {
@@ -88,6 +89,8 @@ function MapEmbedSettings() {
           onChange={(e) => setProp((p: MapEmbedProps) => (p.borderRadius = Number(e.target.value)))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

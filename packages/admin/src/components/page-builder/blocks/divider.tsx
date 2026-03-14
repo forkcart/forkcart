@@ -2,6 +2,8 @@
 
 import { useNode, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface DividerProps {
   style?: 'solid' | 'dashed' | 'dotted';
@@ -27,30 +29,30 @@ export const Divider: UserComponent<DividerProps> = ({
   marginY = 32,
   className,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('flex w-full justify-center', className)}
-      style={{ paddingTop: marginY, paddingBottom: marginY }}
-    >
-      <hr
-        className={cn(widthClasses[width])}
+    <StyledBlock className={cn('flex w-full justify-center', className)}>
+      <div
         style={{
-          borderTopStyle: style,
-          borderTopColor: color,
-          borderTopWidth: thickness,
-          borderBottom: 'none',
-          borderLeft: 'none',
-          borderRight: 'none',
+          paddingTop: marginY,
+          paddingBottom: marginY,
+          display: 'flex',
+          width: '100%',
+          justifyContent: 'center',
         }}
-      />
-    </div>
+      >
+        <hr
+          className={cn(widthClasses[width])}
+          style={{
+            borderTopStyle: style,
+            borderTopColor: color,
+            borderTopWidth: thickness,
+            borderBottom: 'none',
+            borderLeft: 'none',
+            borderRight: 'none',
+          }}
+        />
+      </div>
+    </StyledBlock>
   );
 };
 
@@ -127,6 +129,8 @@ function DividerSettings() {
           onChange={(e) => setProp((p: DividerProps) => (p.marginY = Number(e.target.value)))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

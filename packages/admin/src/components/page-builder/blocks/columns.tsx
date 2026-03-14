@@ -3,6 +3,8 @@
 import { useNode, Element, type UserComponent } from '@craftjs/core';
 import { cn } from '@/lib/utils';
 import { Container } from './container';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface ColumnsProps {
   columns?: 2 | 3 | 4;
@@ -17,30 +19,22 @@ const gridClasses: Record<number, string> = {
 };
 
 export const Columns: UserComponent<ColumnsProps> = ({ columns = 2, gap = 24, className }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('grid w-full', gridClasses[columns], className)}
-      style={{ gap }}
-    >
-      {Array.from({ length: columns }, (_, i) => (
-        <Element
-          key={i}
-          id={`column-${i}`}
-          is={Container}
-          canvas
-          paddingX={0}
-          paddingY={0}
-          maxWidth="full"
-        />
-      ))}
-    </div>
+    <StyledBlock>
+      <div className={cn('grid w-full', gridClasses[columns], className)} style={{ gap }}>
+        {Array.from({ length: columns }, (_, i) => (
+          <Element
+            key={i}
+            id={`column-${i}`}
+            is={Container}
+            canvas
+            paddingX={0}
+            paddingY={0}
+            maxWidth="full"
+          />
+        ))}
+      </div>
+    </StyledBlock>
   );
 };
 
@@ -81,6 +75,8 @@ function ColumnsSettings() {
           onChange={(e) => setProp((p: ColumnsProps) => (p.gap = Number(e.target.value)))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

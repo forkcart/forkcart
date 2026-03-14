@@ -4,6 +4,8 @@ import { useNode, type UserComponent } from '@craftjs/core';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ChevronDown } from 'lucide-react';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 
 export interface FaqItem {
   question: string;
@@ -109,7 +111,6 @@ export const Faq: UserComponent<FaqProps> = ({
   className,
 }) => {
   const {
-    connectors: { connect },
     selected,
     actions: { setProp },
   } = useNode((state) => ({ selected: state.events.selected }));
@@ -129,12 +130,7 @@ export const Faq: UserComponent<FaqProps> = ({
   };
 
   return (
-    <section
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('mx-auto w-full max-w-3xl px-6 py-16', className)}
-    >
+    <StyledBlock className={cn('mx-auto w-full max-w-3xl px-6 py-16', className)}>
       {title && (
         <h2
           className={cn(
@@ -163,7 +159,7 @@ export const Faq: UserComponent<FaqProps> = ({
           ))}
         </div>
       </div>
-    </section>
+    </StyledBlock>
   );
 };
 
@@ -253,6 +249,8 @@ function FaqSettings() {
       >
         + Add Question
       </button>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }

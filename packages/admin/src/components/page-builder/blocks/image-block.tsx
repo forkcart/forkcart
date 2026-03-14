@@ -1,6 +1,8 @@
 'use client';
 
 import { useNode, type UserComponent } from '@craftjs/core';
+import { StyleSettings } from '../shared/style-settings';
+import { StyledBlock } from '../shared/styled-block';
 import { cn } from '@/lib/utils';
 import { ImageIcon } from 'lucide-react';
 import { ImageUpload } from '../image-upload';
@@ -32,10 +34,6 @@ export const ImageBlock: UserComponent<ImageBlockProps> = ({
   link,
   className,
 }) => {
-  const {
-    connectors: { connect },
-  } = useNode();
-
   const content = src ? (
     <img
       src={src}
@@ -70,14 +68,9 @@ export const ImageBlock: UserComponent<ImageBlockProps> = ({
   );
 
   return (
-    <div
-      ref={(ref) => {
-        if (ref) connect(ref);
-      }}
-      className={cn('w-full', className)}
-    >
+    <StyledBlock className={cn('w-full', className)}>
       {wrapper}
-    </div>
+    </StyledBlock>
   );
 };
 
@@ -163,6 +156,8 @@ function ImageBlockSettings() {
           onChange={(e) => setProp((p: ImageBlockProps) => (p.link = e.target.value))}
         />
       </div>
+      <hr className="my-2" />
+      <StyleSettings />
     </div>
   );
 }
