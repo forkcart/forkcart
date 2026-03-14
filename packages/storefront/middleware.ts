@@ -26,6 +26,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Check if first segment looks like a locale code (2-3 letter) but isn't supported
+  // → redirect to the same path under the default locale (strip the unknown prefix)
+  if (maybeLocale && /^[a-z]{2,3}$/.test(maybeLocale) && !supportedLocales.includes(maybeLocale)) {
+    const rest = segments.slice(2).join('/');
+    const newPath = rest ? `/${rest}` : '/';
+    const url = request.nextUrl.clone();
+    url.pathname = newPath;
+    return NextResponse.redirect(url);
+  }
+
   // No locale prefix → internally rewrite to /[defaultLocale]/...
   const url = request.nextUrl.clone();
   url.pathname = `/${defaultLocale}${pathname}`;
