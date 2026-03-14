@@ -6,7 +6,16 @@
     "displayName": "Container",
     "custom": {},
     "hidden": false,
-    "nodes": ["hero1", "categories1", "spacer1", "products1", "spacer2", "featured1", "spacer3", "newsletter1"],
+    "nodes": [
+      "hero1",
+      "categories1",
+      "spacer1",
+      "products1",
+      "spacer2",
+      "featured1",
+      "spacer3",
+      "newsletter1"
+    ],
     "linkedNodes": {}
   },
   "hero1": {
