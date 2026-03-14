@@ -22,10 +22,19 @@ const maxWidthMap: Record<string, string> = {
 
 const layoutStyles: Record<string, React.CSSProperties> = {
   stack: { display: 'flex', flexDirection: 'column' },
-  'grid-2': { display: 'grid', gridTemplateColumns: '1fr 1fr' },
-  'grid-3': { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr' },
-  'grid-4': { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr' },
-  'flex-row': { display: 'flex', flexDirection: 'row' },
+  'grid-2': {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))',
+  },
+  'grid-3': {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))',
+  },
+  'grid-4': {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+  },
+  'flex-row': { display: 'flex', flexDirection: 'row', flexWrap: 'wrap' as const },
 };
 
 export function RenderContainer({
