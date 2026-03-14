@@ -2,6 +2,9 @@ import type { Metadata } from 'next';
 import { getProducts, getCategoryBySlug } from '@/lib/api';
 import type { Product } from '@forkcart/shared';
 import { CategoryPageContent } from './category-content';
+import { BreadcrumbJsonLd } from '@/components/seo/json-ld';
+
+const BASE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'http://localhost:3000';
 
 interface Props {
   params: Promise<{ slug: string }>;
@@ -10,10 +13,19 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  if (slug === 'all') return { title: 'All Products' };
+  if (slug === 'all') {
+    return {
+      title: 'All Products',
+      alternates: { canonical: `${BASE_URL}/category/all` },
+    };
+  }
   try {
     const category = await getCategoryBySlug(slug);
-    return { title: category.name, description: category.description ?? undefined };
+    return {
+      title: category.name,
+      description: category.description ?? undefined,
+      alternates: { canonical: `${BASE_URL}/category/${slug}` },
+    };
   } catch {
     return { title: 'Category' };
   }
@@ -63,14 +75,22 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   }
 
   return (
-    <CategoryPageContent
-      categoryName={categoryName}
-      categoryDescription={categoryDescription}
-      categorySlug={categorySlug}
-      total={total}
-      totalPages={totalPages}
-      currentPage={currentPage}
-      products={products}
-    />
+    <>
+      <BreadcrumbJsonLd
+        items={[
+          { name: 'Home', url: '/' },
+          { name: categoryName, url: `/category/${categorySlug}` },
+        ]}
+      />
+      <CategoryPageContent
+        categoryName={categoryName}
+        categoryDescription={categoryDescription}
+        categorySlug={categorySlug}
+        total={total}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        products={products}
+      />
+    </>
   );
 }
