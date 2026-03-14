@@ -23,6 +23,15 @@ export function createPageRoutes(pageService: PageService) {
     return c.json(result);
   });
 
+  /** Get homepage (published page with isHomepage=true) */
+  router.get('/homepage', async (c) => {
+    const page = await pageService.getHomepage();
+    if (!page) {
+      return c.json({ data: null });
+    }
+    return c.json({ data: page });
+  });
+
   /** Get page by ID or slug */
   router.get('/:idOrSlug', async (c) => {
     const idOrSlug = c.req.param('idOrSlug');

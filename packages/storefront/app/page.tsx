@@ -1,7 +1,23 @@
-import { getProducts, getCategories } from '@/lib/api';
+import { getProducts, getCategories, getHomepage } from '@/lib/api';
 import { HomeContent } from './home-content';
+import { PageRenderer } from '@/components/page-builder/renderer';
 
 export default async function HomePage() {
+  // Try to load a custom homepage from the page builder
+  try {
+    const homepage = await getHomepage();
+    if (homepage?.content) {
+      return (
+        <main>
+          <PageRenderer content={homepage.content} />
+        </main>
+      );
+    }
+  } catch {
+    // No homepage configured or API unavailable — fall through to default
+  }
+
+  // Fallback: render the default HomeContent
   let products: any[] = [];
   let categories: any[] = [];
 

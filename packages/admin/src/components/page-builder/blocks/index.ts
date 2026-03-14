@@ -6,3 +6,7 @@ export { ButtonBlock, type ButtonBlockProps } from './button-block';
 export { Hero, type HeroProps } from './hero';
 export { Columns, type ColumnsProps } from './columns';
 export { Spacer, type SpacerProps } from './spacer';
+export { ProductGrid, type ProductGridProps } from './product-grid';
+export { CategoryGrid, type CategoryGridProps } from './category-grid';
+export { FeaturedProduct, type FeaturedProductProps } from './featured-product';
+export { Newsletter, type NewsletterProps } from './newsletter';

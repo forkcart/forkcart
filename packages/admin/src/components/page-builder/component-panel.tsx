@@ -10,6 +10,10 @@ import {
   Columns as ColumnsIcon,
   ArrowDownUp,
   Sparkles,
+  Grid3X3,
+  FolderTree,
+  Star,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Container } from './blocks/container';
@@ -20,6 +24,10 @@ import { ButtonBlock } from './blocks/button-block';
 import { Hero } from './blocks/hero';
 import { Columns } from './blocks/columns';
 import { Spacer } from './blocks/spacer';
+import { ProductGrid } from './blocks/product-grid';
+import { CategoryGrid } from './blocks/category-grid';
+import { FeaturedProduct } from './blocks/featured-product';
+import { Newsletter } from './blocks/newsletter';
 
 interface BlockDefinition {
   label: string;
@@ -34,6 +42,30 @@ const blocks: BlockDefinition[] = [
     icon: <Sparkles className="h-5 w-5" />,
     category: 'commerce',
     create: () => <Hero />,
+  },
+  {
+    label: 'Product Grid',
+    icon: <Grid3X3 className="h-5 w-5" />,
+    category: 'commerce',
+    create: () => <ProductGrid />,
+  },
+  {
+    label: 'Categories',
+    icon: <FolderTree className="h-5 w-5" />,
+    category: 'commerce',
+    create: () => <CategoryGrid />,
+  },
+  {
+    label: 'Featured',
+    icon: <Star className="h-5 w-5" />,
+    category: 'commerce',
+    create: () => <FeaturedProduct />,
+  },
+  {
+    label: 'Newsletter',
+    icon: <Mail className="h-5 w-5" />,
+    category: 'commerce',
+    create: () => <Newsletter />,
   },
   {
     label: 'Container',
