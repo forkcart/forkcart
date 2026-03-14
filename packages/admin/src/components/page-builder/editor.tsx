@@ -31,6 +31,16 @@ import { DynamicCart } from './blocks/dynamic-cart';
 import { DynamicCheckout } from './blocks/dynamic-checkout';
 import { DynamicAccount } from './blocks/dynamic-account';
 import { DynamicSearch } from './blocks/dynamic-search';
+import {
+  ProductImagesBlock,
+  ProductTitleBlock,
+  ProductPriceBlock,
+  AddToCartBlock,
+  ProductDescriptionBlock,
+  ProductReviewsBlock,
+  RelatedProductsBlock,
+  ProductShortDescBlock,
+} from './blocks/product-blocks';
 
 /** All block components registered with Craft.js */
 const resolver = {
@@ -60,6 +70,14 @@ const resolver = {
   DynamicCheckout,
   DynamicAccount,
   DynamicSearch,
+  ProductImagesBlock,
+  ProductTitleBlock,
+  ProductPriceBlock,
+  AddToCartBlock,
+  ProductDescriptionBlock,
+  ProductReviewsBlock,
+  RelatedProductsBlock,
+  ProductShortDescBlock,
 };
 
 interface PageBuilderEditorProps {

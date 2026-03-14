@@ -3,6 +3,7 @@ import { RenderContainer } from './blocks/container';
 import { RenderHeading } from './blocks/heading';
 import { RenderTextBlock } from './blocks/text-block';
 import { RenderImageBlock } from './blocks/image-block';
+import { ProductBlockSlot } from './product-block-slot';
 import { RenderButtonBlock } from './blocks/button-block';
 import { RenderHero } from './blocks/hero';
 import { RenderSpacer } from './blocks/spacer';
@@ -171,6 +172,23 @@ function RenderNode({ data, nodeId }: { data: CraftData; nodeId: string }) {
     // Dynamic shop blocks — render a slot marker that routes pick up
     case 'DynamicProductDetail':
       return <div data-dynamic-block="product-detail" />;
+    // Product sub-blocks — render real product components when in product context
+    case 'ProductImagesBlock':
+      return <ProductBlockSlot block="images" props={props} />;
+    case 'ProductTitleBlock':
+      return <ProductBlockSlot block="title" props={props} />;
+    case 'ProductPriceBlock':
+      return <ProductBlockSlot block="price" props={props} />;
+    case 'AddToCartBlock':
+      return <ProductBlockSlot block="addToCart" props={props} />;
+    case 'ProductDescriptionBlock':
+      return <ProductBlockSlot block="description" props={props} />;
+    case 'ProductShortDescBlock':
+      return <ProductBlockSlot block="shortDesc" props={props} />;
+    case 'ProductReviewsBlock':
+      return <ProductBlockSlot block="reviews" props={props} />;
+    case 'RelatedProductsBlock':
+      return <ProductBlockSlot block="related" props={props} />;
     case 'DynamicCart':
       return <div data-dynamic-block="cart" />;
     case 'DynamicCheckout':
