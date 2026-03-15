@@ -114,13 +114,15 @@ export async function buildAndroidApk(
         }
       }
 
-      // Create local.properties with SDK and NDK paths
+      // Create local.properties with SDK path (NDK resolved via build.gradle)
       const localPropsPath = join(projectDir, 'android', 'local.properties');
-      const localProps = [
-        `sdk.dir=/opt/android-sdk`,
-        `ndk.dir=/opt/android-sdk/ndk/27.2.12479018`,
-      ].join('\n');
-      await writeFile(localPropsPath, localProps, 'utf-8');
+      await writeFile(localPropsPath, `sdk.dir=/opt/android-sdk\n`, 'utf-8');
+
+      // Patch build.gradle to use installed NDK version
+      const buildGradlePath = join(projectDir, 'android', 'build.gradle');
+      let buildGradle = await readFile(buildGradlePath, 'utf-8');
+      buildGradle = buildGradle.replace(/ndkVersion\s*=\s*"[^"]*"/, 'ndkVersion = "27.2.12479018"');
+      await writeFile(buildGradlePath, buildGradle, 'utf-8');
 
       // Fix "Could not get unknown property 'release'" in ExpoModulesCorePlugin
       const expoPluginPath = join(
