@@ -94,9 +94,14 @@ export async function buildAndroidApk(
           'android.minSdkVersion=24',
         );
       }
+      // Disable new architecture to avoid CMake CXX1214 minSdk conflicts
+      gradleProps = gradleProps.replace(/newArchEnabled\s*=\s*true/, 'newArchEnabled=false');
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
-      logger.info({ buildId }, 'Patched minSdkVersion to 24 in build.gradle + gradle.properties');
+      logger.info(
+        { buildId },
+        'Patched minSdkVersion to 24 + disabled newArch in gradle.properties',
+      );
     } catch (e) {
       logger.warn({ buildId, e }, 'Could not patch minSdkVersion');
     }
