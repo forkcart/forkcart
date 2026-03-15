@@ -102,6 +102,27 @@ export async function buildAndroidApk(
       }
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
+      // Patch react-native-screens CMake args to include ANDROID_PLATFORM=android-24
+      // This fixes CXX1214: "User has minSdkVersion 22 but library was built for 24"
+      const rnsGradlePath = join(
+        projectDir,
+        'node_modules',
+        'react-native-screens',
+        'android',
+        'build.gradle',
+      );
+      try {
+        let rnsGradle = await readFile(rnsGradlePath, 'utf-8');
+        rnsGradle = rnsGradle.replace(
+          'arguments "-DANDROID_STL=c++_shared"',
+          'arguments "-DANDROID_STL=c++_shared", "-DANDROID_PLATFORM=android-24"',
+        );
+        await writeFile(rnsGradlePath, rnsGradle, 'utf-8');
+        logger.info({ buildId }, 'Patched react-native-screens CMake args');
+      } catch {
+        // Library may not exist in all projects
+      }
+
       logger.info(
         { buildId },
         'Patched minSdkVersion to 24 + disabled newArch in gradle.properties',
