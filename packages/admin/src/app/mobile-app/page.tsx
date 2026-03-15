@@ -19,12 +19,9 @@ import {
   MonitorSmartphone,
   RotateCcw,
   ImageIcon,
-  Globe,
   CloudUpload,
   Zap,
-  ArrowRight,
   Shield,
-  ExternalLink,
 } from 'lucide-react';
 import { getToken } from '@/lib/auth';
 
@@ -560,18 +557,13 @@ export default function MobileAppPage() {
                   {/* Build Steps */}
                   {nativeBuildStep !== 'idle' && (
                     <div className="mb-6 space-y-3">
-                      {NATIVE_BUILD_STEPS.map(({ key, label, icon: StepIcon }, idx) => {
+                      {NATIVE_BUILD_STEPS.map(({ key, label, icon: StepIcon }) => {
                         const stepIdx = NATIVE_BUILD_STEPS.findIndex(
                           (s) => s.key === nativeBuildStep,
                         );
                         const currentIdx = NATIVE_BUILD_STEPS.findIndex((s) => s.key === key);
                         const isActive = nativeBuildStep === key;
-                        const isComplete =
-                          nativeBuildStep === 'done'
-                            ? true
-                            : stepIdx > currentIdx &&
-                              nativeBuildStep !== 'idle' &&
-                              nativeBuildStep !== 'error';
+                        const isComplete = nativeBuildStep === 'done' || stepIdx > currentIdx;
 
                         return (
                           <div key={key} className="flex items-center gap-4">
@@ -774,8 +766,7 @@ export default function MobileAppPage() {
                         const stepIdx = SOURCE_BUILD_STEPS.findIndex((s) => s.key === buildStep);
                         const currentIdx = SOURCE_BUILD_STEPS.findIndex((s) => s.key === key);
                         const isActive = buildStep === key;
-                        const isComplete =
-                          stepIdx > currentIdx && buildStep !== 'idle' && buildStep !== 'error';
+                        const isComplete = stepIdx > currentIdx;
 
                         return (
                           <div key={key} className="flex items-center gap-3">
