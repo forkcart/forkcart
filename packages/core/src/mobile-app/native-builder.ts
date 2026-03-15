@@ -61,7 +61,7 @@ export async function buildAndroidApk(
 
     // 5. Run expo prebuild for android
     logger.info({ buildId }, 'Running expo prebuild');
-    await run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], {
+    await run('npx', ['expo', 'prebuild', '--platform', 'android'], {
       cwd: projectDir,
       timeout: 120_000,
       env: {
@@ -84,6 +84,17 @@ export async function buildAndroidApk(
       if (!gradleProps.includes('android.ndkVersion')) {
         gradleProps += '\nandroid.ndkVersion=27.2.12479018\n';
       }
+      // Override minSdkVersion in gradle.properties (used by CMake prefab validation)
+      if (!gradleProps.includes('android.minSdkVersion')) {
+        gradleProps += '\nandroid.minSdkVersion=24\n';
+      } else {
+        gradleProps = gradleProps.replace(
+          /android\.minSdkVersion\s*=\s*\d+/,
+          'android.minSdkVersion=24',
+        );
+      }
+      // Disable prefab validation to work around CXX1214 bug with hermestooling
+      gradleProps += '\nprefab.enableValidation=false\n';
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
       logger.info({ buildId }, 'Patched gradle.properties');
