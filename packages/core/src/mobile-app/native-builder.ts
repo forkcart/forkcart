@@ -107,12 +107,28 @@ export async function buildAndroidApk(
           let gradle = await readFile(modGradlePath, 'utf-8');
           // Replace "prefab true" with "prefab false"
           gradle = gradle.replace(/prefab\s+true/g, 'prefab false');
-          // Comment out the top-level externalNativeBuild block that references CMakeLists.txt
-          // This prevents CMake from running at all (not needed with old arch)
-          gradle = gradle.replace(
-            /(\s+)externalNativeBuild\s*\{\s*\n\s*cmake\s*\{\s*\n\s*path\s+"CMakeLists\.txt"\s*\n\s*\}\s*\n\s*\}/g,
-            '$1// externalNativeBuild removed for server build',
-          );
+          // Remove ALL externalNativeBuild blocks (prevents CMake from running)
+          // Line-by-line removal of balanced brace blocks starting with externalNativeBuild
+          const lines = gradle.split('\n');
+          const filtered: string[] = [];
+          let depth = 0;
+          let removing = false;
+          for (const line of lines) {
+            if (!removing && /^\s*externalNativeBuild\s*\{/.test(line)) {
+              removing = true;
+              depth = 0;
+            }
+            if (removing) {
+              for (const c of line) {
+                if (c === '{') depth++;
+                if (c === '}') depth--;
+              }
+              if (depth <= 0) removing = false;
+              continue; // skip this line
+            }
+            filtered.push(line);
+          }
+          gradle = filtered.join('\n');
           await writeFile(modGradlePath, gradle, 'utf-8');
           logger.info({ buildId, mod }, 'Disabled prefab + removed externalNativeBuild');
         } catch {
