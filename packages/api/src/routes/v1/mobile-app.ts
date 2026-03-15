@@ -78,6 +78,42 @@ export function createMobileAppRoutes(mobileAppService: MobileAppService) {
     }
   });
 
+  /** POST /build-native — build a native APK/IPA on the server */
+  router.post('/build-native', async (c) => {
+    const body = await c.req.json().catch(() => ({}));
+    const platform = (body as { platform?: string }).platform;
+    if (platform !== 'android' && platform !== 'ios') {
+      return c.json(
+        { error: { code: 'BAD_REQUEST', message: 'platform must be "android" or "ios"' } },
+        400,
+      );
+    }
+
+    const result = await mobileAppService.buildNative(platform);
+
+    try {
+      const fileStat = await stat(result.filePath);
+      const stream = createReadStream(result.filePath);
+      const ext = platform === 'android' ? 'apk' : 'ipa';
+
+      stream.on('end', () => {
+        mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
+      });
+
+      return new Response(Readable.toWeb(stream) as ReadableStream, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/vnd.android.package-archive',
+          'Content-Disposition': `attachment; filename="forkcart-mobile.${ext}"`,
+          'Content-Length': String(fileStat.size),
+        },
+      });
+    } catch (err) {
+      await mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
+      throw err;
+    }
+  });
+
   /** POST /build — trigger cloud build (placeholder) */
   router.post('/build', async (c) => {
     const result = await mobileAppService.triggerBuild();
