@@ -126,49 +126,25 @@ gradle.afterProject { project ->
       }
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
-      // Remove externalNativeBuild from react-native-screens to avoid CXX1214
-      // With newArch=false, CMake native build is NOT needed
-      const rnsGradlePath = join(
-        projectDir,
-        'node_modules',
-        'react-native-screens',
-        'android',
-        'build.gradle',
-      );
+      // Fix CXX1214: Patch app/build.gradle to set ANDROID_PLATFORM=android-24
+      // This ensures CMake in ALL native modules uses minSdkVersion 24
+      const appBuildGradlePath = join(projectDir, 'android', 'app', 'build.gradle');
       try {
-        let rnsGradle = await readFile(rnsGradlePath, 'utf-8');
-        // Remove the externalNativeBuild blocks entirely
-        rnsGradle = rnsGradle.replace(
-          /externalNativeBuild\s*\{[^}]*cmake\s*\{[^}]*\}[^}]*\}/g,
-          '// externalNativeBuild removed for server-side build',
+        let appGradle = await readFile(appBuildGradlePath, 'utf-8');
+        // Add cmake arguments to defaultConfig if not already present
+        appGradle = appGradle.replace(
+          /defaultConfig\s*\{/,
+          `defaultConfig {
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_PLATFORM=android-24"
+            }
+        }`,
         );
-        // Also remove prefab
-        rnsGradle = rnsGradle.replace(/prefab\s+true/, 'prefab false');
-        await writeFile(rnsGradlePath, rnsGradle, 'utf-8');
-        logger.info({ buildId }, 'Removed CMake from react-native-screens');
+        await writeFile(appBuildGradlePath, appGradle, 'utf-8');
+        logger.info({ buildId }, 'Patched app/build.gradle with ANDROID_PLATFORM=android-24');
       } catch {
-        // Library may not exist
-      }
-
-      // Do the same for react-native-reanimated
-      const reanimatedGradlePath = join(
-        projectDir,
-        'node_modules',
-        'react-native-reanimated',
-        'android',
-        'build.gradle',
-      );
-      try {
-        let reanimatedGradle = await readFile(reanimatedGradlePath, 'utf-8');
-        reanimatedGradle = reanimatedGradle.replace(
-          /externalNativeBuild\s*\{[^}]*cmake\s*\{[^}]*\}[^}]*\}/g,
-          '// externalNativeBuild removed for server-side build',
-        );
-        reanimatedGradle = reanimatedGradle.replace(/prefab\s+true/, 'prefab false');
-        await writeFile(reanimatedGradlePath, reanimatedGradle, 'utf-8');
-        logger.info({ buildId }, 'Removed CMake from react-native-reanimated');
-      } catch {
-        // Library may not exist
+        // May not work on all projects
       }
 
       logger.info(
