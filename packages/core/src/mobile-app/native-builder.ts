@@ -96,6 +96,10 @@ export async function buildAndroidApk(
       }
       // Disable new architecture to avoid CMake CXX1214 minSdk conflicts
       gradleProps = gradleProps.replace(/newArchEnabled\s*=\s*true/, 'newArchEnabled=false');
+      // Pin NDK version to avoid "does not contain platforms" errors
+      if (!gradleProps.includes('android.ndkVersion')) {
+        gradleProps += '\nandroid.ndkVersion=27.2.12479018\n';
+      }
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
       logger.info(
