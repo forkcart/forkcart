@@ -1,6 +1,7 @@
 import { createLogger } from '../lib/logger';
 import type { MobileAppRepository, MobileAppConfig, UpdateMobileAppConfig } from './repository';
 import { generateMobileProject, cleanupGeneratedProject } from './generator';
+import { buildAndroidApk, cleanupNativeBuild } from './native-builder';
 
 const logger = createLogger('mobile-app-service');
 
@@ -61,6 +62,32 @@ export class MobileAppService {
       status: 'ready',
       message: 'Your mobile app project is ready to download.',
     };
+  }
+
+  /** Build a native APK/IPA and return the file path */
+  async buildNative(
+    platform: 'android' | 'ios',
+  ): Promise<{ filePath: string; tmpDir: string; size: number }> {
+    const config = await this.repo.get();
+    if (!config) {
+      throw new Error('Mobile app not configured. Please save your config first.');
+    }
+
+    if (platform === 'ios') {
+      throw new Error('iOS builds require macOS + Apple Developer account. Coming soon!');
+    }
+
+    logger.info({ appName: config.appName, platform }, 'Starting native build');
+    const result = await buildAndroidApk(config, this.templatePath, this.mediaStoragePath);
+
+    await this.repo.updateBuildStatus('ready');
+
+    return { filePath: result.apkPath, tmpDir: result.tmpDir, size: result.size };
+  }
+
+  /** Clean up native build artifacts */
+  async cleanupNative(tmpDir: string): Promise<void> {
+    await cleanupNativeBuild(tmpDir);
   }
 
   /** Get the current build status */

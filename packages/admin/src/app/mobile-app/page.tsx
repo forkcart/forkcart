@@ -19,6 +19,12 @@ import {
   MonitorSmartphone,
   RotateCcw,
   ImageIcon,
+  Globe,
+  CloudUpload,
+  Zap,
+  ArrowRight,
+  Shield,
+  ExternalLink,
 } from 'lucide-react';
 import { getToken } from '@/lib/auth';
 
@@ -63,11 +69,28 @@ const DEFAULT_CONFIG: MobileAppConfig = {
 };
 
 type BuildStep = 'idle' | 'saving' | 'generating' | 'packaging' | 'done' | 'error';
+type NativeBuildStep =
+  | 'idle'
+  | 'saving'
+  | 'generating'
+  | 'compiling'
+  | 'signing'
+  | 'done'
+  | 'error';
+type Platform = 'android' | 'ios' | 'pwa';
 
-const BUILD_STEPS: { key: BuildStep; label: string; icon: typeof Settings2 }[] = [
+const SOURCE_BUILD_STEPS: { key: BuildStep; label: string; icon: typeof Settings2 }[] = [
   { key: 'saving', label: 'Saving configuration', icon: Settings2 },
   { key: 'generating', label: 'Generating project', icon: Code2 },
-  { key: 'packaging', label: 'Packaging app', icon: Package },
+  { key: 'packaging', label: 'Packaging source code', icon: Package },
+  { key: 'done', label: 'Ready to download', icon: CheckCircle2 },
+];
+
+const NATIVE_BUILD_STEPS: { key: NativeBuildStep; label: string; icon: typeof Settings2 }[] = [
+  { key: 'saving', label: 'Saving configuration', icon: Settings2 },
+  { key: 'generating', label: 'Generating project files', icon: Code2 },
+  { key: 'compiling', label: 'Compiling native app', icon: Package },
+  { key: 'signing', label: 'Signing & packaging', icon: Shield },
   { key: 'done', label: 'Ready to download', icon: CheckCircle2 },
 ];
 
@@ -80,10 +103,16 @@ export default function MobileAppPage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  // Build flow
+  // Source build flow
   const [buildStep, setBuildStep] = useState<BuildStep>('idle');
   const [buildError, setBuildError] = useState<string | null>(null);
   const blobUrlRef = useRef<string | null>(null);
+
+  // Native build flow
+  const [nativeBuildStep, setNativeBuildStep] = useState<NativeBuildStep>('idle');
+  const [nativeBuildError, setNativeBuildError] = useState<string | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>('android');
+  const nativeBlobUrlRef = useRef<string | null>(null);
 
   // Active tab
   const [activeTab, setActiveTab] = useState<'config' | 'build' | 'developer'>('config');
@@ -91,20 +120,15 @@ export default function MobileAppPage() {
   useEffect(() => {
     loadConfig();
     return () => {
-      // Cleanup blob URL on unmount
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      if (nativeBlobUrlRef.current) URL.revokeObjectURL(nativeBlobUrlRef.current);
     };
   }, []);
 
   async function loadConfig() {
     try {
       const res = await apiClient<{ data: MobileAppConfig | null }>('/mobile-app/config');
-      if (res.data) {
-        setConfig(res.data);
-        if (res.data.lastBuildStatus === 'ready') {
-          setBuildStep('done');
-        }
-      }
+      if (res.data) setConfig(res.data);
     } catch {
       // Config doesn't exist yet — use defaults
     }
@@ -147,11 +171,11 @@ export default function MobileAppPage() {
     }
   }
 
-  async function handleBuild() {
-    setBuildError(null);
+  /* ─── Source Code Build (Developer) ─── */
 
+  async function handleSourceBuild() {
+    setBuildError(null);
     try {
-      // Step 1: Save config
       setBuildStep('saving');
       const ok = await saveConfig();
       if (!ok) {
@@ -159,16 +183,12 @@ export default function MobileAppPage() {
         setBuildError('Failed to save configuration');
         return;
       }
-
-      // Step 2: Generate
       setBuildStep('generating');
-      await new Promise((r) => setTimeout(r, 400)); // Brief pause for UX
-
-      // Step 3: Package (download ZIP)
+      await new Promise((r) => setTimeout(r, 400));
       setBuildStep('packaging');
+
       const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
       const token = getToken();
-
       const res = await fetch(`${API_BASE}/api/v1/mobile-app/generate`, {
         method: 'POST',
         credentials: 'include',
@@ -177,22 +197,14 @@ export default function MobileAppPage() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
       });
-
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
         throw new Error(err.error?.message ?? `Build failed: ${res.status}`);
       }
-
       const blob = await res.blob();
-
-      // Cleanup previous blob URL
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
       blobUrlRef.current = URL.createObjectURL(blob);
-
-      // Update build status on server
       await apiClient('/mobile-app/build', { method: 'POST' }).catch(() => {});
-
-      // Step 4: Done!
       setBuildStep('done');
     } catch (err) {
       setBuildStep('error');
@@ -200,22 +212,80 @@ export default function MobileAppPage() {
     }
   }
 
-  function handleDownload() {
+  function handleSourceDownload() {
     if (!blobUrlRef.current) return;
     const a = document.createElement('a');
     a.href = blobUrlRef.current;
-    a.download = `${config.appSlug || 'forkcart-mobile'}.zip`;
+    a.download = `${config.appSlug || 'forkcart-mobile'}-source.zip`;
     document.body.appendChild(a);
     a.click();
     a.remove();
   }
 
-  function resetBuild() {
-    setBuildStep('idle');
-    setBuildError(null);
-    if (blobUrlRef.current) {
-      URL.revokeObjectURL(blobUrlRef.current);
-      blobUrlRef.current = null;
+  /* ─── Native Build (Easy Mode) ─── */
+
+  async function handleNativeBuild() {
+    setNativeBuildError(null);
+    try {
+      setNativeBuildStep('saving');
+      const ok = await saveConfig();
+      if (!ok) {
+        setNativeBuildStep('error');
+        setNativeBuildError('Failed to save configuration');
+        return;
+      }
+
+      setNativeBuildStep('generating');
+      await new Promise((r) => setTimeout(r, 600));
+
+      setNativeBuildStep('compiling');
+
+      const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+      const token = getToken();
+      const res = await fetch(`${API_BASE}/api/v1/mobile-app/build-native`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ platform: selectedPlatform }),
+      });
+
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        throw new Error(err.error?.message ?? `Build failed: ${res.status}`);
+      }
+
+      setNativeBuildStep('signing');
+      const blob = await res.blob();
+      if (nativeBlobUrlRef.current) URL.revokeObjectURL(nativeBlobUrlRef.current);
+      nativeBlobUrlRef.current = URL.createObjectURL(blob);
+
+      setNativeBuildStep('done');
+    } catch (err) {
+      setNativeBuildStep('error');
+      setNativeBuildError(err instanceof Error ? err.message : 'Build failed');
+    }
+  }
+
+  function handleNativeDownload() {
+    if (!nativeBlobUrlRef.current) return;
+    const ext = selectedPlatform === 'ios' ? 'ipa' : 'apk';
+    const a = document.createElement('a');
+    a.href = nativeBlobUrlRef.current;
+    a.download = `${config.appSlug || 'forkcart-mobile'}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function resetNativeBuild() {
+    setNativeBuildStep('idle');
+    setNativeBuildError(null);
+    if (nativeBlobUrlRef.current) {
+      URL.revokeObjectURL(nativeBlobUrlRef.current);
+      nativeBlobUrlRef.current = null;
     }
   }
 
@@ -246,8 +316,8 @@ export default function MobileAppPage() {
       <div className="flex gap-1 rounded-lg border bg-muted/50 p-1">
         {[
           { key: 'config' as const, label: 'Configure', icon: Palette },
-          { key: 'build' as const, label: 'Build', icon: Package },
-          { key: 'developer' as const, label: 'Developer', icon: Code2 },
+          { key: 'build' as const, label: 'Build App', icon: Sparkles },
+          { key: 'developer' as const, label: 'Source Code', icon: Code2 },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -321,41 +391,26 @@ export default function MobileAppPage() {
               {/* Branding */}
               <div className="rounded-xl border bg-card p-6 shadow-sm">
                 <h2 className="mb-4 text-base font-semibold">Branding</h2>
-
-                {/* Colors */}
                 <div className="grid grid-cols-3 gap-5">
-                  {[
-                    {
-                      id: 'primaryColor',
-                      label: 'Primary',
-                      value: config.primaryColor,
-                      field: 'primaryColor' as const,
-                    },
-                    {
-                      id: 'accentColor',
-                      label: 'Accent',
-                      value: config.accentColor,
-                      field: 'accentColor' as const,
-                    },
-                    {
-                      id: 'bgColor',
-                      label: 'Background',
-                      value: config.backgroundColor,
-                      field: 'backgroundColor' as const,
-                    },
-                  ].map(({ id, label, value, field }) => (
+                  {(
+                    [
+                      { id: 'primaryColor', label: 'Primary', field: 'primaryColor' as const },
+                      { id: 'accentColor', label: 'Accent', field: 'accentColor' as const },
+                      { id: 'bgColor', label: 'Background', field: 'backgroundColor' as const },
+                    ] as const
+                  ).map(({ id, label, field }) => (
                     <div key={id} className="space-y-1.5">
                       <Label htmlFor={id}>{label}</Label>
                       <div className="flex items-center gap-2">
                         <input
                           type="color"
                           id={id}
-                          value={value}
+                          value={config[field]}
                           onChange={(e) => updateField(field, e.target.value)}
                           className="h-9 w-12 cursor-pointer rounded-lg border border-border bg-transparent"
                         />
                         <Input
-                          value={value}
+                          value={config[field]}
                           onChange={(e) => updateField(field, e.target.value)}
                           className="w-full font-mono text-xs"
                         />
@@ -364,24 +419,24 @@ export default function MobileAppPage() {
                   ))}
                 </div>
 
-                {/* Icon & Splash placeholder */}
+                {/* Icon & Splash */}
                 <div className="mt-5 grid grid-cols-2 gap-5">
-                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center">
-                    <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground/60">App Icon</p>
-                    <p className="text-xs text-muted-foreground/40">1024×1024 PNG</p>
-                    <button className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
-                      Upload
-                    </button>
-                  </div>
-                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center">
-                    <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/40" />
-                    <p className="text-sm font-medium text-muted-foreground/60">Splash Screen</p>
-                    <p className="text-xs text-muted-foreground/40">1284×2778 PNG</p>
-                    <button className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
-                      Upload
-                    </button>
-                  </div>
+                  {[
+                    { label: 'App Icon', size: '1024×1024 PNG' },
+                    { label: 'Splash Screen', size: '1284×2778 PNG' },
+                  ].map(({ label, size }) => (
+                    <div
+                      key={label}
+                      className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center"
+                    >
+                      <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/40" />
+                      <p className="text-sm font-medium text-muted-foreground/60">{label}</p>
+                      <p className="text-xs text-muted-foreground/40">{size}</p>
+                      <button className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                        Upload
+                      </button>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -438,53 +493,105 @@ export default function MobileAppPage() {
             </>
           )}
 
-          {/* ─── Build Tab ─────────────────────────────── */}
+          {/* ─── Build App Tab (Easy Mode) ─────────────── */}
           {activeTab === 'build' && (
             <div className="space-y-6">
-              {/* Build Progress Card */}
+              {/* Platform Selector */}
               <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
                 <div className="border-b bg-gradient-to-r from-violet-500/5 to-orange-500/5 p-6">
                   <h2 className="text-lg font-semibold">Build Your App</h2>
                   <p className="text-sm text-muted-foreground">
-                    Generate a ready-to-run Expo project with your branding and configuration
+                    Choose a platform and get a ready-to-install app file. No coding required.
                   </p>
                 </div>
 
-                {/* Steps */}
                 <div className="p-6">
-                  <div className="space-y-4">
-                    {BUILD_STEPS.map(({ key, label, icon: StepIcon }, idx) => {
-                      const stepIdx = BUILD_STEPS.findIndex((s) => s.key === buildStep);
-                      const currentIdx = BUILD_STEPS.findIndex((s) => s.key === key);
-                      const isActive = buildStep === key;
-                      const isComplete =
-                        buildStep === 'done'
-                          ? true
-                          : stepIdx > currentIdx && buildStep !== 'idle' && buildStep !== 'error';
+                  {/* Platform Cards */}
+                  <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {(
+                      [
+                        {
+                          key: 'android' as Platform,
+                          icon: '🤖',
+                          label: 'Android',
+                          desc: 'APK file — install directly or upload to Play Store',
+                          available: true,
+                        },
+                        {
+                          key: 'ios' as Platform,
+                          icon: '🍎',
+                          label: 'iOS',
+                          desc: 'IPA file — requires Apple Developer account',
+                          available: false,
+                        },
+                        {
+                          key: 'pwa' as Platform,
+                          icon: '🌐',
+                          label: 'PWA',
+                          desc: 'Progressive Web App — works on any device',
+                          available: false,
+                        },
+                      ] as const
+                    ).map(({ key, icon, label, desc, available }) => (
+                      <button
+                        key={key}
+                        onClick={() => available && setSelectedPlatform(key)}
+                        disabled={!available}
+                        className={`relative rounded-xl border-2 p-4 text-left transition-all ${
+                          selectedPlatform === key && available
+                            ? 'border-violet-500 bg-violet-50/50 shadow-sm dark:bg-violet-950/20'
+                            : available
+                              ? 'border-border hover:border-violet-300 hover:bg-muted/30'
+                              : 'cursor-not-allowed border-border opacity-50'
+                        }`}
+                      >
+                        {!available && (
+                          <span className="absolute right-2 top-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            Coming Soon
+                          </span>
+                        )}
+                        <span className="text-2xl">{icon}</span>
+                        <p className="mt-2 text-sm font-semibold">{label}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+                      </button>
+                    ))}
+                  </div>
 
-                      return (
-                        <div key={key} className="flex items-center gap-4">
-                          {/* Step indicator */}
-                          <div
-                            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-all ${
-                              isActive
-                                ? 'bg-violet-100 text-violet-600 ring-4 ring-violet-100/50 dark:bg-violet-900/30 dark:text-violet-400 dark:ring-violet-900/30'
-                                : isComplete
-                                  ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                  : 'bg-muted text-muted-foreground/40'
-                            }`}
-                          >
-                            {isActive && buildStep !== 'done' ? (
-                              <Loader2 className="h-5 w-5 animate-spin" />
-                            ) : isComplete ? (
-                              <CheckCircle2 className="h-5 w-5" />
-                            ) : (
-                              <StepIcon className="h-5 w-5" />
-                            )}
-                          </div>
+                  {/* Build Steps */}
+                  {nativeBuildStep !== 'idle' && (
+                    <div className="mb-6 space-y-3">
+                      {NATIVE_BUILD_STEPS.map(({ key, label, icon: StepIcon }, idx) => {
+                        const stepIdx = NATIVE_BUILD_STEPS.findIndex(
+                          (s) => s.key === nativeBuildStep,
+                        );
+                        const currentIdx = NATIVE_BUILD_STEPS.findIndex((s) => s.key === key);
+                        const isActive = nativeBuildStep === key;
+                        const isComplete =
+                          nativeBuildStep === 'done'
+                            ? true
+                            : stepIdx > currentIdx &&
+                              nativeBuildStep !== 'idle' &&
+                              nativeBuildStep !== 'error';
 
-                          {/* Step label */}
-                          <div className="flex-1">
+                        return (
+                          <div key={key} className="flex items-center gap-4">
+                            <div
+                              className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-all ${
+                                isActive
+                                  ? 'bg-violet-100 text-violet-600 ring-4 ring-violet-100/50 dark:bg-violet-900/30 dark:text-violet-400 dark:ring-violet-900/30'
+                                  : isComplete
+                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                    : 'bg-muted text-muted-foreground/40'
+                              }`}
+                            >
+                              {isActive && nativeBuildStep !== 'done' ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isComplete ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <StepIcon className="h-4 w-4" />
+                              )}
+                            </div>
                             <p
                               className={`text-sm font-medium ${
                                 isActive
@@ -497,50 +604,52 @@ export default function MobileAppPage() {
                               {label}
                             </p>
                           </div>
-
-                          {/* Connector line */}
-                          {idx < BUILD_STEPS.length - 1 && (
-                            <div
-                              className={`absolute ml-5 mt-14 h-4 w-px ${isComplete ? 'bg-green-300' : 'bg-border'}`}
-                            />
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Error state */}
-                  {buildStep === 'error' && buildError && (
-                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
-                      {buildError}
+                        );
+                      })}
                     </div>
                   )}
 
-                  {/* Action buttons */}
-                  <div className="mt-6 flex gap-3">
-                    {buildStep === 'idle' || buildStep === 'error' ? (
+                  {/* Error */}
+                  {nativeBuildStep === 'error' && nativeBuildError && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
+                      {nativeBuildError}
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3">
+                    {nativeBuildStep === 'idle' || nativeBuildStep === 'error' ? (
                       <button
-                        onClick={handleBuild}
+                        onClick={handleNativeBuild}
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110"
                       >
                         <Sparkles className="h-5 w-5" />
-                        Build My App
+                        Build{' '}
+                        {selectedPlatform === 'android'
+                          ? 'APK'
+                          : selectedPlatform === 'ios'
+                            ? 'IPA'
+                            : 'PWA'}
                       </button>
-                    ) : buildStep === 'done' ? (
+                    ) : nativeBuildStep === 'done' ? (
                       <>
                         <button
-                          onClick={handleDownload}
+                          onClick={handleNativeDownload}
                           className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110"
                         >
                           <Download className="h-5 w-5" />
-                          Download Project
+                          Download{' '}
+                          {selectedPlatform === 'android'
+                            ? 'APK'
+                            : selectedPlatform === 'ios'
+                              ? 'IPA'
+                              : 'PWA'}
                         </button>
                         <button
-                          onClick={resetBuild}
+                          onClick={resetNativeBuild}
                           className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
                         >
                           <RotateCcw className="h-4 w-4" />
-                          Rebuild
                         </button>
                       </>
                     ) : (
@@ -549,125 +658,234 @@ export default function MobileAppPage() {
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted px-6 py-3 text-sm font-medium text-muted-foreground"
                       >
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        Building...
+                        Building — this may take a few minutes...
                       </button>
                     )}
                   </div>
                 </div>
               </div>
 
-              {/* What's included */}
-              {buildStep === 'done' && (
+              {/* Success: What's in your build */}
+              {nativeBuildStep === 'done' && (
                 <div className="rounded-xl border bg-card p-6 shadow-sm">
-                  <h3 className="mb-3 text-base font-semibold">What&apos;s in your build</h3>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[
-                      {
-                        icon: '🏠',
-                        label: 'Home Screen',
-                        desc: 'Categories, featured, new arrivals',
-                      },
-                      { icon: '🔍', label: 'Product Search', desc: 'Instant search with filters' },
-                      { icon: '🛒', label: 'Shopping Cart', desc: 'Add, edit, coupon codes' },
-                      {
-                        icon: '💳',
-                        label: 'Checkout',
-                        desc: 'Address, payment, order confirmation',
-                      },
-                      { icon: '👤', label: 'User Account', desc: 'Login, register, order history' },
-                      { icon: '❤️', label: 'Wishlist', desc: 'Save favorite products' },
-                      { icon: '⭐', label: 'Reviews', desc: 'Product ratings and reviews' },
-                      { icon: '🎨', label: 'Your Branding', desc: 'Colors, name, icon applied' },
-                    ].map(({ icon, label, desc }) => (
-                      <div
-                        key={label}
-                        className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3"
-                      >
-                        <span className="text-lg">{icon}</span>
-                        <div>
-                          <p className="text-sm font-medium">{label}</p>
-                          <p className="text-xs text-muted-foreground">{desc}</p>
+                  <h3 className="mb-3 text-base font-semibold">
+                    ✅ Your {selectedPlatform === 'android' ? 'APK' : 'app'} is ready!
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { icon: '🏠', label: 'Home Screen' },
+                        { icon: '🔍', label: 'Product Search' },
+                        { icon: '🛒', label: 'Shopping Cart' },
+                        { icon: '💳', label: 'Checkout' },
+                        { icon: '👤', label: 'User Account' },
+                        { icon: '❤️', label: 'Wishlist' },
+                        { icon: '⭐', label: 'Reviews' },
+                        { icon: '🎨', label: 'Your Branding' },
+                      ].map(({ icon, label }) => (
+                        <div key={label} className="flex items-center gap-2 text-sm">
+                          <span>{icon}</span>
+                          <span>{label}</span>
                         </div>
+                      ))}
+                    </div>
+
+                    {selectedPlatform === 'android' && (
+                      <div className="rounded-lg border bg-muted/30 p-4">
+                        <h4 className="mb-2 text-sm font-semibold">How to install</h4>
+                        <ol className="space-y-1.5 text-sm text-muted-foreground">
+                          <li>
+                            1. Transfer the APK to your Android phone (email, Drive, USB, etc.)
+                          </li>
+                          <li>
+                            2. Open the APK on your phone and tap <strong>Install</strong>
+                          </li>
+                          <li>3. If prompted, allow installing from unknown sources</li>
+                          <li>4. Open the app and start selling! 🎉</li>
+                        </ol>
                       </div>
-                    ))}
+                    )}
+
+                    <div className="rounded-lg border bg-gradient-to-r from-violet-50 to-orange-50 p-4 dark:from-violet-950/20 dark:to-orange-950/20">
+                      <h4 className="mb-1 text-sm font-semibold">Ready for Google Play Store?</h4>
+                      <p className="text-xs text-muted-foreground">
+                        The APK can be uploaded directly to the Google Play Console. Make sure you
+                        have set your Android Package name in the Configure tab first.
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Next steps after build */}
-              {buildStep === 'done' && (
-                <div className="rounded-xl border bg-gradient-to-br from-violet-50 to-orange-50 p-6 shadow-sm dark:from-violet-950/20 dark:to-orange-950/20">
-                  <h3 className="mb-3 text-base font-semibold">Next Steps</h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        step: 1,
-                        text: 'Unzip the downloaded file',
-                        cmd: `unzip ${config.appSlug || 'forkcart-mobile'}.zip`,
-                      },
-                      {
-                        step: 2,
-                        text: 'Install dependencies',
-                        cmd: `cd forkcart-mobile && npm install`,
-                      },
-                      {
-                        step: 3,
-                        text: 'Start the development server',
-                        cmd: 'npx expo start',
-                      },
-                      {
-                        step: 4,
-                        text: 'Scan the QR code with Expo Go on your phone',
-                        cmd: null,
-                      },
-                    ].map(({ step, text, cmd }) => (
-                      <div key={step} className="flex items-start gap-3">
-                        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600 dark:bg-violet-900/40 dark:text-violet-400">
-                          {step}
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm">{text}</p>
-                          {cmd && (
-                            <button
-                              onClick={() => copyCommand(cmd)}
-                              className="mt-1 flex items-center gap-2 rounded bg-white/80 px-2.5 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-white dark:bg-black/20 dark:hover:bg-black/30"
-                            >
-                              <span className="flex-1 text-left">{cmd}</span>
-                              <Copy className="h-3 w-3 flex-shrink-0" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    {copied && (
-                      <p className="text-xs font-medium text-green-600">Copied to clipboard!</p>
-                    )}
-                  </div>
+              {/* Info: What this does */}
+              {nativeBuildStep === 'idle' && (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {[
+                    {
+                      icon: Zap,
+                      title: 'One-Click Build',
+                      desc: 'No development tools needed. We compile the app for you on our servers.',
+                    },
+                    {
+                      icon: Shield,
+                      title: 'Signed & Ready',
+                      desc: 'The app is signed and ready to install on devices or submit to app stores.',
+                    },
+                    {
+                      icon: CloudUpload,
+                      title: 'Store-Ready',
+                      desc: 'Upload directly to Google Play Store or Apple App Store.',
+                    },
+                  ].map(({ icon: Icon, title, desc }) => (
+                    <div key={title} className="rounded-xl border bg-card p-4 shadow-sm">
+                      <Icon className="mb-2 h-5 w-5 text-violet-500" />
+                      <h3 className="text-sm font-semibold">{title}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
           )}
 
-          {/* ─── Developer Tab ─────────────────────────── */}
+          {/* ─── Source Code Tab (Developer) ────────────── */}
           {activeTab === 'developer' && (
             <div className="space-y-6">
-              {/* Direct Download */}
+              {/* Download Source */}
+              <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="border-b bg-slate-50 p-6 dark:bg-slate-900/30">
+                  <div className="flex items-center gap-3">
+                    <Code2 className="h-5 w-5 text-slate-600 dark:text-slate-400" />
+                    <div>
+                      <h2 className="text-lg font-semibold">Source Code</h2>
+                      <p className="text-sm text-muted-foreground">
+                        Download the full Expo project. Customize anything — components, screens,
+                        API integration, navigation.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6">
+                  {/* Source build steps */}
+                  {buildStep !== 'idle' && buildStep !== 'done' && buildStep !== 'error' && (
+                    <div className="mb-6 space-y-3">
+                      {SOURCE_BUILD_STEPS.map(({ key, label, icon: StepIcon }) => {
+                        const stepIdx = SOURCE_BUILD_STEPS.findIndex((s) => s.key === buildStep);
+                        const currentIdx = SOURCE_BUILD_STEPS.findIndex((s) => s.key === key);
+                        const isActive = buildStep === key;
+                        const isComplete =
+                          stepIdx > currentIdx && buildStep !== 'idle' && buildStep !== 'error';
+
+                        return (
+                          <div key={key} className="flex items-center gap-3">
+                            <div
+                              className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
+                                isActive
+                                  ? 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                                  : isComplete
+                                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30'
+                                    : 'bg-muted text-muted-foreground/40'
+                              }`}
+                            >
+                              {isActive ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : isComplete ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                              ) : (
+                                <StepIcon className="h-4 w-4" />
+                              )}
+                            </div>
+                            <span className="text-sm">{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {buildStep === 'error' && buildError && (
+                    <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
+                      {buildError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    {buildStep === 'idle' || buildStep === 'error' ? (
+                      <button
+                        onClick={handleSourceBuild}
+                        className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                      >
+                        <Download className="h-4 w-4" />
+                        Generate &amp; Download ZIP
+                      </button>
+                    ) : buildStep === 'done' ? (
+                      <>
+                        <button
+                          onClick={handleSourceDownload}
+                          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-green-700"
+                        >
+                          <Download className="h-4 w-4" />
+                          Download Source ZIP
+                        </button>
+                        <button
+                          onClick={() => {
+                            setBuildStep('idle');
+                            setBuildError(null);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        disabled
+                        className="inline-flex items-center gap-2 rounded-lg bg-muted px-5 py-2.5 text-sm font-medium text-muted-foreground"
+                      >
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Start */}
               <div className="rounded-xl border bg-card p-6 shadow-sm">
-                <h2 className="mb-1 text-lg font-semibold">Download Source</h2>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Download the full Expo project as a ZIP. Customize anything — components, screens,
-                  API integration, navigation.
-                </p>
-                <button
-                  onClick={async () => {
-                    setActiveTab('build');
-                    await handleBuild();
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                >
-                  <Download className="h-4 w-4" />
-                  Generate &amp; Download ZIP
-                </button>
+                <h2 className="mb-4 text-base font-semibold">Quick Start</h2>
+                <div className="space-y-2">
+                  {[
+                    {
+                      cmd: `unzip ${config.appSlug || 'forkcart-mobile'}-source.zip && cd forkcart-mobile`,
+                      label: 'Extract',
+                    },
+                    { cmd: 'npm install', label: 'Install' },
+                    { cmd: 'npx expo start', label: 'Start Dev Server' },
+                    { cmd: 'npx expo start --tunnel', label: 'Remote Access' },
+                    {
+                      cmd: 'eas build --platform android --profile preview',
+                      label: 'Build APK',
+                    },
+                    {
+                      cmd: 'eas build --platform ios --profile preview',
+                      label: 'Build IPA',
+                    },
+                  ].map(({ cmd, label }) => (
+                    <div key={cmd} className="flex items-center gap-3">
+                      <button
+                        onClick={() => copyCommand(cmd)}
+                        className="flex flex-1 items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-left font-mono text-xs transition-colors hover:bg-muted"
+                      >
+                        <span className="flex-1">{cmd}</span>
+                        <Copy className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                      </button>
+                      <span className="w-32 text-xs text-muted-foreground">{label}</span>
+                    </div>
+                  ))}
+                  {copied && (
+                    <p className="text-xs font-medium text-green-600">Copied to clipboard!</p>
+                  )}
+                </div>
               </div>
 
               {/* Tech Stack */}
@@ -708,60 +926,21 @@ export default function MobileAppPage() {
 │   ├── login.tsx        # Login
 │   └── register.tsx     # Registration
 ├── components/          # Reusable components
-│   ├── ProductCard.tsx
-│   ├── VariantPicker.tsx
-│   ├── CartItem.tsx
-│   └── ui/              # Base UI components
 ├── lib/
 │   ├── api.ts           # API client
 │   ├── auth.ts          # Auth context
 │   ├── cart.ts          # Cart context
 │   └── config.ts        # App config
 ├── theme/               # Design tokens
-├── app.json             # ← Your config goes here
+├── app.json             # ← Your config
 └── theme.config.ts      # ← Generated from your settings`}
                 </pre>
-              </div>
-
-              {/* Quick Start */}
-              <div className="rounded-xl border bg-card p-6 shadow-sm">
-                <h2 className="mb-4 text-base font-semibold">Quick Start</h2>
-                <div className="space-y-2">
-                  {[
-                    { cmd: 'unzip forkcart-mobile.zip && cd forkcart-mobile', label: 'Extract' },
-                    { cmd: 'npm install', label: 'Install' },
-                    { cmd: 'npx expo start', label: 'Start Dev Server' },
-                    { cmd: 'npx expo start --tunnel', label: 'Start with Tunnel (remote)' },
-                    {
-                      cmd: 'eas build --platform android --profile preview',
-                      label: 'Build APK (requires Expo account)',
-                    },
-                    {
-                      cmd: 'eas build --platform ios --profile preview',
-                      label: 'Build IPA (requires Apple Developer)',
-                    },
-                  ].map(({ cmd, label }) => (
-                    <div key={cmd} className="flex items-center gap-3">
-                      <button
-                        onClick={() => copyCommand(cmd)}
-                        className="flex flex-1 items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-left font-mono text-xs transition-colors hover:bg-muted"
-                      >
-                        <span className="flex-1">{cmd}</span>
-                        <Copy className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
-                      </button>
-                      <span className="w-40 text-xs text-muted-foreground">{label}</span>
-                    </div>
-                  ))}
-                  {copied && (
-                    <p className="text-xs font-medium text-green-600">Copied to clipboard!</p>
-                  )}
-                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column — Phone Preview (always visible) */}
+        {/* Right Column — Phone Preview */}
         <div className="flex justify-center lg:justify-start">
           <PhonePreview config={config} />
         </div>
@@ -778,13 +957,9 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
       <p className="mb-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
         Live Preview
       </p>
-      {/* Phone Frame */}
       <div className="relative mx-auto w-[280px]">
         <div className="rounded-[40px] border-[3px] border-slate-800 bg-slate-800 p-1.5 shadow-2xl dark:border-slate-600">
-          {/* Notch */}
           <div className="absolute left-1/2 top-0 z-10 h-7 w-28 -translate-x-1/2 rounded-b-2xl bg-slate-800 dark:bg-slate-600" />
-
-          {/* Screen */}
           <div
             className="overflow-hidden rounded-[32px]"
             style={{ backgroundColor: config.backgroundColor }}
