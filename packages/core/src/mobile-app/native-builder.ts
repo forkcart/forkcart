@@ -76,11 +76,11 @@ export async function buildAndroidApk(
     const buildGradlePath = join(projectDir, 'android', 'build.gradle');
     try {
       let buildGradle = await readFile(buildGradlePath, 'utf-8');
+      // Replace the entire minSdkVersion line (handles Integer.parseInt(...) pattern)
       buildGradle = buildGradle.replace(
-        /minSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
-        'minSdkVersion = 24',
+        /minSdkVersion\s*=\s*.+/g,
+        "minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')",
       );
-      buildGradle = buildGradle.replace(/minSdkVersion\s*=?\s*2[0-3]\b/, 'minSdkVersion = 24');
       await writeFile(buildGradlePath, buildGradle, 'utf-8');
       logger.info({ buildId }, 'Patched minSdkVersion to 24');
     } catch (e) {
