@@ -20,6 +20,7 @@ import {
   RotateCcw,
   ImageIcon,
 } from 'lucide-react';
+import { getToken } from '@/lib/auth';
 
 /* ─── Types ───────────────────────────────────────────────────────────────── */
 
@@ -166,7 +167,7 @@ export default function MobileAppPage() {
       // Step 3: Package (download ZIP)
       setBuildStep('packaging');
       const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
-      const token = typeof window !== 'undefined' ? localStorage.getItem('forkcart_token') : null;
+      const token = getToken();
 
       const res = await fetch(`${API_BASE}/api/v1/mobile-app/generate`, {
         method: 'POST',
