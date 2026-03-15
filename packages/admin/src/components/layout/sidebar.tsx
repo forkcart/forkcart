@@ -32,6 +32,8 @@ interface NavItem {
   icon: LucideIcon;
   /** If set, only these roles see the item. If undefined, everyone sees it. */
   roles?: AdminRole[];
+  /** Visual group separator before this item */
+  group?: string;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -50,8 +52,20 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'superadmin'],
   },
   { href: '/reviews', label: 'Reviews', icon: Star, roles: ['admin', 'superadmin'] },
-  { href: '/plugins', label: 'Plugins', icon: Puzzle, roles: ['admin', 'superadmin'] },
-  { href: '/mobile-app', label: 'Mobile App', icon: Smartphone, roles: ['admin', 'superadmin'] },
+  {
+    href: '/mobile-app',
+    label: 'Mobile App',
+    icon: Smartphone,
+    roles: ['admin', 'superadmin'],
+    group: 'Channels',
+  },
+  {
+    href: '/plugins',
+    label: 'Plugins',
+    icon: Puzzle,
+    roles: ['admin', 'superadmin'],
+    group: 'System',
+  },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'superadmin'] },
   { href: '/users', label: 'Users', icon: UserCog, roles: ['superadmin'] },
 ];
@@ -80,23 +94,29 @@ export function Sidebar() {
         <span className="text-lg font-bold tracking-tight">ForkCart</span>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {visibleItems.map(({ href, label, icon: Icon }) => {
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+        {visibleItems.map(({ href, label, icon: Icon, group }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
           return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            <div key={href}>
+              {group && (
+                <p className="mb-1 mt-4 px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                  {group}
+                </p>
               )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
+              <Link
+                href={href}
+                className={cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            </div>
           );
         })}
       </nav>
