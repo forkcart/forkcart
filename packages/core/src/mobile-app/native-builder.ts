@@ -72,87 +72,23 @@ export async function buildAndroidApk(
       },
     });
 
-    // 5b. Patch minSdkVersion to 24 (react-native-screens requires it)
+    // 5b. Post-prebuild patches for Android
     try {
-      // Patch build.gradle
-      const buildGradlePath = join(projectDir, 'android', 'build.gradle');
-      let buildGradle = await readFile(buildGradlePath, 'utf-8');
-      buildGradle = buildGradle.replace(
-        /minSdkVersion\s*=\s*.+/g,
-        "minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')",
-      );
-      await writeFile(buildGradlePath, buildGradle, 'utf-8');
-
-      // Also set in gradle.properties (CMake reads from here)
       const gradlePropsPath = join(projectDir, 'android', 'gradle.properties');
       let gradleProps = await readFile(gradlePropsPath, 'utf-8');
-      if (!gradleProps.includes('android.minSdkVersion')) {
-        gradleProps += '\nandroid.minSdkVersion=24\n';
-      } else {
-        gradleProps = gradleProps.replace(
-          /android\.minSdkVersion\s*=\s*\d+/,
-          'android.minSdkVersion=24',
-        );
-      }
-      // Disable new architecture to avoid CMake CXX1214 minSdk conflicts
+
+      // Ensure newArchEnabled=false (expo-build-properties should handle minSdkVersion=24)
       gradleProps = gradleProps.replace(/newArchEnabled\s*=\s*true/, 'newArchEnabled=false');
-      // Pin NDK version to avoid "does not contain platforms" errors
+
+      // Pin NDK version
       if (!gradleProps.includes('android.ndkVersion')) {
         gradleProps += '\nandroid.ndkVersion=27.2.12479018\n';
       }
-      // Force ALL subprojects to use minSdkVersion 24 for CMake (fixes CXX1214)
-      const settingsGradlePath = join(projectDir, 'android', 'settings.gradle');
-      try {
-        let settingsGradle = await readFile(settingsGradlePath, 'utf-8');
-        settingsGradle += `
-// Force minSdkVersion 24 for all subprojects (fixes CXX1214 prefab validation)
-gradle.afterProject { project ->
-    if (project.hasProperty('android')) {
-        project.android {
-            if (it.hasProperty('defaultConfig')) {
-                it.defaultConfig {
-                    if (minSdkVersion.apiLevel < 24) {
-                        minSdkVersion 24
-                    }
-                }
-            }
-        }
-    }
-}
-`;
-        await writeFile(settingsGradlePath, settingsGradle, 'utf-8');
-      } catch {
-        // settings.gradle may not exist
-      }
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
-      // Fix CXX1214: Patch app/build.gradle to set ANDROID_PLATFORM=android-24
-      // This ensures CMake in ALL native modules uses minSdkVersion 24
-      const appBuildGradlePath = join(projectDir, 'android', 'app', 'build.gradle');
-      try {
-        let appGradle = await readFile(appBuildGradlePath, 'utf-8');
-        // Add cmake arguments to defaultConfig if not already present
-        appGradle = appGradle.replace(
-          /defaultConfig\s*\{/,
-          `defaultConfig {
-        externalNativeBuild {
-            cmake {
-                arguments "-DANDROID_PLATFORM=android-24"
-            }
-        }`,
-        );
-        await writeFile(appBuildGradlePath, appGradle, 'utf-8');
-        logger.info({ buildId }, 'Patched app/build.gradle with ANDROID_PLATFORM=android-24');
-      } catch {
-        // May not work on all projects
-      }
-
-      logger.info(
-        { buildId },
-        'Patched minSdkVersion to 24 + disabled newArch in gradle.properties',
-      );
+      logger.info({ buildId }, 'Patched gradle.properties');
     } catch (e) {
-      logger.warn({ buildId, e }, 'Could not patch minSdkVersion');
+      logger.warn({ buildId, e }, 'Could not patch gradle.properties');
     }
 
     // 6. Build the APK with Gradle
