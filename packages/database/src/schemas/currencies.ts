@@ -23,6 +23,10 @@ export const currencies = pgTable(
     isActive: boolean('is_active').notNull().default(true),
     /** Exchange rate relative to the default currency (1 default = X this currency) */
     exchangeRate: integer('exchange_rate').notNull().default(100000),
+    /** Whether the exchange rate should be auto-updated from external APIs */
+    autoUpdate: boolean('auto_update').notNull().default(false),
+    /** When the exchange rate was last automatically updated */
+    lastRateUpdate: timestamp('last_rate_update', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
