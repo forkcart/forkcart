@@ -107,8 +107,14 @@ export async function buildAndroidApk(
           let gradle = await readFile(modGradlePath, 'utf-8');
           // Replace "prefab true" with "prefab false"
           gradle = gradle.replace(/prefab\s+true/g, 'prefab false');
+          // Comment out the top-level externalNativeBuild block that references CMakeLists.txt
+          // This prevents CMake from running at all (not needed with old arch)
+          gradle = gradle.replace(
+            /(\s+)externalNativeBuild\s*\{\s*\n\s*cmake\s*\{\s*\n\s*path\s+"CMakeLists\.txt"\s*\n\s*\}\s*\n\s*\}/g,
+            '$1// externalNativeBuild removed for server build',
+          );
           await writeFile(modGradlePath, gradle, 'utf-8');
-          logger.info({ buildId, mod }, 'Disabled prefab');
+          logger.info({ buildId, mod }, 'Disabled prefab + removed externalNativeBuild');
         } catch {
           // Module may not exist
         }
