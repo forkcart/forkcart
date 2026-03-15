@@ -73,16 +73,30 @@ export async function buildAndroidApk(
     });
 
     // 5b. Patch minSdkVersion to 24 (react-native-screens requires it)
-    const buildGradlePath = join(projectDir, 'android', 'build.gradle');
     try {
+      // Patch build.gradle
+      const buildGradlePath = join(projectDir, 'android', 'build.gradle');
       let buildGradle = await readFile(buildGradlePath, 'utf-8');
-      // Replace the entire minSdkVersion line (handles Integer.parseInt(...) pattern)
       buildGradle = buildGradle.replace(
         /minSdkVersion\s*=\s*.+/g,
         "minSdkVersion = Integer.parseInt(findProperty('android.minSdkVersion') ?: '24')",
       );
       await writeFile(buildGradlePath, buildGradle, 'utf-8');
-      logger.info({ buildId }, 'Patched minSdkVersion to 24');
+
+      // Also set in gradle.properties (CMake reads from here)
+      const gradlePropsPath = join(projectDir, 'android', 'gradle.properties');
+      let gradleProps = await readFile(gradlePropsPath, 'utf-8');
+      if (!gradleProps.includes('android.minSdkVersion')) {
+        gradleProps += '\nandroid.minSdkVersion=24\n';
+      } else {
+        gradleProps = gradleProps.replace(
+          /android\.minSdkVersion\s*=\s*\d+/,
+          'android.minSdkVersion=24',
+        );
+      }
+      await writeFile(gradlePropsPath, gradleProps, 'utf-8');
+
+      logger.info({ buildId }, 'Patched minSdkVersion to 24 in build.gradle + gradle.properties');
     } catch (e) {
       logger.warn({ buildId, e }, 'Could not patch minSdkVersion');
     }
