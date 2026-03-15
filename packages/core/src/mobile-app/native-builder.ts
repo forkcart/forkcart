@@ -122,6 +122,26 @@ export async function buildAndroidApk(
       ].join('\n');
       await writeFile(localPropsPath, localProps, 'utf-8');
 
+      // Fix "Could not get unknown property 'release'" in ExpoModulesCorePlugin
+      const expoPluginPath = join(
+        projectDir,
+        'node_modules',
+        'expo-modules-core',
+        'android',
+        'ExpoModulesCorePlugin.gradle',
+      );
+      try {
+        let expoPlugin = await readFile(expoPluginPath, 'utf-8');
+        expoPlugin = expoPlugin.replace(
+          'from components.release',
+          'if (components.findByName("release")) { from components.release }',
+        );
+        await writeFile(expoPluginPath, expoPlugin, 'utf-8');
+        logger.info({ buildId }, 'Patched ExpoModulesCorePlugin.gradle');
+      } catch {
+        // May not exist
+      }
+
       logger.info({ buildId }, 'Patched gradle.properties + created local.properties');
     } catch (e) {
       logger.warn({ buildId, e }, 'Could not patch gradle.properties');
