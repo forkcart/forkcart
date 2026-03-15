@@ -97,16 +97,49 @@ export async function buildAndroidApk(
       gradleProps += '\nprefab.enableValidation=false\n';
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
-      // Delete CMakeLists.txt from native modules that trigger CXX1214
-      // This is safe with newArch=false (CMake is only needed for new architecture)
+      // Patch native module build.gradle files to remove CMake/prefab (not needed with old arch)
+      // This fixes CXX1214: minSdkVersion mismatch with ReactAndroid/hermestooling
       const cmakeModules = ['react-native-screens', 'react-native-reanimated'];
       for (const mod of cmakeModules) {
-        const cmakePath = join(projectDir, 'node_modules', mod, 'android', 'CMakeLists.txt');
+        const modGradlePath = join(projectDir, 'node_modules', mod, 'android', 'build.gradle');
         try {
-          await unlink(cmakePath);
-          logger.info({ buildId, mod }, 'Removed CMakeLists.txt');
+          let modGradle = await readFile(modGradlePath, 'utf-8');
+          // Remove externalNativeBuild blocks (both in defaultConfig and android level)
+          // Use line-by-line approach to handle nested braces
+          const lines = modGradle.split('\n');
+          const result: string[] = [];
+          let skipDepth = 0;
+          let skipping = false;
+          for (const line of lines) {
+            if (!skipping && line.trim().startsWith('externalNativeBuild')) {
+              skipping = true;
+              skipDepth = 0;
+            }
+            if (skipping) {
+              for (const ch of line) {
+                if (ch === '{') skipDepth++;
+                if (ch === '}') skipDepth--;
+              }
+              if (skipDepth <= 0 && line.includes('}')) {
+                skipping = false;
+                continue;
+              }
+              continue;
+            }
+            // Also remove prefab true
+            if (line.trim() === 'prefab true') continue;
+            // Remove buildFeatures { prefab true }
+            if (line.trim().startsWith('buildFeatures')) {
+              // Skip next few lines if they only contain prefab
+              result.push(line);
+              continue;
+            }
+            result.push(line);
+          }
+          await writeFile(modGradlePath, result.join('\n'), 'utf-8');
+          logger.info({ buildId, mod }, 'Removed CMake/prefab from build.gradle');
         } catch {
-          // File may not exist
+          // Module may not exist
         }
       }
 
