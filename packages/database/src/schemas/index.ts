@@ -24,3 +24,4 @@ export * from './pages';
 export * from './page-translations';
 export * from './theme-settings';
 export * from './currencies';
+export * from './mobile-app';

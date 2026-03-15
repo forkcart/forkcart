@@ -25,12 +25,14 @@
     "@forkcart/database": "workspace:*",
     "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
+    "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.38.0",
     "jsonwebtoken": "^9.0.3",
     "pino": "^9.5.0"
   },
   "devDependencies": {
+    "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.10",
     "typescript": "^5.7.0",

@@ -61,7 +61,14 @@ import {
   AttributeRepository,
   AttributeService,
 } from '@forkcart/core';
-import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
+import {
+  AISettingsRepository,
+  ProductAIService,
+  SeoRepository,
+  SeoService,
+  MobileAppRepository,
+  MobileAppService,
+} from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
 import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
@@ -104,6 +111,7 @@ import { createThemeSettingsRoutes } from './routes/v1/theme-settings';
 import { createVariantRoutes } from './routes/v1/variants';
 import { createAttributeRoutes } from './routes/v1/attributes';
 import { createPublicVariantRoutes } from './routes/v1/public-variants';
+import { createMobileAppRoutes } from './routes/v1/mobile-app';
 import { requireRole } from './middleware/permissions';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
 import { flattenTranslations } from '@forkcart/i18n';
@@ -191,6 +199,7 @@ export async function createApp(db: Database) {
   const variantRepository = new VariantRepository(db);
   const attributeRepository = new AttributeRepository(db);
   const currencyRepository = new CurrencyRepository(db);
+  const mobileAppRepository = new MobileAppRepository(db);
 
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
@@ -225,6 +234,14 @@ export async function createApp(db: Database) {
   const variantService = new VariantService({ variantRepository });
   const attributeService = new AttributeService({ attributeRepository });
   const currencyService = new CurrencyService({ currencyRepository });
+
+  // Mobile app builder
+  const mobileTemplatePath = resolve(process.cwd(), '../mobile');
+  const mobileAppService = new MobileAppService({
+    mobileAppRepository,
+    templatePath: mobileTemplatePath,
+    mediaStoragePath: storagePath,
+  });
 
   // Product translations
   const productTranslationRepository = new ProductTranslationRepository(db);
@@ -411,6 +428,7 @@ export async function createApp(db: Database) {
   v1.use('/plugins/*', requireRole('admin', 'superadmin'));
   v1.use('/emails/*', requireRole('admin', 'superadmin'));
   v1.use('/ai/*', requireRole('admin', 'superadmin'));
+  v1.use('/mobile-app/*', requireRole('admin', 'superadmin'));
   v1.use('/search/analytics/*', requireRole('admin', 'superadmin'));
   v1.use('/search/zero-results', requireRole('admin', 'superadmin'));
 
@@ -456,6 +474,7 @@ export async function createApp(db: Database) {
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/products', createVariantRoutes(variantService));
   v1.route('/attributes', createAttributeRoutes(attributeService));
+  v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(
