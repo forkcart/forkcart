@@ -61,7 +61,7 @@ export async function buildAndroidApk(
 
     // 5. Run expo prebuild for android
     logger.info({ buildId }, 'Running expo prebuild');
-    await run('npx', ['expo', 'prebuild', '--platform', 'android'], {
+    await run('npx', ['expo', 'prebuild', '--platform', 'android', '--no-install'], {
       cwd: projectDir,
       timeout: 120_000,
       env: {
