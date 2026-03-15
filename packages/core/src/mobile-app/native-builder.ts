@@ -72,6 +72,21 @@ export async function buildAndroidApk(
       },
     });
 
+    // 5b. Patch minSdkVersion to 24 (react-native-screens requires it)
+    const buildGradlePath = join(projectDir, 'android', 'build.gradle');
+    try {
+      let buildGradle = await readFile(buildGradlePath, 'utf-8');
+      buildGradle = buildGradle.replace(
+        /minSdkVersion\s*=\s*Integer\.parseInt\([^)]+\)/,
+        'minSdkVersion = 24',
+      );
+      buildGradle = buildGradle.replace(/minSdkVersion\s*=?\s*2[0-3]\b/, 'minSdkVersion = 24');
+      await writeFile(buildGradlePath, buildGradle, 'utf-8');
+      logger.info({ buildId }, 'Patched minSdkVersion to 24');
+    } catch (e) {
+      logger.warn({ buildId, e }, 'Could not patch minSdkVersion');
+    }
+
     // 6. Build the APK with Gradle
     const androidDir = join(projectDir, 'android');
     logger.info({ buildId }, 'Building APK with Gradle');
