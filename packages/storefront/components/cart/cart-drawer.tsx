@@ -6,12 +6,13 @@ import { LocaleLink } from '@/components/locale-link';
 import { X, Minus, Plus, Trash2, ShoppingBag } from 'lucide-react';
 import { useCart } from './cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
-import { formatPrice } from '@forkcart/shared';
+import { useCurrency } from '@/components/currency/currency-provider';
 
 export function CartDrawer() {
   const { items, itemCount, subtotal, cartOpen, setCartOpen, updateQuantity, removeItem } =
     useCart();
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
 
   // Lock body scroll when open
   useEffect(() => {

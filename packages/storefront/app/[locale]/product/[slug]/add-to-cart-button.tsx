@@ -7,17 +7,18 @@ import { useTranslation } from '@forkcart/i18n/react';
 
 interface Props {
   product: { id: string; name: string; slug: string; price: number };
+  variantId?: string;
   disabled?: boolean;
 }
 
-export function AddToCartButton({ product, disabled }: Props) {
+export function AddToCartButton({ product, variantId, disabled }: Props) {
   const { addItem } = useCart();
   const { t } = useTranslation();
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
 
   function handleAdd() {
-    addItem(product, quantity);
+    addItem(product, quantity, variantId);
     setAdded(true);
     setTimeout(() => setAdded(false), 1500);
   }

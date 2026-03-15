@@ -1,8 +1,8 @@
 'use client';
 
 import { PageRenderer } from './renderer';
-import { formatPrice } from '@forkcart/shared';
 import { useTranslation } from '@forkcart/i18n/react';
+import { useCurrency } from '@/components/currency/currency-provider';
 import { AddToCartButton } from '@/app/[locale]/product/[slug]/add-to-cart-button';
 import { WishlistButton } from '@/components/product/wishlist-button';
 import { ProductReviews } from '@/components/product/product-reviews';
@@ -186,6 +186,7 @@ export function RenderProductPrice({
 }) {
   const product = useProductData();
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
   if (!product) return null;
   const inStock = product.inventoryQuantity > 0 || !product.trackInventory;
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
@@ -194,11 +195,11 @@ export function RenderProductPrice({
     <div>
       <div className="flex items-baseline gap-3">
         <span className="text-2xl font-bold text-gray-900">
-          {formatPrice(product.price, product.currency)}
+          {formatPrice(product.price, product.currency ?? 'EUR')}
         </span>
         {showComparePrice && hasDiscount && (
           <span className="text-lg text-gray-400 line-through">
-            {formatPrice(product.compareAtPrice!, product.currency)}
+            {formatPrice(product.compareAtPrice!, product.currency ?? 'EUR')}
           </span>
         )}
       </div>
@@ -287,6 +288,7 @@ export function RenderRelatedProducts({
   title?: string;
 }) {
   const product = useProductData();
+  const { formatPrice } = useCurrency();
   const [products, setProducts] = useState<ProductData[]>([]);
 
   useEffect(() => {
@@ -330,7 +332,7 @@ export function RenderRelatedProducts({
             </div>
             <h3 className="mt-2 text-sm font-medium text-gray-900">{p.name}</h3>
             <p className="text-sm font-semibold text-gray-900">
-              {formatPrice(p.price, p.currency)}
+              {formatPrice(p.price, p.currency ?? 'EUR')}
             </p>
           </a>
         ))}

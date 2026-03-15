@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatPrice } from '@forkcart/shared';
 import { LocaleLink } from '@/components/locale-link';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useTranslation } from '@forkcart/i18n/react';
+import { useCurrency } from '@/components/currency/currency-provider';
 import { WishlistButton } from '@/components/product/wishlist-button';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
@@ -28,6 +28,7 @@ interface WishlistItem {
 
 export default function WishlistPage() {
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
   const { token, customer, isLoading } = useAuth();
   const [items, setItems] = useState<WishlistItem[]>([]);
   const [loading, setLoading] = useState(true);

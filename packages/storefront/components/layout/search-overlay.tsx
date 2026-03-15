@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, TrendingUp, ArrowRight } from 'lucide-react';
 import { useTranslation, useLocale } from '@forkcart/i18n/react';
-import { formatPrice } from '@forkcart/shared';
+import { useCurrency } from '@/components/currency/currency-provider';
 import {
   instantSearch,
   getPublicPopularSearches,
@@ -21,6 +21,7 @@ interface SearchOverlayProps {
 export function SearchOverlay({ open, onClose }: SearchOverlayProps) {
   const { t } = useTranslation();
   const locale = useLocale();
+  const { formatPrice } = useCurrency();
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
@@ -377,6 +378,7 @@ function TrendingProductCard({
   product: TrendingProductItem;
   onClick: () => void;
 }) {
+  const { formatPrice } = useCurrency();
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
 
   return (
@@ -397,11 +399,11 @@ function TrendingProductCard({
         <p className="truncate text-sm font-medium text-gray-700">{product.name}</p>
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-semibold text-gray-900">
-            {formatPrice(product.price, product.currency)}
+            {formatPrice(product.price, product.currency ?? 'EUR')}
           </span>
           {hasDiscount && (
             <span className="text-xs text-gray-400 line-through">
-              {formatPrice(product.compareAtPrice!, product.currency)}
+              {formatPrice(product.compareAtPrice!, product.currency ?? 'EUR')}
             </span>
           )}
         </div>

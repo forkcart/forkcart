@@ -23,3 +23,4 @@ export * from './product-reviews';
 export * from './pages';
 export * from './page-translations';
 export * from './theme-settings';
+export * from './currencies';
