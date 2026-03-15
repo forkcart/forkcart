@@ -114,7 +114,15 @@ export async function buildAndroidApk(
         }
       }
 
-      logger.info({ buildId }, 'Patched gradle.properties');
+      // Create local.properties with SDK and NDK paths
+      const localPropsPath = join(projectDir, 'android', 'local.properties');
+      const localProps = [
+        `sdk.dir=/opt/android-sdk`,
+        `ndk.dir=/opt/android-sdk/ndk/27.2.12479018`,
+      ].join('\n');
+      await writeFile(localPropsPath, localProps, 'utf-8');
+
+      logger.info({ buildId }, 'Patched gradle.properties + created local.properties');
     } catch (e) {
       logger.warn({ buildId, e }, 'Could not patch gradle.properties');
     }
