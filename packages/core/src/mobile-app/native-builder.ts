@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { resolve, join } from 'node:path';
-import { mkdir, rm, readFile, writeFile, cp, readdir, stat } from 'node:fs/promises';
+import { mkdir, rm, readFile, writeFile, cp, readdir, stat, unlink } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createLogger } from '../lib/logger';
@@ -96,6 +96,19 @@ export async function buildAndroidApk(
       // Disable prefab validation to work around CXX1214 bug with hermestooling
       gradleProps += '\nprefab.enableValidation=false\n';
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
+
+      // Delete CMakeLists.txt from native modules that trigger CXX1214
+      // This is safe with newArch=false (CMake is only needed for new architecture)
+      const cmakeModules = ['react-native-screens', 'react-native-reanimated'];
+      for (const mod of cmakeModules) {
+        const cmakePath = join(projectDir, 'node_modules', mod, 'android', 'CMakeLists.txt');
+        try {
+          await unlink(cmakePath);
+          logger.info({ buildId, mod }, 'Removed CMakeLists.txt');
+        } catch {
+          // File may not exist
+        }
+      }
 
       logger.info({ buildId }, 'Patched gradle.properties');
     } catch (e) {
