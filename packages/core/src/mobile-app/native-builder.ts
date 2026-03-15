@@ -100,7 +100,7 @@ export async function buildAndroidApk(
       // Disable prefab in native modules to avoid CXX1214 prefab validation
       // CXX1214 happens because AGP's prefab validator checks minSdkVersion
       // BEFORE cmake even runs. With newArch=false, prefab is not needed.
-      const prefabModules = ['react-native-screens', 'react-native-reanimated'];
+      const prefabModules = ['react-native-screens'];
       for (const mod of prefabModules) {
         const modGradlePath = join(projectDir, 'node_modules', mod, 'android', 'build.gradle');
         try {
