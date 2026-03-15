@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatPrice } from '@forkcart/shared';
 import { LocaleLink } from '@/components/locale-link';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useTranslation } from '@forkcart/i18n/react';
+import { useCurrency } from '@/components/currency/currency-provider';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { ChevronLeft, Loader2, Package } from 'lucide-react';
 
@@ -22,6 +22,7 @@ interface Order {
 export default function OrdersPage() {
   const { token } = useAuth();
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 

@@ -54,6 +54,12 @@ import {
   ProductReviewService,
   PageRepository,
   PageService,
+  CurrencyRepository,
+  CurrencyService,
+  VariantRepository,
+  VariantService,
+  AttributeRepository,
+  AttributeService,
 } from '@forkcart/core';
 import { AISettingsRepository, ProductAIService, SeoRepository, SeoService } from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
@@ -93,7 +99,11 @@ import { createWishlistRoutes } from './routes/v1/wishlists';
 import { createProductReviewRoutes, createAdminReviewRoutes } from './routes/v1/reviews';
 import { createUserRoutes } from './routes/v1/users';
 import { createPageRoutes } from './routes/v1/pages';
+import { createCurrencyRoutes, createPublicCurrencyRoutes } from './routes/v1/currencies';
 import { createThemeSettingsRoutes } from './routes/v1/theme-settings';
+import { createVariantRoutes } from './routes/v1/variants';
+import { createAttributeRoutes } from './routes/v1/attributes';
+import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { requireRole } from './middleware/permissions';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
 import { flattenTranslations } from '@forkcart/i18n';
@@ -178,6 +188,9 @@ export async function createApp(db: Database) {
   const wishlistRepository = new WishlistRepository(db);
   const pageRepository = new PageRepository(db);
   const productReviewRepository = new ProductReviewRepository(db);
+  const variantRepository = new VariantRepository(db);
+  const attributeRepository = new AttributeRepository(db);
+  const currencyRepository = new CurrencyRepository(db);
 
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
@@ -209,6 +222,9 @@ export async function createApp(db: Database) {
   const wishlistService = new WishlistService({ wishlistRepository });
   const pageService = new PageService({ pageRepository, eventBus });
   const productReviewService = new ProductReviewService({ productReviewRepository });
+  const variantService = new VariantService({ variantRepository });
+  const attributeService = new AttributeService({ attributeRepository });
+  const currencyService = new CurrencyService({ currencyRepository });
 
   // Product translations
   const productTranslationRepository = new ProductTranslationRepository(db);
@@ -436,7 +452,10 @@ export async function createApp(db: Database) {
   v1.route('/users', createUserRoutes(authService));
   v1.route('/pages', createPageRoutes(pageService));
   v1.route('/theme-settings', createThemeSettingsRoutes(db));
+  v1.route('/currencies', createCurrencyRoutes(currencyService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
+  v1.route('/products', createVariantRoutes(variantService));
+  v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(
@@ -464,6 +483,12 @@ export async function createApp(db: Database) {
 
   // Public search routes (no auth — instant search, popular, trending, tracking)
   app.route('/api/v1/public/search', createPublicSearchRoutes(searchService));
+
+  // Public currency routes (no auth)
+  app.route('/api/v1/public/currencies', createPublicCurrencyRoutes(currencyService));
+
+  // Public variant routes (no auth — storefront needs to fetch variants)
+  app.route('/api/v1/public/products', createPublicVariantRoutes(variantService, attributeService));
 
   app.route('/api/v1', v1);
 

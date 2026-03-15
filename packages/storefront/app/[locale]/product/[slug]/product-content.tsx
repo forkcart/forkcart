@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { formatPrice } from '@forkcart/shared';
 import { useTranslation, useLocale } from '@forkcart/i18n/react';
+import { useCurrency } from '@/components/currency/currency-provider';
 import { AddToCartButton } from './add-to-cart-button';
 import { WishlistButton } from '@/components/product/wishlist-button';
 import { ProductReviews } from '@/components/product/product-reviews';
+import { VariantPicker } from '@/components/product/variant-picker';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -13,6 +14,16 @@ interface ProductImage {
   id: string;
   url: string;
   alt: string | null;
+  sortOrder: number;
+}
+
+interface ProductVariant {
+  id: string;
+  name: string;
+  sku: string | null;
+  price: number | null;
+  inventoryQuantity: number;
+  attributes: Record<string, string>;
   sortOrder: number;
 }
 
@@ -44,13 +55,15 @@ export function ProductNotFound() {
 export function ProductContent({ product: initialProduct }: { product: ProductData }) {
   const { t } = useTranslation();
   const locale = useLocale();
+  const { formatPrice } = useCurrency();
   const [product, setProduct] = useState(initialProduct);
   const [selectedImage, setSelectedImage] = useState(0);
+  const [variants, setVariants] = useState<ProductVariant[]>([]);
+  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
 
   // Fetch localized product content when locale changes
   useEffect(() => {
-    // Always fetch with locale param — the API resolves translations for any language
     fetch(`${API_URL}/api/v1/products/${initialProduct.slug}?locale=${locale}`)
       .then((r) => (r.ok ? (r.json() as Promise<{ data: ProductData }>) : null))
       .then((data) => {
@@ -62,11 +75,32 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
           });
       })
       .catch((error: unknown) => {
-        // Intentionally silent: fallback to initialProduct (SSR data) is fine
         console.error('[ProductContent] Failed to refresh product data:', error);
       });
   }, [locale, initialProduct.slug]); // eslint-disable-line react-hooks/exhaustive-deps
-  const inStock = product.inventoryQuantity > 0 || !product.trackInventory;
+
+  // Fetch variants
+  useEffect(() => {
+    fetch(`${API_URL}/api/v1/public/products/${initialProduct.id}/variants`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ data: ProductVariant[] }>) : null))
+      .then((data) => {
+        if (data?.data) setVariants(data.data);
+      })
+      .catch((error: unknown) => {
+        console.error('[ProductContent] Failed to fetch variants:', error);
+      });
+  }, [initialProduct.id]);
+
+  // Compute effective price and stock based on variant selection
+  const effectivePrice = selectedVariant?.price ?? product.price;
+  const effectiveInventory = selectedVariant
+    ? selectedVariant.inventoryQuantity
+    : product.inventoryQuantity;
+  const inStock = effectiveInventory > 0 || (!selectedVariant && !product.trackInventory);
+  const hasVariants = variants.length > 0;
+  // When product has variants, require a variant to be selected before adding to cart
+  const canAddToCart = inStock && (!hasVariants || selectedVariant !== null);
+
   const images = product.images?.sort((a, b) => a.sortOrder - b.sortOrder) ?? [];
 
   return (
@@ -121,7 +155,7 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
         <div className="flex flex-col">
           {product.sku && (
             <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-              {t('product.sku')}: {product.sku}
+              {t('product.sku')}: {selectedVariant?.sku ?? product.sku}
             </p>
           )}
           <div className="mt-2 flex items-start justify-between gap-4">
@@ -133,13 +167,20 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
 
           <div className="mt-4 flex items-baseline gap-3">
             <span className="text-2xl font-bold text-gray-900">
-              {formatPrice(product.price, product.currency)}
+              {formatPrice(effectivePrice, product.currency)}
             </span>
-            {hasDiscount && (
+            {hasDiscount && !selectedVariant && (
               <span className="text-lg text-gray-400 line-through">
                 {formatPrice(product.compareAtPrice!, product.currency)}
               </span>
             )}
+            {selectedVariant &&
+              selectedVariant.price !== null &&
+              selectedVariant.price !== product.price && (
+                <span className="text-lg text-gray-400 line-through">
+                  {formatPrice(product.price, product.currency)}
+                </span>
+              )}
           </div>
 
           <div className="mt-3">
@@ -160,15 +201,28 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
             <p className="mt-4 text-gray-600">{product.shortDescription}</p>
           )}
 
+          {/* Variant Picker */}
+          {hasVariants && (
+            <div className="mt-6">
+              <VariantPicker
+                variants={variants}
+                productPrice={product.price}
+                currency={product.currency}
+                onVariantChange={setSelectedVariant}
+              />
+            </div>
+          )}
+
           <div className="mt-8">
             <AddToCartButton
               product={{
                 id: product.id,
                 name: product.name,
                 slug: product.slug,
-                price: product.price,
+                price: effectivePrice,
               }}
-              disabled={!inStock}
+              variantId={selectedVariant?.id}
+              disabled={!canAddToCart}
             />
           </div>
 

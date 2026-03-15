@@ -16,6 +16,8 @@ import {
   UserCog,
   Star,
   FileText,
+  CircleDollarSign,
+  Layers,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -35,10 +37,17 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/products', label: 'Products', icon: Package },
   { href: '/categories', label: 'Categories', icon: FolderTree },
+  { href: '/attributes', label: 'Attributes', icon: Layers },
   { href: '/orders', label: 'Orders', icon: ShoppingCart },
   { href: '/customers', label: 'Customers', icon: Users },
   { href: '/coupons', label: 'Coupons', icon: Tag, roles: ['admin', 'superadmin'] },
   { href: '/pages', label: 'Pages', icon: FileText },
+  {
+    href: '/currencies',
+    label: 'Currencies',
+    icon: CircleDollarSign,
+    roles: ['admin', 'superadmin'],
+  },
   { href: '/reviews', label: 'Reviews', icon: Star, roles: ['admin', 'superadmin'] },
   { href: '/plugins', label: 'Plugins', icon: Puzzle, roles: ['admin', 'superadmin'] },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'superadmin'] },

@@ -2,9 +2,9 @@
 
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
 import { useAuth } from '@/components/auth/auth-provider';
+import { useCurrency } from '@/components/currency/currency-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 import { StripePayment } from '@/components/checkout/stripe-payment';
 import { PrepaymentForm } from '@/components/checkout/prepayment-form';
@@ -67,6 +67,7 @@ function CheckoutPage() {
   const { items, subtotal, clearCart, serverCartId } = useCart();
   const { customer, token } = useAuth();
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
   const searchParams = useSearchParams();
   const cartIdFromUrl = searchParams.get('cartId');
   const [quickCartItems, setQuickCartItems] = useState<Array<{

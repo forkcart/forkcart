@@ -1,10 +1,10 @@
 'use client';
 
 import { LocaleLink } from '@/components/locale-link';
-import { formatPrice } from '@forkcart/shared';
 import type { Product } from '@forkcart/shared';
 import { WishlistButton } from './wishlist-button';
 import { StarRating } from './star-rating';
+import { useCurrency } from '@/components/currency/currency-provider';
 
 interface ProductWithImages extends Product {
   images?: Array<{ id: string; url: string; alt: string | null; sortOrder: number }>;
@@ -17,6 +17,7 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, averageRating, reviewCount }: ProductCardProps) {
+  const { formatPrice } = useCurrency();
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
   const mainImage = product.images?.sort((a, b) => a.sortOrder - b.sortOrder)[0];
 
@@ -63,11 +64,11 @@ export function ProductCard({ product, averageRating, reviewCount }: ProductCard
         )}
         <div className="mt-1.5 flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-900">
-            {formatPrice(product.price, product.currency)}
+            {formatPrice(product.price, product.currency ?? 'EUR')}
           </span>
           {hasDiscount && (
             <span className="text-xs text-gray-400 line-through">
-              {formatPrice(product.compareAtPrice!, product.currency)}
+              {formatPrice(product.compareAtPrice!, product.currency ?? 'EUR')}
             </span>
           )}
         </div>

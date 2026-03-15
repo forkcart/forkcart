@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { Trash2, Minus, Plus, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
 import { LocaleLink } from '@/components/locale-link';
-import { formatPrice } from '@forkcart/shared';
 import { useCart } from '@/components/cart/cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
+import { useCurrency } from '@/components/currency/currency-provider';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -19,6 +19,7 @@ interface CouponResult {
 export default function CartPage() {
   const { items, subtotal, updateQuantity, removeItem } = useCart();
   const { t } = useTranslation();
+  const { formatPrice } = useCurrency();
   const [couponCode, setCouponCode] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponResult, setCouponResult] = useState<CouponResult | null>(null);

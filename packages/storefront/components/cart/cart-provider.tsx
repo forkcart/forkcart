@@ -50,6 +50,7 @@ interface CartContextValue {
   addItem: (
     product: { id: string; name: string; slug: string; price: number; currency?: string },
     quantity?: number,
+    variantId?: string,
   ) => void;
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
@@ -149,16 +150,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     (
       product: { id: string; name: string; slug: string; price: number; currency?: string },
       quantity = 1,
+      variantId?: string,
     ) => {
       // Open cart drawer
       setCartOpen(true);
 
       // Optimistic local update
       setItems((prev) => {
-        const existing = prev.find((item) => item.productId === product.id);
+        const existing = prev.find(
+          (item) => item.productId === product.id && item.variantId === (variantId ?? null),
+        );
         if (existing) {
           return prev.map((item) =>
-            item.productId === product.id
+            item.productId === product.id && item.variantId === (variantId ?? null)
               ? {
                   ...item,
                   quantity: item.quantity + quantity,
@@ -170,7 +174,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const newItem: CartItem = {
           id: crypto.randomUUID(),
           productId: product.id,
-          variantId: null,
+          variantId: variantId ?? null,
           quantity,
           unitPrice: product.price,
           totalPrice: product.price * quantity,
@@ -186,7 +190,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           return fetch(`${API_URL}/api/v1/carts/${cartId}/items`, {
             method: 'POST',
             headers: apiHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ productId: product.id, quantity }),
+            body: JSON.stringify({ productId: product.id, quantity, variantId }),
           });
         })
         .then((res) => {

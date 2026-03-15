@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { CartProvider } from '@/components/cart/cart-provider';
 import { AuthProvider } from '@/components/auth/auth-provider';
+import { CurrencyProvider } from '@/components/currency/currency-provider';
 import { ChatWidget } from '@/components/chat/chat-widget';
 import { CartDrawer } from '@/components/cart/cart-drawer';
 import { I18nWrapper } from '@/components/i18n/i18n-provider-wrapper';
@@ -47,13 +48,15 @@ export default async function LocaleLayout({
   return (
     <I18nWrapper locale={locale}>
       <AuthProvider>
-        <CartProvider>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <CartDrawer />
-          <ChatWidget />
-        </CartProvider>
+        <CurrencyProvider>
+          <CartProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <CartDrawer />
+            <ChatWidget />
+          </CartProvider>
+        </CurrencyProvider>
       </AuthProvider>
     </I18nWrapper>
   );

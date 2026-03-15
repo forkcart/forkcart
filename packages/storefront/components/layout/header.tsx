@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth/auth-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 import { LocaleLink } from '@/components/locale-link';
 import { StorefrontLanguageSwitcher } from '@/components/i18n/language-switcher';
+import { CurrencySwitcher } from '@/components/currency/currency-switcher';
 import { SearchOverlay } from './search-overlay';
 
 export function Header() {
@@ -71,6 +72,7 @@ export function Header() {
                 </kbd>
               </button>
 
+              <CurrencySwitcher className="hidden rounded-md border bg-transparent px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 md:block" />
               <StorefrontLanguageSwitcher className="hidden rounded-md border bg-transparent px-2 py-1.5 text-xs text-gray-600 hover:bg-gray-100 md:block" />
 
               <LocaleLink
@@ -118,8 +120,9 @@ export function Header() {
               >
                 {t('nav.shop')}
               </LocaleLink>
-              <div className="pt-2">
-                <StorefrontLanguageSwitcher className="w-full rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
+              <div className="flex gap-2 pt-2">
+                <CurrencySwitcher className="flex-1 rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
+                <StorefrontLanguageSwitcher className="flex-1 rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
               </div>
             </nav>
           )}

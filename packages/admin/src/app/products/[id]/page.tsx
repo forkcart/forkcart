@@ -8,7 +8,9 @@ import { apiClient } from '@/lib/api-client';
 import type { Product } from '@forkcart/shared';
 import { ProductForm } from '@/components/products/product-form';
 import { ProductImages } from '@/components/products/product-images';
+import { ProductVariants } from '@/components/products/product-variants';
 import { ProductTranslations } from '@/components/products/product-translations';
+import { ProductCurrencyPrices } from '@/components/products/product-currency-prices';
 
 interface LanguageInfo {
   locale: string;
@@ -160,6 +162,12 @@ export default function ProductDetailPage() {
 
         {/* Product Images — only show for existing products */}
         {!isNew && <ProductImages productId={id} />}
+
+        {/* Product Variants — only show for existing products */}
+        {!isNew && <ProductVariants productId={id} />}
+
+        {/* Product Currency Prices — only show for existing products */}
+        {!isNew && <ProductCurrencyPrices productId={id} />}
 
         {/* Product Translations — only show for existing products */}
         {!isNew && <ProductTranslations productId={id} product={data?.data} />}
