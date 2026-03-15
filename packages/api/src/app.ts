@@ -499,5 +499,28 @@ export async function createApp(db: Database) {
   // 404 fallback
   app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
 
+  // ─── Scheduled exchange rate updates (every 6 hours) ────────────────────────
+  const SIX_HOURS = 6 * 60 * 60 * 1000;
+  setInterval(async () => {
+    try {
+      const hasAuto = await currencyService.hasAutoUpdateCurrencies();
+      if (!hasAuto) return;
+
+      console.log('[exchange-rates] Refreshing auto-update currencies...');
+      const results = await currencyService.refreshRates();
+      const updated = results.filter((r) => r.updated);
+      if (updated.length > 0) {
+        console.log(
+          `[exchange-rates] Updated ${updated.length} currencies:`,
+          updated.map((r) => `${r.code}: ${r.oldRate} → ${r.newRate}`).join(', '),
+        );
+      } else {
+        console.log('[exchange-rates] No currencies needed updating.');
+      }
+    } catch (err) {
+      console.error('[exchange-rates] Failed to refresh rates:', err);
+    }
+  }, SIX_HOURS);
+
   return app;
 }

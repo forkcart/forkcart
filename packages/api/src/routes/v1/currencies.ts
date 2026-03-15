@@ -20,6 +20,7 @@ const UpdateCurrencySchema = z.object({
   isDefault: z.boolean().optional(),
   isActive: z.boolean().optional(),
   exchangeRate: z.number().int().min(1).optional(),
+  autoUpdate: z.boolean().optional(),
 });
 
 const UpsertProductPriceSchema = z.object({
@@ -67,6 +68,21 @@ export function createCurrencyRoutes(currencyService: CurrencyService) {
     const body = await c.req.json();
     const { exchangeRate } = z.object({ exchangeRate: z.number().int().min(1) }).parse(body);
     const data = await currencyService.updateExchangeRate(code, exchangeRate);
+    return c.json({ data });
+  });
+
+  /** Refresh exchange rates for auto-update currencies (admin + superadmin only) */
+  router.post('/refresh-rates', requireRole('admin', 'superadmin'), async (c) => {
+    const results = await currencyService.refreshRates();
+    return c.json({ data: results });
+  });
+
+  /** Toggle auto-update for a currency (admin + superadmin only) */
+  router.put('/:code/auto-update', requireRole('admin', 'superadmin'), async (c) => {
+    const code = c.req.param('code')!;
+    const body = await c.req.json();
+    const { enabled } = z.object({ enabled: z.boolean() }).parse(body);
+    const data = await currencyService.setAutoUpdate(code, enabled);
     return c.json({ data });
   });
 

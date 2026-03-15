@@ -1,4 +1,5 @@
 import type { CurrencyRepository } from './repository';
+import { fetchLatestRates } from './rate-fetcher';
 
 export class CurrencyService {
   constructor(private deps: { currencyRepository: CurrencyRepository }) {}
@@ -45,6 +46,7 @@ export class CurrencyService {
       isDefault: boolean;
       isActive: boolean;
       exchangeRate: number;
+      autoUpdate: boolean;
     }>,
   ) {
     if (data.isDefault) {
@@ -146,5 +148,67 @@ export class CurrencyService {
     if (!from || !to) return amount;
 
     return Math.round((amount * to.exchangeRate) / from.exchangeRate);
+  }
+
+  // ─── Auto-Update Exchange Rates ─────────────────────────────────────────────
+
+  /** Toggle auto-update for a currency */
+  async setAutoUpdate(code: string, enabled: boolean) {
+    const currency = await this.deps.currencyRepository.findByCode(code);
+    if (!currency) throw new Error(`Currency ${code} not found`);
+    if (currency.isDefault) throw new Error('Cannot enable auto-update for the default currency');
+    return this.deps.currencyRepository.update(code, { autoUpdate: enabled });
+  }
+
+  /**
+   * Refresh exchange rates for all currencies with autoUpdate=true.
+   * Returns a list of updated currencies with old and new rates.
+   */
+  async refreshRates(): Promise<
+    Array<{ code: string; oldRate: number; newRate: number; updated: boolean }>
+  > {
+    const autoUpdateCurrencies = await this.deps.currencyRepository.findAutoUpdate();
+    if (autoUpdateCurrencies.length === 0) return [];
+
+    // Find the default (base) currency
+    const defaultCurrency = await this.deps.currencyRepository.findDefault();
+    const baseCurrencyCode = defaultCurrency?.code ?? 'EUR';
+
+    // Fetch latest rates from external API
+    const rates = await fetchLatestRates(baseCurrencyCode);
+
+    const results: Array<{ code: string; oldRate: number; newRate: number; updated: boolean }> = [];
+
+    for (const currency of autoUpdateCurrencies) {
+      const apiRate = rates[currency.code];
+      if (apiRate == null) {
+        results.push({
+          code: currency.code,
+          oldRate: currency.exchangeRate,
+          newRate: currency.exchangeRate,
+          updated: false,
+        });
+        continue;
+      }
+
+      // Convert float rate to our integer format (rate * 100000)
+      const newRate = Math.round(apiRate * 100000);
+      const oldRate = currency.exchangeRate;
+
+      await this.deps.currencyRepository.update(currency.code, {
+        exchangeRate: newRate,
+        lastRateUpdate: new Date(),
+      });
+
+      results.push({ code: currency.code, oldRate, newRate, updated: true });
+    }
+
+    return results;
+  }
+
+  /** Check if any currency has auto-update enabled */
+  async hasAutoUpdateCurrencies(): Promise<boolean> {
+    const list = await this.deps.currencyRepository.findAutoUpdate();
+    return list.length > 0;
   }
 }

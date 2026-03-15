@@ -68,6 +68,8 @@ export class CurrencyRepository {
       isDefault: boolean;
       isActive: boolean;
       exchangeRate: number;
+      autoUpdate: boolean;
+      lastRateUpdate: Date;
     }>,
   ) {
     const rows = await this.db
@@ -76,6 +78,14 @@ export class CurrencyRepository {
       .where(eq(currencies.code, code.toUpperCase()))
       .returning();
     return rows[0] ?? null;
+  }
+
+  async findAutoUpdate() {
+    return this.db
+      .select()
+      .from(currencies)
+      .where(eq(currencies.autoUpdate, true))
+      .orderBy(currencies.code);
   }
 
   async delete(code: string) {
