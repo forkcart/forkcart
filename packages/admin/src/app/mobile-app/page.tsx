@@ -1,20 +1,27 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { apiClient } from '@/lib/api-client';
 import {
   Smartphone,
   Download,
-  Rocket,
   Loader2,
   CheckCircle2,
   Code2,
-  Zap,
   Copy,
   Palette,
+  Package,
+  Settings2,
+  Sparkles,
+  Apple,
+  MonitorSmartphone,
+  RotateCcw,
+  ImageIcon,
 } from 'lucide-react';
+
+/* ─── Types ───────────────────────────────────────────────────────────────── */
 
 interface MobileAppConfig {
   id?: string;
@@ -54,18 +61,38 @@ const DEFAULT_CONFIG: MobileAppConfig = {
   lastBuildAt: null,
 };
 
+type BuildStep = 'idle' | 'saving' | 'generating' | 'packaging' | 'done' | 'error';
+
+const BUILD_STEPS: { key: BuildStep; label: string; icon: typeof Settings2 }[] = [
+  { key: 'saving', label: 'Saving configuration', icon: Settings2 },
+  { key: 'generating', label: 'Generating project', icon: Code2 },
+  { key: 'packaging', label: 'Packaging app', icon: Package },
+  { key: 'done', label: 'Ready to download', icon: CheckCircle2 },
+];
+
+/* ─── Main Page ───────────────────────────────────────────────────────────── */
+
 export default function MobileAppPage() {
   const [config, setConfig] = useState<MobileAppConfig>(DEFAULT_CONFIG);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [generating, setGenerating] = useState(false);
-  const [building, setBuilding] = useState(false);
-  const [buildStatus, setBuildStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  // Build flow
+  const [buildStep, setBuildStep] = useState<BuildStep>('idle');
+  const [buildError, setBuildError] = useState<string | null>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Active tab
+  const [activeTab, setActiveTab] = useState<'config' | 'build' | 'developer'>('config');
+
   useEffect(() => {
     loadConfig();
+    return () => {
+      // Cleanup blob URL on unmount
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+    };
   }, []);
 
   async function loadConfig() {
@@ -73,7 +100,9 @@ export default function MobileAppPage() {
       const res = await apiClient<{ data: MobileAppConfig | null }>('/mobile-app/config');
       if (res.data) {
         setConfig(res.data);
-        setBuildStatus(res.data.lastBuildStatus);
+        if (res.data.lastBuildStatus === 'ready') {
+          setBuildStep('done');
+        }
       }
     } catch {
       // Config doesn't exist yet — use defaults
@@ -108,20 +137,34 @@ export default function MobileAppPage() {
       setConfig(res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
+      return false;
     } finally {
       setSaving(false);
     }
   }
 
-  async function handleGenerate() {
-    setGenerating(true);
-    setError(null);
-    try {
-      // Save config first
-      await saveConfig();
+  async function handleBuild() {
+    setBuildError(null);
 
+    try {
+      // Step 1: Save config
+      setBuildStep('saving');
+      const ok = await saveConfig();
+      if (!ok) {
+        setBuildStep('error');
+        setBuildError('Failed to save configuration');
+        return;
+      }
+
+      // Step 2: Generate
+      setBuildStep('generating');
+      await new Promise((r) => setTimeout(r, 400)); // Brief pause for UX
+
+      // Step 3: Package (download ZIP)
+      setBuildStep('packaging');
       const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
       const token = typeof window !== 'undefined' ? localStorage.getItem('forkcart_token') : null;
 
@@ -135,43 +178,43 @@ export default function MobileAppPage() {
       });
 
       if (!res.ok) {
-        const err = (await res.json().catch(() => ({}))) as {
-          error?: { message?: string };
-        };
-        throw new Error(err.error?.message ?? `Failed to generate: ${res.status}`);
+        const err = (await res.json().catch(() => ({}))) as { error?: { message?: string } };
+        throw new Error(err.error?.message ?? `Build failed: ${res.status}`);
       }
 
-      // Download the ZIP
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'forkcart-mobile.zip';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+
+      // Cleanup previous blob URL
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = URL.createObjectURL(blob);
+
+      // Update build status on server
+      await apiClient('/mobile-app/build', { method: 'POST' }).catch(() => {});
+
+      // Step 4: Done!
+      setBuildStep('done');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate project');
-    } finally {
-      setGenerating(false);
+      setBuildStep('error');
+      setBuildError(err instanceof Error ? err.message : 'Build failed');
     }
   }
 
-  async function handleBuild() {
-    setBuilding(true);
-    setError(null);
-    try {
-      await saveConfig();
-      const res = await apiClient<{ data: { status: string; message: string } }>(
-        '/mobile-app/build',
-        { method: 'POST' },
-      );
-      setBuildStatus(res.data.status);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to trigger build');
-    } finally {
-      setBuilding(false);
+  function handleDownload() {
+    if (!blobUrlRef.current) return;
+    const a = document.createElement('a');
+    a.href = blobUrlRef.current;
+    a.download = `${config.appSlug || 'forkcart-mobile'}.zip`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  function resetBuild() {
+    setBuildStep('idle');
+    setBuildError(null);
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = null;
     }
   }
 
@@ -182,267 +225,542 @@ export default function MobileAppPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 p-6">
+    <div className="mx-auto max-w-7xl space-y-6 p-6">
       {/* Header */}
-      <div className="text-center">
-        <div className="mb-2 inline-flex items-center gap-3 rounded-full bg-gradient-to-r from-violet-500/10 to-orange-500/10 px-6 py-2">
-          <Smartphone className="h-5 w-5 text-violet-500" />
-          <span className="text-sm font-medium text-violet-600">App Builder</span>
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-orange-500 text-white shadow-lg">
+            <Smartphone className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Mobile App</h1>
+            <p className="text-sm text-muted-foreground">
+              Build a native mobile app for your store
+            </p>
+          </div>
         </div>
-        <h1 className="text-4xl font-bold tracking-tight">📱 Mobile App Builder</h1>
-        <p className="mt-2 text-lg text-muted-foreground">
-          Create your store&apos;s mobile app in minutes
-        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-lg border bg-muted/50 p-1">
+        {[
+          { key: 'config' as const, label: 'Configure', icon: Palette },
+          { key: 'build' as const, label: 'Build', icon: Package },
+          { key: 'developer' as const, label: 'Developer', icon: Code2 },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setActiveTab(key)}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
+              activeTab === key
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Icon className="h-4 w-4" />
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
           {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Left Column — Configuration */}
+        {/* Left Column */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Config Form */}
-          <div className="rounded-xl border bg-card p-6 shadow-sm">
-            <div className="mb-6 flex items-center gap-2">
-              <Palette className="h-5 w-5 text-violet-500" />
-              <h2 className="text-lg font-semibold">App Configuration</h2>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="appName">App Name</Label>
-                <Input
-                  id="appName"
-                  value={config.appName}
-                  onChange={(e) => updateField('appName', e.target.value)}
-                  placeholder="My Store"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="appSlug">App Slug</Label>
-                <Input
-                  id="appSlug"
-                  value={config.appSlug}
-                  onChange={(e) =>
-                    updateField('appSlug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))
-                  }
-                  placeholder="my-store"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="apiUrl">API URL</Label>
-                <Input
-                  id="apiUrl"
-                  value={config.apiUrl}
-                  onChange={(e) => updateField('apiUrl', e.target.value)}
-                  placeholder="https://api.mystore.com"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bundleId">iOS Bundle ID (optional)</Label>
-                <Input
-                  id="bundleId"
-                  value={config.bundleId ?? ''}
-                  onChange={(e) => updateField('bundleId', e.target.value || null)}
-                  placeholder="com.mystore.app"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="androidPackage">Android Package (optional)</Label>
-                <Input
-                  id="androidPackage"
-                  value={config.androidPackage ?? ''}
-                  onChange={(e) => updateField('androidPackage', e.target.value || null)}
-                  placeholder="com.mystore.app"
-                />
-              </div>
-            </div>
-
-            {/* Color Pickers */}
-            <div className="mt-6 grid grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="primaryColor">Primary Color</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    id="primaryColor"
-                    value={config.primaryColor}
-                    onChange={(e) => updateField('primaryColor', e.target.value)}
-                    className="h-10 w-14 cursor-pointer rounded-lg border-2 border-border"
-                  />
-                  <Input
-                    value={config.primaryColor}
-                    onChange={(e) => updateField('primaryColor', e.target.value)}
-                    className="w-28 font-mono text-sm"
-                  />
+          {/* ─── Configure Tab ─────────────────────────── */}
+          {activeTab === 'config' && (
+            <>
+              {/* Basic Info */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-semibold">General</h2>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="appName">App Name</Label>
+                    <Input
+                      id="appName"
+                      value={config.appName}
+                      onChange={(e) => updateField('appName', e.target.value)}
+                      placeholder="My Store"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="appSlug">Slug</Label>
+                    <Input
+                      id="appSlug"
+                      value={config.appSlug}
+                      onChange={(e) =>
+                        updateField(
+                          'appSlug',
+                          e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+                        )
+                      }
+                      placeholder="my-store"
+                    />
+                  </div>
+                  <div className="space-y-1.5 md:col-span-2">
+                    <Label htmlFor="apiUrl">API URL</Label>
+                    <Input
+                      id="apiUrl"
+                      value={config.apiUrl}
+                      onChange={(e) => updateField('apiUrl', e.target.value)}
+                      placeholder="https://api.mystore.com"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Your ForkCart API endpoint. The app connects here for products, orders, etc.
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="accentColor">Accent Color</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    id="accentColor"
-                    value={config.accentColor}
-                    onChange={(e) => updateField('accentColor', e.target.value)}
-                    className="h-10 w-14 cursor-pointer rounded-lg border-2 border-border"
-                  />
-                  <Input
-                    value={config.accentColor}
-                    onChange={(e) => updateField('accentColor', e.target.value)}
-                    className="w-28 font-mono text-sm"
-                  />
+              {/* Branding */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-semibold">Branding</h2>
+
+                {/* Colors */}
+                <div className="grid grid-cols-3 gap-5">
+                  {[
+                    {
+                      id: 'primaryColor',
+                      label: 'Primary',
+                      value: config.primaryColor,
+                      field: 'primaryColor' as const,
+                    },
+                    {
+                      id: 'accentColor',
+                      label: 'Accent',
+                      value: config.accentColor,
+                      field: 'accentColor' as const,
+                    },
+                    {
+                      id: 'bgColor',
+                      label: 'Background',
+                      value: config.backgroundColor,
+                      field: 'backgroundColor' as const,
+                    },
+                  ].map(({ id, label, value, field }) => (
+                    <div key={id} className="space-y-1.5">
+                      <Label htmlFor={id}>{label}</Label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          id={id}
+                          value={value}
+                          onChange={(e) => updateField(field, e.target.value)}
+                          className="h-9 w-12 cursor-pointer rounded-lg border border-border bg-transparent"
+                        />
+                        <Input
+                          value={value}
+                          onChange={(e) => updateField(field, e.target.value)}
+                          className="w-full font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Icon & Splash placeholder */}
+                <div className="mt-5 grid grid-cols-2 gap-5">
+                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center">
+                    <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground/60">App Icon</p>
+                    <p className="text-xs text-muted-foreground/40">1024×1024 PNG</p>
+                    <button className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                      Upload
+                    </button>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/20 p-6 text-center">
+                    <ImageIcon className="mb-2 h-8 w-8 text-muted-foreground/40" />
+                    <p className="text-sm font-medium text-muted-foreground/60">Splash Screen</p>
+                    <p className="text-xs text-muted-foreground/40">1284×2778 PNG</p>
+                    <button className="mt-2 rounded-md bg-muted px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/80">
+                      Upload
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="bgColor">Background</Label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="color"
-                    id="bgColor"
-                    value={config.backgroundColor}
-                    onChange={(e) => updateField('backgroundColor', e.target.value)}
-                    className="h-10 w-14 cursor-pointer rounded-lg border-2 border-border"
-                  />
-                  <Input
-                    value={config.backgroundColor}
-                    onChange={(e) => updateField('backgroundColor', e.target.value)}
-                    className="w-28 font-mono text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Save Button */}
-            <div className="mt-6 flex justify-end">
-              <button
-                onClick={saveConfig}
-                disabled={saving}
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : saved ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : null}
-                {saved ? 'Saved!' : 'Save Configuration'}
-              </button>
-            </div>
-          </div>
-
-          {/* Two Mode Cards */}
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            {/* Quick Build Card */}
-            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-violet-50 to-orange-50 p-6 shadow-sm dark:from-violet-950/20 dark:to-orange-950/20">
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-violet-500/10 to-orange-500/10" />
-              <div className="relative">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-violet-100 px-3 py-1 text-sm font-medium text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
-                  <Zap className="h-3.5 w-3.5" />
-                  Quick Build
-                </div>
-                <h3 className="mb-1 text-lg font-semibold">🎯 Quick Build</h3>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  Get your app ready — no coding required
+              {/* Platform IDs */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-1 text-base font-semibold">Platform Settings</h2>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  Optional — needed for App Store / Play Store submissions
                 </p>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="bundleId" className="flex items-center gap-1.5">
+                      <Apple className="h-3.5 w-3.5" /> iOS Bundle ID
+                    </Label>
+                    <Input
+                      id="bundleId"
+                      value={config.bundleId ?? ''}
+                      onChange={(e) => updateField('bundleId', e.target.value || null)}
+                      placeholder="com.mystore.app"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="androidPackage" className="flex items-center gap-1.5">
+                      <MonitorSmartphone className="h-3.5 w-3.5" /> Android Package
+                    </Label>
+                    <Input
+                      id="androidPackage"
+                      value={config.androidPackage ?? ''}
+                      onChange={(e) => updateField('androidPackage', e.target.value || null)}
+                      placeholder="com.mystore.app"
+                    />
+                  </div>
+                </div>
+              </div>
 
+              {/* Save */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Changes are saved before each build automatically
+                </p>
                 <button
-                  onClick={handleBuild}
-                  disabled={building}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110 disabled:opacity-50"
+                  onClick={saveConfig}
+                  disabled={saving}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {building ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Rocket className="h-5 w-5" />
-                  )}
-                  {building ? 'Building...' : '🚀 Build My App'}
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : saved ? (
+                    <CheckCircle2 className="h-4 w-4" />
+                  ) : null}
+                  {saved ? 'Saved!' : 'Save'}
                 </button>
+              </div>
+            </>
+          )}
 
-                {buildStatus && (
-                  <div className="mt-4 rounded-lg border bg-white/60 p-3 text-sm dark:bg-white/5">
-                    {buildStatus === 'building' && (
-                      <div className="flex items-center gap-2 text-amber-600">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Cloud builds coming soon! For now, download the project and run{' '}
-                        <code className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-xs dark:bg-amber-900/30">
-                          eas build
-                        </code>
-                      </div>
-                    )}
-                    {buildStatus === 'ready' && (
-                      <div className="flex items-center gap-2 text-green-600">
-                        <CheckCircle2 className="h-4 w-4" />
-                        Build ready!
-                      </div>
+          {/* ─── Build Tab ─────────────────────────────── */}
+          {activeTab === 'build' && (
+            <div className="space-y-6">
+              {/* Build Progress Card */}
+              <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                <div className="border-b bg-gradient-to-r from-violet-500/5 to-orange-500/5 p-6">
+                  <h2 className="text-lg font-semibold">Build Your App</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Generate a ready-to-run Expo project with your branding and configuration
+                  </p>
+                </div>
+
+                {/* Steps */}
+                <div className="p-6">
+                  <div className="space-y-4">
+                    {BUILD_STEPS.map(({ key, label, icon: StepIcon }, idx) => {
+                      const stepIdx = BUILD_STEPS.findIndex((s) => s.key === buildStep);
+                      const currentIdx = BUILD_STEPS.findIndex((s) => s.key === key);
+                      const isActive = buildStep === key;
+                      const isComplete =
+                        buildStep === 'done'
+                          ? true
+                          : stepIdx > currentIdx && buildStep !== 'idle' && buildStep !== 'error';
+
+                      return (
+                        <div key={key} className="flex items-center gap-4">
+                          {/* Step indicator */}
+                          <div
+                            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full transition-all ${
+                              isActive
+                                ? 'bg-violet-100 text-violet-600 ring-4 ring-violet-100/50 dark:bg-violet-900/30 dark:text-violet-400 dark:ring-violet-900/30'
+                                : isComplete
+                                  ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                                  : 'bg-muted text-muted-foreground/40'
+                            }`}
+                          >
+                            {isActive && buildStep !== 'done' ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : isComplete ? (
+                              <CheckCircle2 className="h-5 w-5" />
+                            ) : (
+                              <StepIcon className="h-5 w-5" />
+                            )}
+                          </div>
+
+                          {/* Step label */}
+                          <div className="flex-1">
+                            <p
+                              className={`text-sm font-medium ${
+                                isActive
+                                  ? 'text-foreground'
+                                  : isComplete
+                                    ? 'text-green-600 dark:text-green-400'
+                                    : 'text-muted-foreground/50'
+                              }`}
+                            >
+                              {label}
+                            </p>
+                          </div>
+
+                          {/* Connector line */}
+                          {idx < BUILD_STEPS.length - 1 && (
+                            <div
+                              className={`absolute ml-5 mt-14 h-4 w-px ${isComplete ? 'bg-green-300' : 'bg-border'}`}
+                            />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Error state */}
+                  {buildStep === 'error' && buildError && (
+                    <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-400">
+                      {buildError}
+                    </div>
+                  )}
+
+                  {/* Action buttons */}
+                  <div className="mt-6 flex gap-3">
+                    {buildStep === 'idle' || buildStep === 'error' ? (
+                      <button
+                        onClick={handleBuild}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-violet-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110"
+                      >
+                        <Sparkles className="h-5 w-5" />
+                        Build My App
+                      </button>
+                    ) : buildStep === 'done' ? (
+                      <>
+                        <button
+                          onClick={handleDownload}
+                          className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:shadow-xl hover:brightness-110"
+                        >
+                          <Download className="h-5 w-5" />
+                          Download Project
+                        </button>
+                        <button
+                          onClick={resetBuild}
+                          className="inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                          Rebuild
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        disabled
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted px-6 py-3 text-sm font-medium text-muted-foreground"
+                      >
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                        Building...
+                      </button>
                     )}
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Developer Mode Card */}
-            <div className="relative overflow-hidden rounded-xl border bg-gradient-to-br from-slate-50 to-sky-50 p-6 shadow-sm dark:from-slate-950/20 dark:to-sky-950/20">
-              <div className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-gradient-to-br from-slate-500/10 to-sky-500/10" />
-              <div className="relative">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
-                  <Code2 className="h-3.5 w-3.5" />
-                  Developer
                 </div>
-                <h3 className="mb-1 text-lg font-semibold">🔧 Developer Mode</h3>
-                <p className="mb-6 text-sm text-muted-foreground">
-                  Download the full Expo project and customize everything
-                </p>
+              </div>
 
-                <button
-                  onClick={handleGenerate}
-                  disabled={generating}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:bg-slate-800 hover:shadow-xl disabled:opacity-50 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
-                >
-                  {generating ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Download className="h-5 w-5" />
-                  )}
-                  {generating ? 'Generating...' : '📦 Download Project (ZIP)'}
-                </button>
-
-                {/* Quick Start */}
-                <div className="mt-4 rounded-lg border bg-white/60 p-3 dark:bg-white/5">
-                  <p className="mb-2 text-xs font-medium text-muted-foreground">Quick Start:</p>
-                  <div className="space-y-1">
+              {/* What's included */}
+              {buildStep === 'done' && (
+                <div className="rounded-xl border bg-card p-6 shadow-sm">
+                  <h3 className="mb-3 text-base font-semibold">What&apos;s in your build</h3>
+                  <div className="grid grid-cols-2 gap-3">
                     {[
-                      'unzip forkcart-mobile.zip',
-                      'cd forkcart-mobile && npm install',
-                      'npx expo start',
-                    ].map((cmd, i) => (
-                      <button
-                        key={i}
-                        onClick={() => copyCommand(cmd)}
-                        className="flex w-full items-center gap-2 rounded bg-slate-100 px-2.5 py-1.5 text-left font-mono text-xs transition-colors hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700"
+                      {
+                        icon: '🏠',
+                        label: 'Home Screen',
+                        desc: 'Categories, featured, new arrivals',
+                      },
+                      { icon: '🔍', label: 'Product Search', desc: 'Instant search with filters' },
+                      { icon: '🛒', label: 'Shopping Cart', desc: 'Add, edit, coupon codes' },
+                      {
+                        icon: '💳',
+                        label: 'Checkout',
+                        desc: 'Address, payment, order confirmation',
+                      },
+                      { icon: '👤', label: 'User Account', desc: 'Login, register, order history' },
+                      { icon: '❤️', label: 'Wishlist', desc: 'Save favorite products' },
+                      { icon: '⭐', label: 'Reviews', desc: 'Product ratings and reviews' },
+                      { icon: '🎨', label: 'Your Branding', desc: 'Colors, name, icon applied' },
+                    ].map(({ icon, label, desc }) => (
+                      <div
+                        key={label}
+                        className="flex items-start gap-3 rounded-lg border bg-muted/30 p-3"
                       >
-                        <span className="text-muted-foreground">{i + 1}.</span>
-                        <span className="flex-1">{cmd}</span>
-                        <Copy className="h-3 w-3 text-muted-foreground" />
-                      </button>
+                        <span className="text-lg">{icon}</span>
+                        <div>
+                          <p className="text-sm font-medium">{label}</p>
+                          <p className="text-xs text-muted-foreground">{desc}</p>
+                        </div>
+                      </div>
                     ))}
                   </div>
-                  {copied && <p className="mt-1.5 text-xs text-green-600">Copied to clipboard!</p>}
+                </div>
+              )}
+
+              {/* Next steps after build */}
+              {buildStep === 'done' && (
+                <div className="rounded-xl border bg-gradient-to-br from-violet-50 to-orange-50 p-6 shadow-sm dark:from-violet-950/20 dark:to-orange-950/20">
+                  <h3 className="mb-3 text-base font-semibold">Next Steps</h3>
+                  <div className="space-y-3">
+                    {[
+                      {
+                        step: 1,
+                        text: 'Unzip the downloaded file',
+                        cmd: `unzip ${config.appSlug || 'forkcart-mobile'}.zip`,
+                      },
+                      {
+                        step: 2,
+                        text: 'Install dependencies',
+                        cmd: `cd forkcart-mobile && npm install`,
+                      },
+                      {
+                        step: 3,
+                        text: 'Start the development server',
+                        cmd: 'npx expo start',
+                      },
+                      {
+                        step: 4,
+                        text: 'Scan the QR code with Expo Go on your phone',
+                        cmd: null,
+                      },
+                    ].map(({ step, text, cmd }) => (
+                      <div key={step} className="flex items-start gap-3">
+                        <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-600 dark:bg-violet-900/40 dark:text-violet-400">
+                          {step}
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm">{text}</p>
+                          {cmd && (
+                            <button
+                              onClick={() => copyCommand(cmd)}
+                              className="mt-1 flex items-center gap-2 rounded bg-white/80 px-2.5 py-1 font-mono text-xs text-muted-foreground transition-colors hover:bg-white dark:bg-black/20 dark:hover:bg-black/30"
+                            >
+                              <span className="flex-1 text-left">{cmd}</span>
+                              <Copy className="h-3 w-3 flex-shrink-0" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                    {copied && (
+                      <p className="text-xs font-medium text-green-600">Copied to clipboard!</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ─── Developer Tab ─────────────────────────── */}
+          {activeTab === 'developer' && (
+            <div className="space-y-6">
+              {/* Direct Download */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-1 text-lg font-semibold">Download Source</h2>
+                <p className="mb-4 text-sm text-muted-foreground">
+                  Download the full Expo project as a ZIP. Customize anything — components, screens,
+                  API integration, navigation.
+                </p>
+                <button
+                  onClick={async () => {
+                    setActiveTab('build');
+                    await handleBuild();
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-100 dark:text-slate-900 dark:hover:bg-slate-200"
+                >
+                  <Download className="h-4 w-4" />
+                  Generate &amp; Download ZIP
+                </button>
+              </div>
+
+              {/* Tech Stack */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-semibold">Tech Stack</h2>
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+                  {[
+                    { name: 'Expo SDK 52', desc: 'React Native framework' },
+                    { name: 'Expo Router', desc: 'File-based routing' },
+                    { name: 'TypeScript', desc: 'Type-safe code' },
+                    { name: 'SecureStore', desc: 'Token persistence' },
+                    { name: 'Context API', desc: 'State management' },
+                    { name: 'StyleSheet', desc: 'No external UI libs' },
+                  ].map(({ name, desc }) => (
+                    <div key={name} className="rounded-lg border bg-muted/30 p-3">
+                      <p className="text-sm font-medium">{name}</p>
+                      <p className="text-xs text-muted-foreground">{desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Project Structure */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-semibold">Project Structure</h2>
+                <pre className="overflow-x-auto rounded-lg bg-slate-950 p-4 font-mono text-xs text-slate-300">
+                  {`forkcart-mobile/
+├── app/
+│   ├── (tabs)/          # Tab navigation
+│   │   ├── index.tsx    # Home screen
+│   │   ├── search.tsx   # Search
+│   │   ├── cart.tsx     # Shopping cart
+│   │   └── account.tsx  # User account
+│   ├── product/[slug]   # Product detail
+│   ├── category/[id]    # Category listing
+│   ├── checkout.tsx     # Checkout flow
+│   ├── orders/          # Order history
+│   ├── login.tsx        # Login
+│   └── register.tsx     # Registration
+├── components/          # Reusable components
+│   ├── ProductCard.tsx
+│   ├── VariantPicker.tsx
+│   ├── CartItem.tsx
+│   └── ui/              # Base UI components
+├── lib/
+│   ├── api.ts           # API client
+│   ├── auth.ts          # Auth context
+│   ├── cart.ts          # Cart context
+│   └── config.ts        # App config
+├── theme/               # Design tokens
+├── app.json             # ← Your config goes here
+└── theme.config.ts      # ← Generated from your settings`}
+                </pre>
+              </div>
+
+              {/* Quick Start */}
+              <div className="rounded-xl border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 text-base font-semibold">Quick Start</h2>
+                <div className="space-y-2">
+                  {[
+                    { cmd: 'unzip forkcart-mobile.zip && cd forkcart-mobile', label: 'Extract' },
+                    { cmd: 'npm install', label: 'Install' },
+                    { cmd: 'npx expo start', label: 'Start Dev Server' },
+                    { cmd: 'npx expo start --tunnel', label: 'Start with Tunnel (remote)' },
+                    {
+                      cmd: 'eas build --platform android --profile preview',
+                      label: 'Build APK (requires Expo account)',
+                    },
+                    {
+                      cmd: 'eas build --platform ios --profile preview',
+                      label: 'Build IPA (requires Apple Developer)',
+                    },
+                  ].map(({ cmd, label }) => (
+                    <div key={cmd} className="flex items-center gap-3">
+                      <button
+                        onClick={() => copyCommand(cmd)}
+                        className="flex flex-1 items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-left font-mono text-xs transition-colors hover:bg-muted"
+                      >
+                        <span className="flex-1">{cmd}</span>
+                        <Copy className="h-3.5 w-3.5 flex-shrink-0 text-muted-foreground" />
+                      </button>
+                      <span className="w-40 text-xs text-muted-foreground">{label}</span>
+                    </div>
+                  ))}
+                  {copied && (
+                    <p className="text-xs font-medium text-green-600">Copied to clipboard!</p>
+                  )}
                 </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Right Column — Phone Preview */}
+        {/* Right Column — Phone Preview (always visible) */}
         <div className="flex justify-center lg:justify-start">
           <PhonePreview config={config} />
         </div>
@@ -456,10 +774,11 @@ export default function MobileAppPage() {
 function PhonePreview({ config }: { config: MobileAppConfig }) {
   return (
     <div className="sticky top-6">
-      <p className="mb-3 text-center text-sm font-medium text-muted-foreground">Live Preview</p>
+      <p className="mb-3 text-center text-xs font-medium uppercase tracking-wider text-muted-foreground">
+        Live Preview
+      </p>
       {/* Phone Frame */}
       <div className="relative mx-auto w-[280px]">
-        {/* Outer frame */}
         <div className="rounded-[40px] border-[3px] border-slate-800 bg-slate-800 p-1.5 shadow-2xl dark:border-slate-600">
           {/* Notch */}
           <div className="absolute left-1/2 top-0 z-10 h-7 w-28 -translate-x-1/2 rounded-b-2xl bg-slate-800 dark:bg-slate-600" />
@@ -470,24 +789,18 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
             style={{ backgroundColor: config.backgroundColor }}
           >
             {/* Status Bar */}
-            <div
-              className="flex items-center justify-between px-6 pb-1 pt-8 text-[10px] font-medium"
-              style={{
-                color: getContrastColor(config.primaryColor) === '#ffffff' ? '#fff' : '#000',
-              }}
-            >
+            <div className="flex items-center justify-between px-6 pb-1 pt-8 text-[10px] font-medium text-slate-500">
               <span>9:41</span>
               <div className="flex items-center gap-1">
-                <div className="h-2 w-3.5 rounded-sm border border-current opacity-80" />
+                <div className="h-2 w-3.5 rounded-sm border border-current opacity-60" />
               </div>
             </div>
 
             {/* App Header */}
             <div className="px-4 py-3" style={{ backgroundColor: config.primaryColor }}>
               <div className="flex items-center gap-3">
-                {/* App Icon */}
                 <div
-                  className="flex h-9 w-9 items-center justify-center rounded-xl text-base shadow-sm"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg text-sm shadow-sm"
                   style={{
                     backgroundColor: config.accentColor,
                     color: getContrastColor(config.accentColor),
@@ -503,7 +816,7 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
                     {config.appName || 'My Store'}
                   </p>
                   <p
-                    className="text-[10px] opacity-70"
+                    className="text-[10px] opacity-60"
                     style={{ color: getContrastColor(config.primaryColor) }}
                   >
                     Welcome back!
@@ -513,9 +826,9 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
             </div>
 
             {/* Search Bar */}
-            <div className="px-4 py-3">
+            <div className="px-4 py-2.5">
               <div
-                className="flex items-center gap-2 rounded-full px-4 py-2"
+                className="flex items-center gap-2 rounded-full px-3 py-1.5"
                 style={{
                   backgroundColor:
                     config.backgroundColor === '#FFFFFF'
@@ -523,32 +836,32 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
                       : adjustBrightness(config.backgroundColor, 20),
                 }}
               >
-                <span className="text-xs text-slate-400">🔍 Search products...</span>
+                <span className="text-[10px] text-slate-400">🔍 Search products...</span>
               </div>
             </div>
 
             {/* Featured Banner */}
             <div className="px-4">
               <div
-                className="rounded-xl p-4"
+                className="rounded-lg p-3"
                 style={{
                   background: `linear-gradient(135deg, ${config.primaryColor}, ${config.accentColor})`,
                 }}
               >
                 <p
-                  className="text-xs font-bold"
+                  className="text-[10px] font-bold"
                   style={{ color: getContrastColor(config.primaryColor) }}
                 >
                   🔥 New Arrivals
                 </p>
                 <p
-                  className="mt-0.5 text-[10px] opacity-80"
+                  className="mt-0.5 text-[8px] opacity-70"
                   style={{ color: getContrastColor(config.primaryColor) }}
                 >
                   Check out our latest collection
                 </p>
                 <div
-                  className="mt-2 inline-block rounded-full px-3 py-1 text-[10px] font-semibold"
+                  className="mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[8px] font-semibold"
                   style={{
                     backgroundColor: getContrastColor(config.primaryColor),
                     color: config.primaryColor,
@@ -560,9 +873,9 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
             </div>
 
             {/* Product Grid */}
-            <div className="px-4 py-3">
+            <div className="px-4 py-2.5">
               <p
-                className="mb-2 text-xs font-semibold"
+                className="mb-1.5 text-[10px] font-semibold"
                 style={{
                   color:
                     config.backgroundColor === '#FFFFFF'
@@ -572,11 +885,11 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
               >
                 Popular Products
               </p>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
-                    className="rounded-lg border p-2"
+                    className="rounded-md border p-1.5"
                     style={{
                       borderColor:
                         config.backgroundColor === '#FFFFFF'
@@ -585,7 +898,7 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
                     }}
                   >
                     <div
-                      className="mb-1.5 h-16 rounded-md"
+                      className="mb-1 h-14 rounded"
                       style={{
                         backgroundColor:
                           config.backgroundColor === '#FFFFFF'
@@ -594,7 +907,7 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
                       }}
                     />
                     <div
-                      className="mb-0.5 h-2 w-3/4 rounded"
+                      className="mb-0.5 h-1.5 w-3/4 rounded"
                       style={{
                         backgroundColor:
                           config.backgroundColor === '#FFFFFF'
@@ -603,11 +916,11 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
                       }}
                     />
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-bold" style={{ color: config.accentColor }}>
+                      <span className="text-[9px] font-bold" style={{ color: config.accentColor }}>
                         $29.99
                       </span>
                       <div
-                        className="flex h-5 w-5 items-center justify-center rounded-full text-[8px]"
+                        className="flex h-4 w-4 items-center justify-center rounded-full text-[7px]"
                         style={{
                           backgroundColor: config.accentColor,
                           color: getContrastColor(config.accentColor),
@@ -623,24 +936,17 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
 
             {/* Bottom Nav */}
             <div
-              className="flex items-center justify-around border-t px-2 py-2"
+              className="flex items-center justify-around border-t px-2 py-1.5"
               style={{
                 borderColor:
                   config.backgroundColor === '#FFFFFF'
                     ? '#e2e8f0'
                     : adjustBrightness(config.backgroundColor, 30),
-                backgroundColor: config.backgroundColor,
               }}
             >
               {['🏠', '🔍', '🛒', '❤️', '👤'].map((icon, i) => (
-                <div
-                  key={i}
-                  className="flex flex-col items-center gap-0.5 rounded-lg px-2 py-1"
-                  style={{
-                    color: i === 0 ? config.accentColor : '#94a3b8',
-                  }}
-                >
-                  <span className="text-sm">{icon}</span>
+                <div key={i} className="flex flex-col items-center gap-0.5 px-2 py-0.5">
+                  <span className="text-xs">{icon}</span>
                   <div
                     className="h-0.5 w-3 rounded-full"
                     style={{
@@ -652,8 +958,8 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
             </div>
 
             {/* Home indicator */}
-            <div className="flex justify-center pb-2 pt-1">
-              <div className="h-1 w-24 rounded-full bg-slate-300 dark:bg-slate-600" />
+            <div className="flex justify-center pb-1.5 pt-0.5">
+              <div className="h-1 w-20 rounded-full bg-slate-300 dark:bg-slate-600" />
             </div>
           </div>
         </div>
@@ -664,17 +970,14 @@ function PhonePreview({ config }: { config: MobileAppConfig }) {
 
 /* ─── Helpers ──────────────────────────────────────────────────────────────── */
 
-/** Get a contrasting text color (black or white) for a given background */
 function getContrastColor(hex: string): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
   const b = parseInt(hex.slice(5, 7), 16);
-  // YIQ formula
   const yiq = (r * 299 + g * 587 + b * 114) / 1000;
   return yiq >= 128 ? '#000000' : '#ffffff';
 }
 
-/** Adjust hex color brightness by a given amount (-255 to 255) */
 function adjustBrightness(hex: string, amount: number): string {
   const r = Math.max(0, Math.min(255, parseInt(hex.slice(1, 3), 16) + amount));
   const g = Math.max(0, Math.min(255, parseInt(hex.slice(3, 5), 16) + amount));

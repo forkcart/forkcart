@@ -47,20 +47,19 @@ export class MobileAppService {
     await cleanupGeneratedProject(zipPath);
   }
 
-  /** Trigger a cloud build (placeholder — sets status to "building") */
+  /** Mark a build as ready (called after ZIP generation on the frontend) */
   async triggerBuild(): Promise<{ status: string; message: string }> {
     const config = await this.repo.get();
     if (!config) {
       throw new Error('Mobile app not configured. Please save your config first.');
     }
 
-    // For now, just update the status — real EAS integration comes later
-    await this.repo.updateBuildStatus('building');
+    await this.repo.updateBuildStatus('ready');
 
-    logger.info({ appName: config.appName }, 'Build triggered (placeholder)');
+    logger.info({ appName: config.appName }, 'Build completed — project ready for download');
     return {
-      status: 'building',
-      message: 'Cloud builds coming soon! For now, download the project and run `eas build`.',
+      status: 'ready',
+      message: 'Your mobile app project is ready to download.',
     };
   }
 
