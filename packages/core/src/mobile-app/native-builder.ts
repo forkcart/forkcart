@@ -113,17 +113,29 @@ export async function buildAndroidApk(
     // 6. Build the APK with Gradle
     const androidDir = join(projectDir, 'android');
     logger.info({ buildId }, 'Building APK with Gradle');
-    await run('./gradlew', ['assembleRelease', '-x', 'lint', '--no-daemon', '-q'], {
-      cwd: androidDir,
-      timeout: 600_000, // 10 minutes
-      env: {
-        ...process.env,
-        ANDROID_HOME,
-        ANDROID_SDK_ROOT: ANDROID_HOME,
-        JAVA_HOME,
-        PATH: `${JAVA_HOME}/bin:${ANDROID_HOME}/platform-tools:${process.env['PATH']}`,
+    await run(
+      './gradlew',
+      [
+        'assembleRelease',
+        '-x',
+        'lint',
+        '--no-daemon',
+        '-q',
+        '-Pandroid.minSdkVersion=24',
+        '-PreactNativeArchitectures=arm64-v8a',
+      ],
+      {
+        cwd: androidDir,
+        timeout: 600_000, // 10 minutes
+        env: {
+          ...process.env,
+          ANDROID_HOME,
+          ANDROID_SDK_ROOT: ANDROID_HOME,
+          JAVA_HOME,
+          PATH: `${JAVA_HOME}/bin:${ANDROID_HOME}/platform-tools:${process.env['PATH']}`,
+        },
       },
-    });
+    );
 
     // 7. Find the APK
     const apkDir = join(androidDir, 'app', 'build', 'outputs', 'apk', 'release');
