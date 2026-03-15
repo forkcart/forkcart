@@ -97,25 +97,18 @@ export async function buildAndroidApk(
       gradleProps += '\nprefab.enableValidation=false\n';
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
-      // Replace CMakeLists.txt in native modules with a stub that builds
-      // an empty shared lib (no ReactAndroid link = no CXX1214)
-      const cmakeModules = ['react-native-screens', 'react-native-reanimated'];
-      for (const mod of cmakeModules) {
-        const cmakePath = join(projectDir, 'node_modules', mod, 'android', 'CMakeLists.txt');
+      // Disable prefab in native modules to avoid CXX1214 prefab validation
+      // CXX1214 happens because AGP's prefab validator checks minSdkVersion
+      // BEFORE cmake even runs. With newArch=false, prefab is not needed.
+      const prefabModules = ['react-native-screens', 'react-native-reanimated'];
+      for (const mod of prefabModules) {
+        const modGradlePath = join(projectDir, 'node_modules', mod, 'android', 'build.gradle');
         try {
-          const original = await readFile(cmakePath, 'utf-8');
-          const projMatch = original.match(/project\((\w+)\)/);
-          const projName = projMatch ? projMatch[1] : 'stub';
-          // Stub: creates a shared lib from an empty cpp file, no external deps
-          const stub = [
-            'cmake_minimum_required(VERSION 3.9.0)',
-            `project(${projName})`,
-            `file(WRITE \${CMAKE_CURRENT_BINARY_DIR}/stub.cpp "// stub")`,
-            `add_library(${projName} SHARED \${CMAKE_CURRENT_BINARY_DIR}/stub.cpp)`,
-            `set_target_properties(${projName} PROPERTIES CXX_STANDARD 20)`,
-          ].join('\n');
-          await writeFile(cmakePath, stub, 'utf-8');
-          logger.info({ buildId, mod }, 'Replaced CMakeLists.txt with stub');
+          let gradle = await readFile(modGradlePath, 'utf-8');
+          // Replace "prefab true" with "prefab false"
+          gradle = gradle.replace(/prefab\s+true/g, 'prefab false');
+          await writeFile(modGradlePath, gradle, 'utf-8');
+          logger.info({ buildId, mod }, 'Disabled prefab');
         } catch {
           // Module may not exist
         }
