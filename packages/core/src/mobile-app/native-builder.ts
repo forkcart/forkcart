@@ -100,6 +100,30 @@ export async function buildAndroidApk(
       if (!gradleProps.includes('android.ndkVersion')) {
         gradleProps += '\nandroid.ndkVersion=27.2.12479018\n';
       }
+      // Force ALL subprojects to use minSdkVersion 24 for CMake (fixes CXX1214)
+      const settingsGradlePath = join(projectDir, 'android', 'settings.gradle');
+      try {
+        let settingsGradle = await readFile(settingsGradlePath, 'utf-8');
+        settingsGradle += `
+// Force minSdkVersion 24 for all subprojects (fixes CXX1214 prefab validation)
+gradle.afterProject { project ->
+    if (project.hasProperty('android')) {
+        project.android {
+            if (it.hasProperty('defaultConfig')) {
+                it.defaultConfig {
+                    if (minSdkVersion.apiLevel < 24) {
+                        minSdkVersion 24
+                    }
+                }
+            }
+        }
+    }
+}
+`;
+        await writeFile(settingsGradlePath, settingsGradle, 'utf-8');
+      } catch {
+        // settings.gradle may not exist
+      }
       await writeFile(gradlePropsPath, gradleProps, 'utf-8');
 
       // Patch react-native-screens CMake args to include ANDROID_PLATFORM=android-24
