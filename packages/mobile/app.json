@@ -41,7 +41,7 @@
     ],
     "extra": {
       "forkcart": {
-        "apiUrl": "https://your-forkcart-api.com",
+        "apiUrl": "https://forkcart-api.heynyx.dev",
         "storeName": "My Store",
         "primaryColor": "#000000",
         "accentColor": "#FF6B00",

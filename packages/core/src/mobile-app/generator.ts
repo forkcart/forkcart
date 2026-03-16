@@ -67,13 +67,19 @@ export async function generateMobileProject(
     expo.name = config.appName;
     expo.slug = config.appSlug;
 
-    // Set extra config
+    // Set extra config — must be under `forkcart` key to match mobile lib/config.ts
     expo.extra = {
       ...(expo.extra ?? {}),
-      apiUrl: config.apiUrl,
-      primaryColor: config.primaryColor,
-      accentColor: config.accentColor,
-      backgroundColor: config.backgroundColor,
+      forkcart: {
+        ...(expo.extra?.forkcart ?? {}),
+        apiUrl: config.apiUrl,
+        storeName: config.appName,
+        primaryColor: config.primaryColor,
+        accentColor: config.accentColor,
+        backgroundColor: config.backgroundColor,
+        currency: 'EUR',
+        currencyLocale: 'de-DE',
+      },
     };
 
     // Set bundle identifiers if provided

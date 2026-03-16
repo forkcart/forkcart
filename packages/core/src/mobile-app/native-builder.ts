@@ -258,10 +258,16 @@ async function applyConfig(
 
   expo.extra = {
     ...(expo.extra ?? {}),
-    apiUrl: config.apiUrl,
-    primaryColor: config.primaryColor,
-    accentColor: config.accentColor,
-    backgroundColor: config.backgroundColor,
+    forkcart: {
+      ...(expo.extra?.forkcart ?? {}),
+      apiUrl: config.apiUrl,
+      storeName: config.appName,
+      primaryColor: config.primaryColor,
+      accentColor: config.accentColor,
+      backgroundColor: config.backgroundColor,
+      currency: 'EUR',
+      currencyLocale: 'de-DE',
+    },
   };
 
   // Android package name
