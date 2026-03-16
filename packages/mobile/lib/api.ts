@@ -62,10 +62,42 @@ export interface CartItem {
   productId: string;
   variantId?: string;
   name: string;
+  productName?: string;
   image?: string;
+  productImage?: string;
   price: number;
+  unitPrice?: number;
+  totalPrice?: number;
   quantity: number;
   variant?: ProductVariantOption[];
+}
+
+/** Normalize API cart item fields to mobile-expected shape */
+function normalizeCartItem(raw: Record<string, unknown>): CartItem {
+  return {
+    ...raw,
+    name: (raw.name ?? raw.productName ?? '') as string,
+    image: (raw.image ?? raw.productImage ?? undefined) as string | undefined,
+    price: (raw.price ?? raw.unitPrice ?? 0) as number,
+  } as CartItem;
+}
+
+/** Normalize cart response from API */
+function normalizeCart(raw: Record<string, unknown>): Cart {
+  const items = Array.isArray(raw.items)
+    ? raw.items.map((item: Record<string, unknown>) => normalizeCartItem(item))
+    : [];
+  const subtotal = (raw.subtotal ?? 0) as number;
+  return {
+    id: raw.id as string,
+    items,
+    subtotal,
+    shipping: (raw.shipping ?? 0) as number,
+    discount: (raw.discount ?? 0) as number,
+    total: (raw.total ?? subtotal) as number,
+    couponCode: raw.couponCode as string | undefined,
+    itemCount: (raw.itemCount ?? items.length) as number,
+  };
 }
 
 export interface Cart {
@@ -278,22 +310,36 @@ async function getOrCreateCartId(): Promise<string> {
 
 export async function getCart(): Promise<Cart> {
   const cartId = await getOrCreateCartId();
-  return api.get(`/api/v1/carts/${cartId}`);
+  const raw = await api.get<Record<string, unknown>>(`/api/v1/carts/${cartId}`);
+  return normalizeCart(raw);
 }
 
-export async function addToCart(productId: string, quantity: number, variantId?: string): Promise<Cart> {
+export async function addToCart(
+  productId: string,
+  quantity: number,
+  variantId?: string,
+): Promise<Cart> {
   const cartId = await getOrCreateCartId();
-  return api.post(`/api/v1/carts/${cartId}/items`, { productId, quantity, variantId });
+  const raw = await api.post<Record<string, unknown>>(`/api/v1/carts/${cartId}/items`, {
+    productId,
+    quantity,
+    variantId,
+  });
+  return normalizeCart(raw);
 }
 
 export async function updateCartItem(itemId: string, quantity: number): Promise<Cart> {
   const cartId = await getOrCreateCartId();
-  return api.put(`/api/v1/carts/${cartId}/items/${itemId}`, { quantity });
+  const raw = await api.put<Record<string, unknown>>(`/api/v1/carts/${cartId}/items/${itemId}`, {
+    quantity,
+  });
+  return normalizeCart(raw);
 }
 
 export async function removeCartItem(itemId: string): Promise<Cart> {
   const cartId = await getOrCreateCartId();
-  return api.delete(`/api/v1/carts/${cartId}/items/${itemId}`);
+  const raw = await api.delete<Record<string, unknown>>(`/api/v1/carts/${cartId}/items/${itemId}`);
+  return normalizeCart(raw);
 }
 
 export async function applyCoupon(code: string): Promise<Cart> {
