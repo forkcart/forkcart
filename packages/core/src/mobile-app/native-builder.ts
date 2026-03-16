@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { resolve, join } from 'node:path';
-import { mkdir, rm, readFile, writeFile, cp, readdir, stat, unlink } from 'node:fs/promises';
+import { mkdir, rm, readFile, writeFile, cp, readdir, stat } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createLogger } from '../lib/logger';
