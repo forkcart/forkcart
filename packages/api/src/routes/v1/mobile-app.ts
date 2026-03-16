@@ -1,7 +1,8 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createReadStream } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { stat, mkdir, cp } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import { Readable } from 'node:stream';
 import type { MobileAppService } from '@forkcart/core';
 
@@ -92,20 +93,24 @@ export function createMobileAppRoutes(mobileAppService: MobileAppService) {
     const result = await mobileAppService.buildNative(platform);
 
     try {
-      const fileStat = await stat(result.filePath);
-      const stream = createReadStream(result.filePath);
       const ext = platform === 'android' ? 'apk' : 'ipa';
+      const filename = `forkcart-mobile-${Date.now()}.${ext}`;
+      const destDir = resolve(process.cwd(), 'uploads', 'builds');
+      await mkdir(destDir, { recursive: true });
+      const destPath = resolve(destDir, filename);
+      await cp(result.filePath, destPath);
 
-      stream.on('end', () => {
-        mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
-      });
+      await mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
 
-      return new Response(Readable.toWeb(stream) as ReadableStream, {
-        status: 200,
-        headers: {
-          'Content-Type': 'application/vnd.android.package-archive',
-          'Content-Disposition': `attachment; filename="forkcart-mobile.${ext}"`,
-          'Content-Length': String(fileStat.size),
+      const fileStat = await stat(destPath);
+      const downloadUrl = `/uploads/builds/${filename}`;
+
+      return c.json({
+        data: {
+          downloadUrl,
+          filename,
+          size: fileStat.size,
+          platform,
         },
       });
     } catch (err) {

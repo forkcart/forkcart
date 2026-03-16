@@ -255,9 +255,10 @@ export default function MobileAppPage() {
       }
 
       setNativeBuildStep('signing');
-      const blob = await res.blob();
-      if (nativeBlobUrlRef.current) URL.revokeObjectURL(nativeBlobUrlRef.current);
-      nativeBlobUrlRef.current = URL.createObjectURL(blob);
+      const json = (await res.json()) as {
+        data: { downloadUrl: string; filename: string; size: number };
+      };
+      nativeBlobUrlRef.current = `${API_BASE}${json.data.downloadUrl}`;
 
       setNativeBuildStep('done');
     } catch (err) {
@@ -268,13 +269,7 @@ export default function MobileAppPage() {
 
   function handleNativeDownload() {
     if (!nativeBlobUrlRef.current) return;
-    const ext = selectedPlatform === 'ios' ? 'ipa' : 'apk';
-    const a = document.createElement('a');
-    a.href = nativeBlobUrlRef.current;
-    a.download = `${config.appSlug || 'forkcart-mobile'}.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    window.open(nativeBlobUrlRef.current, '_blank');
   }
 
   function resetNativeBuild() {
