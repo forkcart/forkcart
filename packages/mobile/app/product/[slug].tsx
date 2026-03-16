@@ -24,6 +24,21 @@ import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
+/** Strip HTML tags from text */
+function stripHtml(html: string | null | undefined): string {
+  if (!html) return '';
+  return html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export default function ProductDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const { addItem } = useCart();
@@ -150,7 +165,7 @@ export default function ProductDetailScreen() {
           {/* Description */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>Description</Text>
-            <Text style={styles.description}>{product.description}</Text>
+            <Text style={styles.description}>{stripHtml(product.description)}</Text>
           </View>
 
           {/* Reviews */}
@@ -202,7 +217,7 @@ export default function ProductDetailScreen() {
       <SafeAreaView edges={['bottom']} style={styles.bottomBar}>
         <Button title="♡" onPress={handleWishlist} variant="outline" style={styles.wishlistBtn} />
         <Button
-          title={`Add to Cart · ${new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format(currentPrice * quantity)}`}
+          title={`Add to Cart · ${new Intl.NumberFormat(undefined, { style: 'currency', currency: 'EUR' }).format((currentPrice * quantity) / 100)}`}
           onPress={handleAddToCart}
           loading={addingToCart}
           style={styles.addToCartBtn}

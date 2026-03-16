@@ -191,7 +191,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
+  const json = await res.json();
+  // ForkCart API wraps responses in { data: ... } — unwrap automatically
+  if (json && typeof json === 'object' && 'data' in json && !('pagination' in json)) {
+    return json.data as T;
+  }
+  return json as T;
 }
 
 export const api = {
@@ -241,29 +246,64 @@ export function getRelatedProducts(productId: string): Promise<Product[]> {
   return api.get(`/api/v1/products/${productId}/related`);
 }
 
-// Cart
-export function getCart(): Promise<Cart> {
-  return api.get('/api/v1/cart');
+// Cart — uses /carts/:id endpoints with persistent cart ID
+const CART_ID_KEY = 'forkcart_cart_id';
+const SESSION_ID_KEY = 'forkcart_session_id';
+
+async function getSessionId(): Promise<string> {
+  let sid = await SecureStore.getItemAsync(SESSION_ID_KEY);
+  if (!sid) {
+    sid = `mobile_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    await SecureStore.setItemAsync(SESSION_ID_KEY, sid);
+  }
+  return sid;
 }
 
-export function addToCart(productId: string, quantity: number, variantId?: string): Promise<Cart> {
-  return api.post('/api/v1/cart/items', { productId, quantity, variantId });
+async function getOrCreateCartId(): Promise<string> {
+  const stored = await SecureStore.getItemAsync(CART_ID_KEY);
+  if (stored) {
+    // Verify cart still exists
+    try {
+      await api.get(`/api/v1/carts/${stored}`);
+      return stored;
+    } catch {
+      // Cart expired/deleted, create new one
+    }
+  }
+  const sessionId = await getSessionId();
+  const cart: Cart = await api.post('/api/v1/carts', { sessionId });
+  await SecureStore.setItemAsync(CART_ID_KEY, cart.id);
+  return cart.id;
 }
 
-export function updateCartItem(itemId: string, quantity: number): Promise<Cart> {
-  return api.patch(`/api/v1/cart/items/${itemId}`, { quantity });
+export async function getCart(): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.get(`/api/v1/carts/${cartId}`);
 }
 
-export function removeCartItem(itemId: string): Promise<Cart> {
-  return api.delete(`/api/v1/cart/items/${itemId}`);
+export async function addToCart(productId: string, quantity: number, variantId?: string): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.post(`/api/v1/carts/${cartId}/items`, { productId, quantity, variantId });
 }
 
-export function applyCoupon(code: string): Promise<Cart> {
-  return api.post('/api/v1/cart/coupon', { code });
+export async function updateCartItem(itemId: string, quantity: number): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.put(`/api/v1/carts/${cartId}/items/${itemId}`, { quantity });
 }
 
-export function removeCoupon(): Promise<Cart> {
-  return api.delete('/api/v1/cart/coupon');
+export async function removeCartItem(itemId: string): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.delete(`/api/v1/carts/${cartId}/items/${itemId}`);
+}
+
+export async function applyCoupon(code: string): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.post(`/api/v1/carts/${cartId}/coupon`, { code });
+}
+
+export async function removeCoupon(): Promise<Cart> {
+  const cartId = await getOrCreateCartId();
+  return api.delete(`/api/v1/carts/${cartId}/coupon`);
 }
 
 // Auth
