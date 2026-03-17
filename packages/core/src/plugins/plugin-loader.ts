@@ -70,7 +70,13 @@ interface SdkPluginDefinition {
   hooks?: Record<string, (event: unknown, ctx: unknown) => void | Promise<void>>;
   filters?: Record<string, (data: unknown, ctx: unknown) => unknown | Promise<unknown>>;
   provider?: Record<string, unknown>;
-  adminPages?: Array<{ path: string; label: string; icon?: string; parent?: string; order?: number }>;
+  adminPages?: Array<{
+    path: string;
+    label: string;
+    icon?: string;
+    parent?: string;
+    order?: number;
+  }>;
   routes?: (router: unknown) => void;
   storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
   migrations?: Array<{
@@ -83,7 +89,13 @@ interface SdkPluginDefinition {
     name: string;
     description: string;
     args?: Array<{ name: string; description: string; required?: boolean }>;
-    options?: Array<{ name: string; alias?: string; description: string; type: string; default?: unknown }>;
+    options?: Array<{
+      name: string;
+      alias?: string;
+      description: string;
+      type: string;
+      default?: unknown;
+    }>;
     handler: (args: Record<string, unknown>, ctx: unknown) => Promise<void>;
   }>;
   scheduledTasks?: Array<{
@@ -104,7 +116,13 @@ interface CliCommand {
   name: string;
   description: string;
   args?: Array<{ name: string; description: string; required?: boolean }>;
-  options?: Array<{ name: string; alias?: string; description: string; type: string; default?: unknown }>;
+  options?: Array<{
+    name: string;
+    alias?: string;
+    description: string;
+    type: string;
+    default?: unknown;
+  }>;
   handler: (args: Record<string, unknown>, ctx: unknown) => Promise<void>;
 }
 
@@ -136,7 +154,10 @@ export class PluginLoader {
   private filterHandlers = new Map<string, Set<{ priority: number; handler: FilterHandler }>>();
 
   // ─── Storefront Slots Registry ─────────────────────────────────────────────
-  private storefrontSlots = new Map<string, Array<{ pluginName: string; content: string; order: number; pages?: string[] }>>();
+  private storefrontSlots = new Map<
+    string,
+    Array<{ pluginName: string; content: string; order: number; pages?: string[] }>
+  >();
 
   // ─── CLI Commands Registry ─────────────────────────────────────────────────
   private cliCommands = new Map<string, { pluginName: string; command: CliCommand }>();
@@ -559,7 +580,10 @@ export class PluginLoader {
       for (const task of def.scheduledTasks) {
         const key = `${pluginName}:${task.name}`;
         this.scheduledTasks.set(key, { pluginName, task });
-        logger.debug({ pluginName, task: task.name, schedule: task.schedule }, 'Scheduled task registered');
+        logger.debug(
+          { pluginName, task: task.name, schedule: task.schedule },
+          'Scheduled task registered',
+        );
       }
     }
 
@@ -866,15 +890,23 @@ export class PluginLoader {
   // ─── Storefront Slots API ─────────────────────────────────────────────────
 
   /** Get content for a storefront slot */
-  getStorefrontSlotContent(slotName: string, currentPage?: string): Array<{ content: string; pluginName: string }> {
+  getStorefrontSlotContent(
+    slotName: string,
+    currentPage?: string,
+  ): Array<{ content: string; pluginName: string }> {
     const slots = this.storefrontSlots.get(slotName) ?? [];
     return slots
-      .filter((s) => !s.pages || s.pages.length === 0 || (currentPage && s.pages.includes(currentPage)))
+      .filter(
+        (s) => !s.pages || s.pages.length === 0 || (currentPage && s.pages.includes(currentPage)),
+      )
       .map((s) => ({ content: s.content, pluginName: s.pluginName }));
   }
 
   /** Get all registered storefront slots (for debugging/admin) */
-  getAllStorefrontSlots(): Map<string, Array<{ pluginName: string; content: string; order: number }>> {
+  getAllStorefrontSlots(): Map<
+    string,
+    Array<{ pluginName: string; content: string; order: number }>
+  > {
     return this.storefrontSlots;
   }
 

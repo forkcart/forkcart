@@ -148,10 +148,7 @@ export type PluginFilterName =
   | 'storefront:footer';
 
 /** Filter handler receives data and returns (possibly modified) data */
-export type PluginFilterHandler<T = unknown> = (
-  data: T,
-  ctx: PluginContext,
-) => T | Promise<T>;
+export type PluginFilterHandler<T = unknown> = (data: T, ctx: PluginContext) => T | Promise<T>;
 
 /** Filters map: filter name → handler */
 export type PluginFilters = {
