@@ -3,7 +3,7 @@ import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { theme } from '@/theme';
 import { useCart } from '@/lib/cart';
-import { createOrder, type Address } from '@/lib/api';
+import { placeOrderViaPayment, type Address } from '@/lib/api';
 import { formatPrice } from '@/lib/currency';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
@@ -41,21 +41,30 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (!cart?.id) {
+      Alert.alert('Error', 'No cart found. Please add items first.');
+      return;
+    }
+
     setLoading(true);
     try {
-      const order = await createOrder({
-        shippingAddress: address,
-        paymentMethod: 'cod', // Cash on Delivery placeholder
+      const result = await placeOrderViaPayment({
+        cartId: cart.id,
+        customerEmail: address.phone || 'guest@forkcart.app', // TODO: add email field
+        shippingAddress: {
+          firstName: address.firstName,
+          lastName: address.lastName,
+          addressLine1: address.street,
+          city: address.city,
+          postalCode: address.postalCode,
+          country: address.country,
+        },
       });
       await refresh();
       Alert.alert(
         'Order Placed! 🎉',
-        `Your order #${order.orderNumber} has been placed successfully.`,
+        `Your order #${result.orderNumber} has been placed successfully.`,
         [
-          {
-            text: 'View Order',
-            onPress: () => router.replace(`/orders/${order.id}`),
-          },
           {
             text: 'Continue Shopping',
             onPress: () => router.replace('/(tabs)'),

@@ -386,6 +386,22 @@ export function createOrder(data: {
   return api.post('/api/v1/orders', data);
 }
 
+/** Place order via payment flow (public, no auth needed) */
+export function placeOrderViaPayment(data: {
+  cartId: string;
+  customerEmail: string;
+  shippingAddress: {
+    firstName: string;
+    lastName: string;
+    addressLine1: string;
+    city: string;
+    postalCode: string;
+    country: string;
+  };
+}): Promise<{ orderNumber: string }> {
+  return api.post('/api/v1/payments/demo-complete', data);
+}
+
 // Wishlist
 export function getWishlist(): Promise<WishlistItem[]> {
   return api.get('/api/v1/wishlist');
