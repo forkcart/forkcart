@@ -122,6 +122,127 @@ export interface PluginAdminPage {
   path: string;
   label: string;
   icon?: string;
+  /** Parent menu item (for nesting) */
+  parent?: string;
+  /** Sort order in menu */
+  order?: number;
+}
+
+// ─── Filters (data transformation) ──────────────────────────────────────────
+
+/** Filter names for data transformation (like WordPress apply_filters) */
+export type PluginFilterName =
+  | 'product:price'
+  | 'product:title'
+  | 'product:description'
+  | 'cart:total'
+  | 'cart:shipping'
+  | 'cart:tax'
+  | 'checkout:payment-methods'
+  | 'checkout:shipping-methods'
+  | 'order:confirmation-email'
+  | 'search:results'
+  | 'search:query'
+  | 'admin:menu'
+  | 'storefront:head'
+  | 'storefront:footer';
+
+/** Filter handler receives data and returns (possibly modified) data */
+export type PluginFilterHandler<T = unknown> = (
+  data: T,
+  ctx: PluginContext,
+) => T | Promise<T>;
+
+/** Filters map: filter name → handler */
+export type PluginFilters = {
+  [K in PluginFilterName]?: PluginFilterHandler;
+};
+
+// ─── Storefront slots (frontend extension points) ───────────────────────────
+
+/** Storefront slot positions for injecting custom content */
+export type StorefrontSlot =
+  | 'head'
+  | 'body-start'
+  | 'body-end'
+  | 'header-before'
+  | 'header-after'
+  | 'footer-before'
+  | 'footer-after'
+  | 'product-page-top'
+  | 'product-page-bottom'
+  | 'product-page-sidebar'
+  | 'cart-page-top'
+  | 'cart-page-bottom'
+  | 'checkout-before-payment'
+  | 'checkout-after-payment'
+  | 'category-page-top'
+  | 'category-page-bottom';
+
+/** Content to inject into a storefront slot */
+export interface StorefrontSlotContent {
+  /** Slot position */
+  slot: StorefrontSlot;
+  /** HTML content or React component name */
+  content: string;
+  /** Sort order (lower = earlier) */
+  order?: number;
+  /** Only show on specific pages */
+  pages?: string[];
+}
+
+// ─── Database migrations ────────────────────────────────────────────────────
+
+/** Database migration for plugins that need custom tables */
+export interface PluginMigration {
+  /** Migration version (semver or integer) */
+  version: string;
+  /** Human-readable description */
+  description: string;
+  /** SQL or Drizzle schema to run */
+  up: (db: unknown) => Promise<void>;
+  /** Rollback SQL or Drizzle schema */
+  down?: (db: unknown) => Promise<void>;
+}
+
+// ─── CLI commands ───────────────────────────────────────────────────────────
+
+/** CLI command definition for plugins */
+export interface PluginCliCommand {
+  /** Command name (e.g. 'sync' becomes 'forkcart plugin:myplugin:sync') */
+  name: string;
+  /** Description shown in help */
+  description: string;
+  /** Command arguments */
+  args?: Array<{
+    name: string;
+    description: string;
+    required?: boolean;
+  }>;
+  /** Command options/flags */
+  options?: Array<{
+    name: string;
+    alias?: string;
+    description: string;
+    type: 'string' | 'boolean' | 'number';
+    default?: unknown;
+  }>;
+  /** Command handler */
+  handler: (args: Record<string, unknown>, ctx: PluginContext) => Promise<void>;
+}
+
+// ─── Scheduled tasks ────────────────────────────────────────────────────────
+
+/** Scheduled task definition (like WordPress wp_cron) */
+export interface PluginScheduledTask {
+  /** Task name */
+  name: string;
+  /** Cron expression (e.g. '0 * * * *' for hourly) */
+  schedule: string;
+  /** Task handler */
+  handler: (ctx: PluginContext) => Promise<void>;
+  /** Whether task is enabled by default */
+  enabled?: boolean;
 }
 
 // ─── Route builder ──────────────────────────────────────────────────────────
@@ -155,6 +276,16 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
   description: string;
   /** Author name */
   author: string;
+  /** Homepage URL */
+  homepage?: string;
+  /** Repository URL */
+  repository?: string;
+  /** License (e.g. 'MIT', 'GPL-3.0') */
+  license?: string;
+  /** Keywords for marketplace search */
+  keywords?: string[];
+  /** Minimum ForkCart version required */
+  minVersion?: string;
 
   /** Setting definitions for the admin panel */
   settings?: TSettings;
@@ -163,9 +294,18 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
   onActivate?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
   /** Called when the plugin is deactivated */
   onDeactivate?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
+  /** Called when the plugin is installed (first time) */
+  onInstall?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
+  /** Called when the plugin is uninstalled */
+  onUninstall?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
+  /** Called when the plugin is updated to a new version */
+  onUpdate?: (ctx: PluginContext<TSettings>, fromVersion: string) => void | Promise<void>;
 
-  /** Event hooks */
+  /** Event hooks (triggered after events occur) */
   hooks?: PluginHooks;
+
+  /** Filters for data transformation (like WordPress apply_filters) */
+  filters?: PluginFilters;
 
   /** Provider implementation methods */
   provider?: PluginProvider;
@@ -175,4 +315,32 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
 
   /** Custom HTTP routes mounted under /api/v1/plugins/<name>/ */
   routes?: (router: PluginRouter) => void;
+
+  /** Storefront slots for injecting custom frontend content */
+  storefrontSlots?: StorefrontSlotContent[];
+
+  /** Database migrations for custom tables */
+  migrations?: PluginMigration[];
+
+  /** CLI commands */
+  cli?: PluginCliCommand[];
+
+  /** Scheduled tasks (cron jobs) */
+  scheduledTasks?: PluginScheduledTask[];
+
+  /** Plugin dependencies (other plugins that must be installed) */
+  dependencies?: string[];
+
+  /** Permissions/capabilities this plugin requires */
+  permissions?: Array<
+    | 'products:read'
+    | 'products:write'
+    | 'orders:read'
+    | 'orders:write'
+    | 'customers:read'
+    | 'customers:write'
+    | 'settings:read'
+    | 'settings:write'
+    | 'admin:full'
+  >;
 }

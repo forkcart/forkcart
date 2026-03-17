@@ -7,6 +7,7 @@ import type {
 import { NotFoundError, ConflictError, ValidationError } from '@forkcart/shared';
 import type { ProductRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import { PRODUCT_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
 
@@ -16,6 +17,8 @@ const logger = createLogger('product-service');
 export interface ProductServiceDeps {
   productRepository: ProductRepository;
   eventBus: EventBus;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 /**
@@ -25,10 +28,54 @@ export interface ProductServiceDeps {
 export class ProductService {
   private readonly repo: ProductRepository;
   private readonly events: EventBus;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: ProductServiceDeps) {
     this.repo = deps.productRepository;
     this.events = deps.eventBus;
+    this.pluginLoader = deps.pluginLoader ?? null;
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
+  }
+
+  /** Apply product filters (price, title, description) if pluginLoader is available */
+  private async applyProductFilters<T extends Record<string, unknown>>(product: T): Promise<T> {
+    if (!this.pluginLoader) return product;
+
+    const ctx = { productId: product['id'] };
+    const filtered = { ...product } as Record<string, unknown>;
+
+    // Apply price filter
+    if ('price' in filtered && typeof filtered['price'] === 'number') {
+      filtered['price'] = await this.pluginLoader.applyFilters(
+        'product:price',
+        filtered['price'],
+        ctx,
+      );
+    }
+
+    // Apply title filter
+    if ('name' in filtered && typeof filtered['name'] === 'string') {
+      filtered['name'] = await this.pluginLoader.applyFilters(
+        'product:title',
+        filtered['name'],
+        ctx,
+      );
+    }
+
+    // Apply description filter
+    if ('description' in filtered && typeof filtered['description'] === 'string') {
+      filtered['description'] = await this.pluginLoader.applyFilters(
+        'product:description',
+        filtered['description'],
+        ctx,
+      );
+    }
+
+    return filtered as T;
   }
 
   async getById(id: string) {
@@ -36,7 +83,7 @@ export class ProductService {
     if (!product) {
       throw new NotFoundError('Product', id);
     }
-    return product;
+    return this.applyProductFilters(product);
   }
 
   async getBySlug(slug: string) {
@@ -44,11 +91,16 @@ export class ProductService {
     if (!product) {
       throw new NotFoundError('Product', slug);
     }
-    return product;
+    return this.applyProductFilters(product);
   }
 
   async list(filter: ProductFilter, pagination: Pagination) {
-    return this.repo.findMany(filter, pagination);
+    const result = await this.repo.findMany(filter, pagination);
+    // Apply filters to each product in the list
+    if (this.pluginLoader && result.data.length > 0) {
+      result.data = await Promise.all(result.data.map((p) => this.applyProductFilters(p)));
+    }
+    return result;
   }
 
   async create(input: CreateProductInput) {

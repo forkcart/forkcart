@@ -3,6 +3,7 @@ export { definePlugin } from './define.js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type {
+  // Core types
   PluginType,
   PluginSettingSchema,
   PluginSettingString,
@@ -14,11 +15,29 @@ export type {
   PluginLogger,
   PluginEventBus,
   PluginContext,
+  // Event hooks
   PluginHookHandler,
   PluginHooks,
+  // Filters (data transformation)
+  PluginFilterName,
+  PluginFilterHandler,
+  PluginFilters,
+  // Admin pages
   PluginAdminPage,
+  // Routes
   PluginRouter,
+  // Providers
   PluginProvider,
+  // Storefront slots
+  StorefrontSlot,
+  StorefrontSlotContent,
+  // Database migrations
+  PluginMigration,
+  // CLI commands
+  PluginCliCommand,
+  // Scheduled tasks
+  PluginScheduledTask,
+  // Main definition
   PluginDefinition,
 } from './types.js';
 
@@ -52,6 +71,7 @@ export { PLUGIN_EVENTS } from './events.js';
 
 // ─── Provider interfaces ────────────────────────────────────────────────────
 export type {
+  ProviderSettingDef,
   PaymentIntentResult,
   PaymentIntentInput,
   PaymentWebhookEvent,

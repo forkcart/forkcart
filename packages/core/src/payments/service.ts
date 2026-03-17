@@ -6,6 +6,7 @@ import type { CartRepository } from '../carts/repository';
 import type { OrderRepository } from '../orders/repository';
 import type { CustomerRepository } from '../customers/repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import { PAYMENT_EVENTS } from './events';
 import { ORDER_EVENTS } from '../orders/events';
 import { createLogger } from '../lib/logger';
@@ -19,6 +20,8 @@ export interface PaymentServiceDeps {
   orderRepository: OrderRepository;
   customerRepository: CustomerRepository;
   eventBus: EventBus;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 export interface CreatePaymentIntentInput {
@@ -54,6 +57,7 @@ export class PaymentService {
   private readonly orderRepo: OrderRepository;
   private readonly customerRepo: CustomerRepository;
   private readonly events: EventBus;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: PaymentServiceDeps) {
     this.paymentRepo = deps.paymentRepository;
@@ -62,11 +66,24 @@ export class PaymentService {
     this.orderRepo = deps.orderRepository;
     this.customerRepo = deps.customerRepository;
     this.events = deps.eventBus;
+    this.pluginLoader = deps.pluginLoader ?? null;
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
   }
 
   /** Get all active payment providers for the checkout frontend */
-  getActiveProviders(): PaymentProviderClientConfig[] {
-    return this.registry.getActiveProviders();
+  async getActiveProviders(): Promise<PaymentProviderClientConfig[]> {
+    let providers = this.registry.getActiveProviders();
+
+    // Apply checkout:payment-methods filter — allows plugins to modify available payment methods
+    if (this.pluginLoader) {
+      providers = await this.pluginLoader.applyFilters('checkout:payment-methods', providers, {});
+    }
+
+    return providers;
   }
 
   /** Check if any payment provider is available */

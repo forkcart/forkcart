@@ -1,3 +1,5 @@
+import type { ProviderSettingDef } from './payment.js';
+
 /** Result from sending an email */
 export interface EmailSendResult {
   messageId: string;
@@ -6,11 +8,19 @@ export interface EmailSendResult {
 
 /** Input for sending an email */
 export interface EmailSendInput {
-  to: string;
+  to: string | string[];
   subject: string;
   html: string;
   text?: string;
+  from?: string;
   replyTo?: string;
+  cc?: string | string[];
+  bcc?: string | string[];
+  attachments?: Array<{
+    filename: string;
+    content: string | Buffer;
+    contentType?: string;
+  }>;
   headers?: Record<string, string>;
 }
 
@@ -22,4 +32,6 @@ export interface EmailProviderMethods {
   isConfigured(): boolean;
   /** Send an email */
   sendEmail(input: EmailSendInput): Promise<EmailSendResult>;
+  /** Required settings for admin UI (optional — use settings schema in definePlugin instead) */
+  getRequiredSettings?(): ProviderSettingDef[];
 }

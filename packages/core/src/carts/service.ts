@@ -2,6 +2,7 @@ import type { AddCartItemInput, UpdateCartItemInput } from '@forkcart/shared';
 import { NotFoundError, ValidationError } from '@forkcart/shared';
 import type { CartRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import type { ProductTranslationService } from '../product-translations/service';
 import { CART_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
@@ -13,6 +14,8 @@ export interface CartServiceDeps {
   eventBus: EventBus;
   productTranslationService?: ProductTranslationService | null;
   mediaBaseUrl?: string;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 /** Formatted cart item with product details and computed prices */
@@ -51,12 +54,19 @@ export class CartService {
   private readonly events: EventBus;
   private readonly mediaBaseUrl: string;
   private translationService: ProductTranslationService | null;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: CartServiceDeps) {
     this.repo = deps.cartRepository;
     this.events = deps.eventBus;
     this.mediaBaseUrl = deps.mediaBaseUrl ?? '';
     this.translationService = deps.productTranslationService ?? null;
+    this.pluginLoader = deps.pluginLoader ?? null;
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
   }
 
   /** Set product translation service (for late injection) */
@@ -346,12 +356,23 @@ export class CartService {
       itemCount += item.quantity;
     }
 
+    // Apply cart:total filter — allows plugins to modify the subtotal (e.g., discounts)
+    let finalSubtotal = subtotal;
+    if (this.pluginLoader) {
+      finalSubtotal = await this.pluginLoader.applyFilters('cart:total', subtotal, {
+        cartId: cart.id,
+        items,
+        itemCount,
+        currency: cart.currency,
+      });
+    }
+
     return {
       id: cart.id,
       customerId: cart.customerId,
       sessionId: cart.sessionId,
       items,
-      subtotal,
+      subtotal: finalSubtotal,
       itemCount,
       currency: cart.currency,
       createdAt: cart.createdAt.toISOString(),

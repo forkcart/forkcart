@@ -32,6 +32,7 @@ import {
   ChatbotService,
   EventBus,
   PluginLoader,
+  PluginScheduler,
   EmailProviderRegistry,
   EmailLogRepository,
   EmailService,
@@ -90,7 +91,7 @@ import { createMediaRoutes } from './routes/v1/media';
 import { createProductImageRoutes } from './routes/v1/product-images';
 import { createCartRoutes } from './routes/v1/carts';
 import { createPaymentRoutes, createWebhookRoute } from './routes/v1/payments';
-import { createPluginRoutes } from './routes/v1/plugins';
+import { createPluginRoutes, createPublicPluginRoutes } from './routes/v1/plugins';
 import { createEmailRoutes } from './routes/v1/emails';
 import { createShippingRoutes } from './routes/v1/shipping';
 import { createChatRoutes, createChatAdminRoutes } from './routes/v1/chat';
@@ -215,7 +216,8 @@ export async function createApp(db: Database) {
   const marketplaceProviderRegistry = new MarketplaceProviderRegistry();
 
   // Initialize services with dependency injection
-  const productService = new ProductService({ productRepository, eventBus });
+  // Note: pluginLoader injected below after initialization
+  const productService = new ProductService({ productRepository, eventBus, pluginLoader: null });
   const categoryService = new CategoryService({ categoryRepository, eventBus });
   const orderService = new OrderService({ orderRepository, eventBus });
   const customerService = new CustomerService({ customerRepository, eventBus });
@@ -371,6 +373,18 @@ export async function createApp(db: Database) {
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
 
+  // Initialize and start the plugin scheduler for cron tasks
+  const pluginScheduler = new PluginScheduler(pluginLoader);
+  await pluginScheduler.start();
+
+  // Inject PluginLoader into services for filter support
+  productService.setPluginLoader(pluginLoader);
+  searchService.setPluginLoader(pluginLoader);
+  cartService.setPluginLoader(pluginLoader);
+  paymentService.setPluginLoader(pluginLoader);
+  shippingService.setPluginLoader(pluginLoader);
+  taxService.setPluginLoader(pluginLoader);
+
   // Register log email provider as fallback for development
   // It auto-activates only if no other provider is already active
   if (!emailProviderRegistry.getActiveProvider()) {
@@ -476,7 +490,7 @@ export async function createApp(db: Database) {
   v1.route('/carts', createCartRoutes(cartService));
   v1.route('/payments', createPaymentRoutes(paymentService));
   v1.route('/payments/webhook', createWebhookRoute(paymentService));
-  v1.route('/plugins', createPluginRoutes(pluginLoader));
+  v1.route('/plugins', createPluginRoutes(pluginLoader, pluginScheduler));
   v1.route('/emails', createEmailRoutes(emailService));
   v1.route('/shipping', createShippingRoutes(shippingService));
   v1.route('/chat', createChatRoutes(chatbotService));
@@ -536,6 +550,9 @@ export async function createApp(db: Database) {
   // Public variant routes (no auth — storefront needs to fetch variants)
   app.route('/api/v1/public/products', createPublicVariantRoutes(variantService, attributeService));
 
+  // Public plugin routes (no auth — storefront slots)
+  app.route('/api/v1/public/plugins', createPublicPluginRoutes(pluginLoader));
+
   app.route('/api/v1', v1);
 
   // Public SEO routes (sitemap.xml, robots.txt) — no auth required
@@ -567,6 +584,17 @@ export async function createApp(db: Database) {
       console.error('[exchange-rates] Failed to refresh rates:', err);
     }
   }, SIX_HOURS);
+
+  // Graceful shutdown handler
+  const shutdown = async () => {
+    console.log('[app] Shutting down...');
+    pluginScheduler.stop();
+    console.log('[app] Plugin scheduler stopped');
+  };
+
+  // Register shutdown handlers
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   return app;
 }

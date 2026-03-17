@@ -43,14 +43,31 @@ export interface PaymentWebhookEvent {
 export interface PaymentStatus {
   status: 'pending' | 'processing' | 'succeeded' | 'failed' | 'cancelled' | 'refunded';
   externalId: string;
-  amount?: number;
-  currency?: string;
+  amount: number;
+  currency: string;
+}
+
+/** Defines a setting field for admin UI */
+export interface ProviderSettingDef {
+  key: string;
+  label: string;
+  type: 'text' | 'password' | 'select' | 'number' | 'boolean';
+  required: boolean;
+  placeholder?: string;
+  description?: string;
+  options?: Array<{ value: string; label: string }>;
 }
 
 /** Client-side config for a payment provider */
 export interface PaymentProviderClientConfig {
-  providerId: string;
-  [key: string]: unknown;
+  /** Provider identifier (e.g. 'stripe', 'paypal') */
+  provider: string;
+  /** Display name for the UI */
+  displayName: string;
+  /** Which frontend component to render */
+  componentType: string;
+  /** Provider-specific config (e.g. publishable key) */
+  clientConfig: Record<string, unknown>;
 }
 
 /** Payment provider interface for plugins */
@@ -67,4 +84,6 @@ export interface PaymentProviderMethods {
   verifyWebhook(rawBody: string, headers: Record<string, string>): Promise<PaymentWebhookEvent>;
   /** Get payment status from provider */
   getPaymentStatus(externalId: string): Promise<PaymentStatus>;
+  /** Required settings for admin UI (optional — use settings schema in definePlugin instead) */
+  getRequiredSettings?(): ProviderSettingDef[];
 }
