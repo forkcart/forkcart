@@ -8,6 +8,27 @@ import type { ShippingProviderMethods } from './providers/shipping.js';
 
 export type PluginType = 'payment' | 'marketplace' | 'email' | 'shipping' | 'analytics' | 'general';
 
+// ─── Plugin permissions ─────────────────────────────────────────────────────
+
+export type PluginPermission =
+  | 'orders:read'
+  | 'orders:write'
+  | 'products:read'
+  | 'products:write'
+  | 'customers:read'
+  | 'customers:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'email:send'
+  | 'payments:process'
+  | 'inventory:read'
+  | 'inventory:write'
+  | 'analytics:read'
+  | 'files:read'
+  | 'files:write'
+  | 'webhooks:manage'
+  | 'admin:full';
+
 // ─── Settings schema ────────────────────────────────────────────────────────
 
 export interface PluginSettingBase {
@@ -329,15 +350,5 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
   dependencies?: string[];
 
   /** Permissions/capabilities this plugin requires */
-  permissions?: Array<
-    | 'products:read'
-    | 'products:write'
-    | 'orders:read'
-    | 'orders:write'
-    | 'customers:read'
-    | 'customers:write'
-    | 'settings:read'
-    | 'settings:write'
-    | 'admin:full'
-  >;
+  permissions?: PluginPermission[];
 }

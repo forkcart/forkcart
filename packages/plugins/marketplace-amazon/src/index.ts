@@ -9,6 +9,14 @@ const amazonPluginDef = definePlugin({
   type: 'marketplace',
   description: 'Sell on Amazon — sync products, import orders, and manage inventory via SP-API.',
   author: 'ForkCart',
+  permissions: [
+    'products:read',
+    'orders:read',
+    'orders:write',
+    'inventory:read',
+    'inventory:write',
+    'settings:read',
+  ],
 
   settings: {
     sellerId: {

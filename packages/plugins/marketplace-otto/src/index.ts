@@ -10,6 +10,14 @@ const ottoPluginDef = definePlugin({
   description:
     'Sell on Otto Market — sync products, import orders, and manage inventory via Otto Market API.',
   author: 'ForkCart',
+  permissions: [
+    'products:read',
+    'orders:read',
+    'orders:write',
+    'inventory:read',
+    'inventory:write',
+    'settings:read',
+  ],
 
   settings: {
     clientId: {

@@ -9,6 +9,14 @@ const ebayPluginDef = definePlugin({
   type: 'marketplace',
   description: 'Sell on eBay — sync products, import orders, and manage inventory via REST API.',
   author: 'ForkCart',
+  permissions: [
+    'products:read',
+    'orders:read',
+    'orders:write',
+    'inventory:read',
+    'inventory:write',
+    'settings:read',
+  ],
 
   settings: {
     clientId: {

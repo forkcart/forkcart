@@ -5,6 +5,7 @@ export { definePlugin } from './define.js';
 export type {
   // Core types
   PluginType,
+  PluginPermission,
   PluginSettingSchema,
   PluginSettingString,
   PluginSettingNumber,

@@ -10,6 +10,7 @@ const stripePluginDef = definePlugin({
   description:
     'Accept payments via Stripe — credit cards, Apple Pay, Google Pay, SEPA, and 40+ payment methods.',
   author: 'ForkCart',
+  permissions: ['payments:process', 'orders:read', 'settings:read', 'webhooks:manage'],
 
   settings: {
     secretKey: {

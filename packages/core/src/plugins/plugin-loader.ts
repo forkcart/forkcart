@@ -15,6 +15,7 @@ import type { MarketplaceProviderRegistry } from '../marketplace/registry';
 import type { EventBus } from './event-bus';
 import type { EventHandler } from './types';
 import { createLogger } from '../lib/logger';
+import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
 
 const execAsync = promisify(exec);
 const logger = createLogger('plugin-loader');
@@ -134,6 +135,26 @@ interface ScheduledTask {
   enabled?: boolean;
 }
 
+/** Plugin permission type (mirrors @forkcart/plugin-sdk PluginPermission) */
+export type PluginPermission =
+  | 'orders:read'
+  | 'orders:write'
+  | 'products:read'
+  | 'products:write'
+  | 'customers:read'
+  | 'customers:write'
+  | 'settings:read'
+  | 'settings:write'
+  | 'email:send'
+  | 'payments:process'
+  | 'inventory:read'
+  | 'inventory:write'
+  | 'analytics:read'
+  | 'files:read'
+  | 'files:write'
+  | 'webhooks:manage'
+  | 'admin:full';
+
 /** Track registered hook handlers per plugin so we can unregister them */
 interface ActivePluginState {
   pluginName: string;
@@ -150,6 +171,12 @@ export class PluginLoader {
   private sdkPlugins = new Map<string, SdkPluginDefinition>();
   private activeStates = new Map<string, ActivePluginState>();
 
+  // ─── Settings Schema Registry (for secret detection) ───────────────────────
+  private pluginSchemas = new Map<
+    string,
+    Record<string, { type: string; secret?: boolean; [key: string]: unknown }>
+  >();
+
   // ─── Filter Registry (like WordPress apply_filters) ────────────────────────
   private filterHandlers = new Map<string, Set<{ priority: number; handler: FilterHandler }>>();
 
@@ -165,6 +192,9 @@ export class PluginLoader {
   // ─── Scheduled Tasks Registry ──────────────────────────────────────────────
   private scheduledTasks = new Map<string, { pluginName: string; task: ScheduledTask }>();
 
+  // ─── Plugin Permissions Registry ──────────────────────────────────────────
+  private pluginPermissions = new Map<string, Set<PluginPermission>>();
+
   constructor(
     private readonly db: Database,
     private readonly paymentRegistry: PaymentProviderRegistry,
@@ -172,6 +202,33 @@ export class PluginLoader {
     private readonly marketplaceRegistry?: MarketplaceProviderRegistry,
     private readonly eventBus?: EventBus,
   ) {}
+
+  // ─── Permission API ────────────────────────────────────────────────────────
+
+  /** Register the permissions declared by a plugin */
+  registerPluginPermissions(pluginName: string, permissions: PluginPermission[]): void {
+    this.pluginPermissions.set(pluginName, new Set(permissions));
+  }
+
+  /** Check if a plugin has a specific permission (admin:full grants everything) */
+  hasPermission(pluginName: string, permission: PluginPermission): boolean {
+    const perms = this.pluginPermissions.get(pluginName);
+    if (!perms) return false;
+    return perms.has(permission) || perms.has('admin:full');
+  }
+
+  /** Throw if a plugin lacks a specific permission */
+  requirePermission(pluginName: string, permission: PluginPermission): void {
+    if (!this.hasPermission(pluginName, permission)) {
+      throw new Error(`Plugin '${pluginName}' lacks permission '${permission}'`);
+    }
+  }
+
+  /** Get the permissions registered for a plugin */
+  getPluginPermissions(pluginName: string): PluginPermission[] {
+    const perms = this.pluginPermissions.get(pluginName);
+    return perms ? [...perms] : [];
+  }
 
   // ─── Legacy API (backward compat) ──────────────────────────────────────────
 
@@ -186,6 +243,17 @@ export class PluginLoader {
   /** Register an SDK-style plugin definition */
   registerSdkPlugin(def: SdkPluginDefinition): void {
     this.sdkPlugins.set(def.name, def);
+
+    // Store settings schema for secret detection
+    if (def.settings) {
+      this.pluginSchemas.set(def.name, def.settings);
+    }
+
+    // Register plugin permissions
+    if (def.permissions && def.permissions.length > 0) {
+      this.registerPluginPermissions(def.name, def.permissions as PluginPermission[]);
+    }
+
     logger.debug({ pluginName: def.name }, 'SDK plugin definition registered');
   }
 
@@ -379,10 +447,13 @@ export class PluginLoader {
     });
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
-    const settings: Record<string, unknown> = {};
+    const rawSettings: Record<string, unknown> = {};
     for (const s of plugin.settings) {
-      settings[s.key] = s.value;
+      rawSettings[s.key] = s.value;
     }
+
+    // Decrypt secret settings before passing to the plugin
+    const settings = this.decryptSettings(plugin.name, rawSettings);
 
     // Try SDK plugin first, then legacy
     const sdkDef = this.sdkPlugins.get(plugin.name);
@@ -421,13 +492,16 @@ export class PluginLoader {
     });
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
-    const settings: Record<string, unknown> = {};
+    const rawSettings: Record<string, unknown> = {};
     const pluginSettingsRows = await this.db.query.pluginSettings.findMany({
       where: eq(pluginSettings.pluginId, pluginId),
     });
     for (const s of pluginSettingsRows) {
-      settings[s.key] = s.value;
+      rawSettings[s.key] = s.value;
     }
+
+    // Decrypt secret settings for onDeactivate callback
+    const settings = this.decryptSettings(plugin.name, rawSettings);
 
     // Call onDeactivate for SDK plugins
     const sdkDef = this.sdkPlugins.get(plugin.name);
@@ -826,10 +900,13 @@ export class PluginLoader {
     });
 
     for (const plugin of activePlugins) {
-      const settings: Record<string, unknown> = {};
+      const rawSettings: Record<string, unknown> = {};
       for (const s of plugin.settings) {
-        settings[s.key] = s.value;
+        rawSettings[s.key] = s.value;
       }
+
+      // Decrypt secret settings before passing to plugins
+      const settings = this.decryptSettings(plugin.name, rawSettings);
 
       const sdkDef = this.sdkPlugins.get(plugin.name);
       if (sdkDef) {
@@ -927,10 +1004,11 @@ export class PluginLoader {
       with: { settings: true },
     });
 
-    const settings: Record<string, unknown> = {};
+    const rawSettings: Record<string, unknown> = {};
     for (const s of plugin?.settings ?? []) {
-      settings[s.key] = s.value;
+      rawSettings[s.key] = s.value;
     }
+    const settings = this.decryptSettings(entry.pluginName, rawSettings);
 
     const ctx = this.buildPluginContext(entry.pluginName, settings);
     await entry.command.handler(args, ctx);
@@ -953,14 +1031,51 @@ export class PluginLoader {
       with: { settings: true },
     });
 
-    const settings: Record<string, unknown> = {};
+    const rawSettings: Record<string, unknown> = {};
     for (const s of plugin?.settings ?? []) {
-      settings[s.key] = s.value;
+      rawSettings[s.key] = s.value;
     }
+    const settings = this.decryptSettings(entry.pluginName, rawSettings);
 
     const ctx = this.buildPluginContext(entry.pluginName, settings);
     logger.info({ taskKey, pluginName: entry.pluginName }, 'Running scheduled task');
     await entry.task.handler(ctx);
+  }
+
+  // ─── Secret encryption helpers ──────────────────────────────────────────────
+
+  /** Check if a setting key is marked as secret in the plugin's schema */
+  private isSecretSetting(pluginName: string, key: string): boolean {
+    const schema = this.pluginSchemas.get(pluginName);
+    return schema?.[key]?.secret === true;
+  }
+
+  /** Encrypt a setting value if the key is marked as secret */
+  private encryptSettingValue(pluginName: string, key: string, value: unknown): unknown {
+    if (!this.isSecretSetting(pluginName, key)) return value;
+    if (typeof value !== 'string') return value;
+    if (isEncrypted(value)) return value; // Already encrypted
+    return encryptSecret(value);
+  }
+
+  /** Decrypt a setting value if the key is marked as secret */
+  private decryptSettingValue(pluginName: string, key: string, value: unknown): unknown {
+    if (!this.isSecretSetting(pluginName, key)) return value;
+    if (typeof value !== 'string') return value;
+    if (!isEncrypted(value)) return value; // Not encrypted (legacy)
+    return decryptSecret(value);
+  }
+
+  /** Decrypt all secret settings for a plugin */
+  private decryptSettings(
+    pluginName: string,
+    settings: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      result[key] = this.decryptSettingValue(pluginName, key, value);
+    }
+    return result;
   }
 
   // ─── Admin API helpers ────────────────────────────────────────────────────
@@ -999,12 +1114,7 @@ export class PluginLoader {
         source: sdkDef ? 'sdk' : legacyDef ? 'legacy' : 'unknown',
         settings: p.settings.map((s) => ({
           key: s.key,
-          value:
-            s.key.toLowerCase().includes('secret') || s.key.toLowerCase().includes('key')
-              ? s.value
-                ? '••••••••'
-                : null
-              : s.value,
+          value: this.isSecretSetting(p.name, s.key) ? (s.value ? '••••••••' : null) : s.value,
         })),
         settingsSchema,
         adminPages,
@@ -1037,17 +1147,20 @@ export class PluginLoader {
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
     for (const [key, value] of Object.entries(newSettings)) {
+      // Encrypt secret settings before storing
+      const storedValue = this.encryptSettingValue(plugin.name, key, value);
+
       const existing = plugin.settings.find((s) => s.key === key);
       if (existing) {
         await this.db
           .update(pluginSettings)
-          .set({ value: value as Record<string, unknown>, updatedAt: new Date() })
+          .set({ value: storedValue as Record<string, unknown>, updatedAt: new Date() })
           .where(eq(pluginSettings.id, existing.id));
       } else {
         await this.db.insert(pluginSettings).values({
           pluginId,
           key,
-          value: value as Record<string, unknown>,
+          value: storedValue as Record<string, unknown>,
         });
       }
     }
