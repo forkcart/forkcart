@@ -353,6 +353,7 @@ export async function createApp(db: Database) {
     paymentProviderRegistry,
     emailProviderRegistry,
     marketplaceProviderRegistry,
+    eventBus,
   );
   pluginLoader.registerDefinition(stripePlugin);
   pluginLoader.registerDefinition({
