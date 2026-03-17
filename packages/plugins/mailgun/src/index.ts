@@ -10,6 +10,7 @@ const mailgunPluginDef = definePlugin({
   description:
     'Send transactional emails via Mailgun — order confirmations, shipping notifications, welcome emails, and more.',
   author: 'ForkCart',
+  permissions: ['email:send', 'settings:read'],
 
   settings: {
     apiKey: {

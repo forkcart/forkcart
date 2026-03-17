@@ -10,6 +10,14 @@ const kauflandPluginDef = definePlugin({
   description:
     'Sell on Kaufland — sync products, import orders, and manage inventory via Kaufland Seller API.',
   author: 'ForkCart',
+  permissions: [
+    'products:read',
+    'orders:read',
+    'orders:write',
+    'inventory:read',
+    'inventory:write',
+    'settings:read',
+  ],
 
   settings: {
     clientKey: {

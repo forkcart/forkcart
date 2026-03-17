@@ -2,6 +2,7 @@ import { createLogger } from '../lib/logger';
 import type { EmailProviderRegistry } from './registry';
 import type { EmailSendResult } from './provider';
 import type { EmailLogRepository, EmailLogEntry } from './log-repository';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import {
   orderConfirmationHtml,
   orderConfirmationText,
@@ -27,6 +28,7 @@ const logger = createLogger('email-service');
 export interface EmailServiceDeps {
   emailRegistry: EmailProviderRegistry;
   emailLogRepository: EmailLogRepository;
+  pluginLoader?: PluginLoader;
 }
 
 /**
@@ -36,10 +38,23 @@ export interface EmailServiceDeps {
 export class EmailService {
   private readonly registry: EmailProviderRegistry;
   private readonly logRepo: EmailLogRepository;
+  private readonly pluginLoader?: PluginLoader;
 
   constructor(deps: EmailServiceDeps) {
     this.registry = deps.emailRegistry;
     this.logRepo = deps.emailLogRepository;
+    this.pluginLoader = deps.pluginLoader;
+  }
+
+  /**
+   * Check that the active email provider plugin has 'email:send' permission.
+   * Throws if the plugin lacks the permission.
+   */
+  private checkSendPermission(): void {
+    if (!this.pluginLoader) return;
+    const provider = this.registry.getActiveProvider();
+    if (!provider) return;
+    this.pluginLoader.requirePermission(provider.id, 'email:send');
   }
 
   /** Send a raw email (for test emails or custom sends) */
@@ -49,6 +64,7 @@ export class EmailService {
     html: string,
     text?: string,
   ): Promise<EmailSendResult> {
+    this.checkSendPermission();
     const provider = this.registry.getActiveProvider();
     if (!provider) {
       throw new Error('No email provider configured. Activate a provider in Plugins.');
@@ -157,6 +173,7 @@ export class EmailService {
     text: string,
     template: string,
   ): Promise<EmailSendResult> {
+    this.checkSendPermission();
     const provider = this.registry.getActiveProvider();
     if (!provider) {
       throw new Error('No email provider configured. Activate a provider in Plugins.');

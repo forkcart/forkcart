@@ -10,6 +10,7 @@ const smtpPluginDef = definePlugin({
   description:
     'Send transactional emails via any SMTP server — works with Gmail, Outlook, Postfix, and any standard SMTP service.',
   author: 'ForkCart',
+  permissions: ['email:send', 'settings:read'],
 
   settings: {
     host: {

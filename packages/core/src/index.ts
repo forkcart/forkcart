@@ -26,3 +26,9 @@ export * from './attributes/index';
 export * from './mobile-app/index';
 export * from './marketplace/index';
 export { createLogger } from './lib/logger';
+export {
+  encryptSecret,
+  decryptSecret,
+  isEncrypted,
+  migrateSecretsToEncrypted,
+} from './utils/crypto';
