@@ -154,20 +154,53 @@ Routes handle HTTP. Services handle business logic. Repositories handle data acc
 
 ## Plugin System
 
-Plugins implement a TypeScript interface and register through the `PluginLoader`. They are activated, deactivated, and configured at runtime through the admin panel. Settings are stored in the database.
+ForkCart has a WordPress/Shopware-level plugin system. Plugins can extend nearly everything:
 
 ```typescript
-export const myPlugin: PluginDefinition = {
-  name: 'my-payment',
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'my-plugin',
   version: '1.0.0',
-  description: 'My custom payment provider',
-  author: 'You',
-  type: 'payment',
-  createProvider: () => new MyPaymentProvider(),
-};
+  type: 'feature',
+
+  // Auto-generates admin settings UI
+  settings: {
+    apiKey: { type: 'string', required: true, secret: true },
+  },
+
+  // React to events
+  events: {
+    'order:created': async (order) => { /* ... */ },
+  },
+
+  // Transform data (like WordPress apply_filters)
+  filters: {
+    'product:price': (price) => price * 0.9, // 10% off
+  },
+
+  // Inject HTML into storefront
+  storefrontSlots: [
+    { slot: 'header-after', content: '<div>Announcement!</div>' },
+  ],
+
+  // CLI commands
+  cli: [
+    { name: 'sync', handler: async () => { /* ... */ } },
+  ],
+
+  // Cron jobs
+  scheduledTasks: [
+    { name: 'cleanup', schedule: '0 3 * * *', handler: async () => { /* ... */ } },
+  ],
+});
 ```
 
-Currently supported plugin types: `payment` and `notification` (email).
+**Plugin types:** `payment`, `marketplace`, `email`, `shipping`, `feature`
+
+**Built-in plugins:** Stripe, Mailgun, SMTP, Amazon, eBay, Otto, Kaufland
+
+📖 **[Full Plugin Documentation →](docs/PLUGINS.md)**
 
 ## Database
 
