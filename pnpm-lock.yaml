@@ -360,6 +360,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -370,6 +373,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -380,6 +386,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -390,6 +399,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -400,6 +412,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
     devDependencies:
       typescript:
         specifier: ^5.7.0
@@ -410,6 +425,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
       nodemailer:
         specifier: ^6.9.0
         version: 6.10.1
@@ -426,6 +444,9 @@ importers:
       '@forkcart/core':
         specifier: workspace:*
         version: link:../../core
+      '@forkcart/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../plugin-sdk
       stripe:
         specifier: ^17.0.0
         version: 17.7.0

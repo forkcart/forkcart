@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@forkcart/core": "workspace:*",
-    "stripe": "^17.0.0"
+    "stripe": "^17.0.0",
+    "@forkcart/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

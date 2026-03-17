@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@forkcart/core": "workspace:*"
+    "@forkcart/core": "workspace:*",
+    "@forkcart/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
