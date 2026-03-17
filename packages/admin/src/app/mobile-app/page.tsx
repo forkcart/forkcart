@@ -219,10 +219,88 @@ export default function MobileAppPage() {
     a.remove();
   }
 
-  /* ─── Native Build (Easy Mode) ─── */
+  /* ─── Native Build (Easy Mode) — Async with Polling ─── */
+
+  const buildIdRef = useRef<string | null>(null);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [buildProgress, setBuildProgress] = useState(0);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, []);
+
+  function mapServerStep(step: string): NativeBuildStep {
+    switch (step) {
+      case 'queued':
+      case 'installing':
+        return 'generating';
+      case 'prebuild':
+        return 'generating';
+      case 'compiling':
+        return 'compiling';
+      case 'signing':
+        return 'signing';
+      case 'done':
+        return 'done';
+      case 'error':
+        return 'error';
+      default:
+        return 'compiling';
+    }
+  }
+
+  function startPolling(buildId: string) {
+    const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+    const token = getToken();
+
+    pollIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE}/api/v1/mobile-app/build-native/status?buildId=${buildId}`,
+          {
+            credentials: 'include',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data: {
+            step: string;
+            progress: number;
+            error?: string;
+            downloadUrl?: string;
+            filename?: string;
+            size?: number;
+          };
+        };
+        const status = json.data;
+
+        setBuildProgress(status.progress);
+        setNativeBuildStep(mapServerStep(status.step));
+
+        if (status.step === 'done' && status.downloadUrl) {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          nativeBlobUrlRef.current = `${API_BASE}${status.downloadUrl}`;
+          setNativeBuildStep('done');
+        } else if (status.step === 'error') {
+          if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+          setNativeBuildStep('error');
+          setNativeBuildError(status.error ?? 'Build failed');
+        }
+      } catch {
+        // Ignore polling errors
+      }
+    }, 2000);
+  }
 
   async function handleNativeBuild() {
     setNativeBuildError(null);
+    setBuildProgress(0);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+
     try {
       setNativeBuildStep('saving');
       const ok = await saveConfig();
@@ -233,9 +311,6 @@ export default function MobileAppPage() {
       }
 
       setNativeBuildStep('generating');
-      await new Promise((r) => setTimeout(r, 600));
-
-      setNativeBuildStep('compiling');
 
       const API_BASE = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
       const token = getToken();
@@ -254,13 +329,11 @@ export default function MobileAppPage() {
         throw new Error(err.error?.message ?? `Build failed: ${res.status}`);
       }
 
-      setNativeBuildStep('signing');
-      const json = (await res.json()) as {
-        data: { downloadUrl: string; filename: string; size: number };
-      };
-      nativeBlobUrlRef.current = `${API_BASE}${json.data.downloadUrl}`;
+      const json = (await res.json()) as { data: { buildId: string; status: { step: string } } };
+      buildIdRef.current = json.data.buildId;
 
-      setNativeBuildStep('done');
+      // Start polling for progress
+      startPolling(json.data.buildId);
     } catch (err) {
       setNativeBuildStep('error');
       setNativeBuildError(err instanceof Error ? err.message : 'Build failed');
@@ -275,6 +348,8 @@ export default function MobileAppPage() {
   function resetNativeBuild() {
     setNativeBuildStep('idle');
     setNativeBuildError(null);
+    setBuildProgress(0);
+    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (nativeBlobUrlRef.current) {
       URL.revokeObjectURL(nativeBlobUrlRef.current);
       nativeBlobUrlRef.current = null;
@@ -645,7 +720,8 @@ export default function MobileAppPage() {
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-lg bg-muted px-6 py-3 text-sm font-medium text-muted-foreground"
                       >
                         <Loader2 className="h-5 w-5 animate-spin" />
-                        Building — this may take a few minutes...
+                        Building{buildProgress > 0 ? ` (${buildProgress}%)` : ''} — this may take a
+                        few minutes...
                       </button>
                     )}
                   </div>

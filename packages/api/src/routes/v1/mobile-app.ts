@@ -1,10 +1,14 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { createReadStream } from 'node:fs';
-import { stat, mkdir, cp } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
-import type { MobileAppService } from '@forkcart/core';
+import {
+  type MobileAppService,
+  getBuildStatus,
+  getLatestBuild,
+  startAsyncBuild,
+} from '@forkcart/core';
 
 const UpdateConfigSchema = z.object({
   appName: z.string().min(1).max(100).optional(),
@@ -79,7 +83,7 @@ export function createMobileAppRoutes(mobileAppService: MobileAppService) {
     }
   });
 
-  /** POST /build-native — build a native APK/IPA on the server */
+  /** POST /build-native — start an async native APK/IPA build */
   router.post('/build-native', async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const platform = (body as { platform?: string }).platform;
@@ -90,33 +94,42 @@ export function createMobileAppRoutes(mobileAppService: MobileAppService) {
       );
     }
 
-    const result = await mobileAppService.buildNative(platform);
-
-    try {
-      const ext = platform === 'android' ? 'apk' : 'ipa';
-      const filename = `forkcart-mobile-${Date.now()}.${ext}`;
-      const destDir = resolve(process.cwd(), 'uploads', 'builds');
-      await mkdir(destDir, { recursive: true });
-      const destPath = resolve(destDir, filename);
-      await cp(result.filePath, destPath);
-
-      await mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
-
-      const fileStat = await stat(destPath);
-      const downloadUrl = `/uploads/builds/${filename}`;
-
-      return c.json({
-        data: {
-          downloadUrl,
-          filename,
-          size: fileStat.size,
-          platform,
-        },
-      });
-    } catch (err) {
-      await mobileAppService.cleanupNative(result.tmpDir).catch(() => {});
-      throw err;
+    if (platform === 'ios') {
+      return c.json(
+        { error: { code: 'NOT_SUPPORTED', message: 'iOS builds require macOS. Coming soon!' } },
+        400,
+      );
     }
+
+    const config = await mobileAppService.getConfig();
+    if (!config) {
+      return c.json(
+        { error: { code: 'NOT_CONFIGURED', message: 'Mobile app not configured.' } },
+        400,
+      );
+    }
+
+    // Check if there's already a build running
+    const latest = getLatestBuild();
+    if (latest && !['done', 'error'].includes(latest.step)) {
+      return c.json({ data: { buildId: latest.buildId, status: latest } });
+    }
+
+    const templatePath = (mobileAppService as any).templatePath;
+    const mediaStoragePath = (mobileAppService as any).mediaStoragePath;
+    const buildId = startAsyncBuild(config, templatePath, mediaStoragePath);
+
+    return c.json({ data: { buildId, status: getBuildStatus(buildId) } });
+  });
+
+  /** GET /build-native/status — poll build progress */
+  router.get('/build-native/status', async (c) => {
+    const buildId = c.req.query('buildId');
+    const status = buildId ? getBuildStatus(buildId) : getLatestBuild();
+    if (!status) {
+      return c.json({ data: { step: 'idle', progress: 0 } });
+    }
+    return c.json({ data: status });
   });
 
   /** POST /build — trigger cloud build (placeholder) */

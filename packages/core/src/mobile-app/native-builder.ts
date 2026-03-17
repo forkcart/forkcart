@@ -344,6 +344,256 @@ async function ensureBuildDeps(projectDir: string): Promise<void> {
   await writeFile(pkgPath, JSON.stringify(pkg, null, 2), 'utf-8');
 }
 
+/* ─── Async Build Tracker ─── */
+
+export interface NativeBuildStatus {
+  buildId: string;
+  step: 'queued' | 'installing' | 'prebuild' | 'compiling' | 'signing' | 'done' | 'error';
+  progress: number; // 0-100
+  error?: string;
+  downloadUrl?: string;
+  filename?: string;
+  size?: number;
+  startedAt: number;
+  updatedAt: number;
+}
+
+const activeBuilds = new Map<string, NativeBuildStatus>();
+
+export function getBuildStatus(buildId: string): NativeBuildStatus | null {
+  return activeBuilds.get(buildId) ?? null;
+}
+
+export function getLatestBuild(): NativeBuildStatus | null {
+  let latest: NativeBuildStatus | null = null;
+  for (const b of activeBuilds.values()) {
+    if (!latest || b.startedAt > latest.startedAt) latest = b;
+  }
+  return latest;
+}
+
+function updateBuild(buildId: string, patch: Partial<NativeBuildStatus>) {
+  const current = activeBuilds.get(buildId);
+  if (current) {
+    Object.assign(current, patch, { updatedAt: Date.now() });
+  }
+}
+
+export function startAsyncBuild(
+  config: MobileAppConfig,
+  templatePath: string,
+  mediaStoragePath: string,
+): string {
+  const buildId = randomUUID().slice(0, 8);
+  const status: NativeBuildStatus = {
+    buildId,
+    step: 'queued',
+    progress: 0,
+    startedAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  activeBuilds.set(buildId, status);
+
+  // Fire and forget — run build in background
+  runAsyncBuild(buildId, config, templatePath, mediaStoragePath).catch((err) => {
+    updateBuild(buildId, {
+      step: 'error',
+      error: err instanceof Error ? err.message : 'Unknown error',
+    });
+  });
+
+  return buildId;
+}
+
+async function runAsyncBuild(
+  buildId: string,
+  config: MobileAppConfig,
+  templatePath: string,
+  mediaStoragePath: string,
+): Promise<void> {
+  const tmpDir = resolve('/tmp', `forkcart-native-${buildId}`);
+  const projectDir = join(tmpDir, 'forkcart-mobile');
+
+  try {
+    // 1. Copy template
+    updateBuild(buildId, { step: 'installing', progress: 10 });
+    await mkdir(tmpDir, { recursive: true });
+    await cp(templatePath, projectDir, {
+      recursive: true,
+      filter: (src) => {
+        const name = src.split('/').pop() ?? '';
+        return name !== 'node_modules' && name !== '.expo' && name !== 'android' && name !== 'ios';
+      },
+    });
+    await applyConfig(projectDir, config, mediaStoragePath);
+    await ensureBuildDeps(projectDir);
+
+    // 2. npm install
+    updateBuild(buildId, { progress: 20 });
+    await run('npm', ['install', '--legacy-peer-deps'], { cwd: projectDir, timeout: 120_000 });
+
+    // 3. Expo prebuild
+    updateBuild(buildId, { step: 'prebuild', progress: 35 });
+    await run('npx', ['expo', 'prebuild', '--platform', 'android'], {
+      cwd: projectDir,
+      timeout: 120_000,
+      env: { ...process.env, ANDROID_HOME, ANDROID_SDK_ROOT: ANDROID_HOME, JAVA_HOME },
+    });
+
+    // 4. Patches
+    await applyGradlePatches(buildId, projectDir);
+    updateBuild(buildId, { step: 'compiling', progress: 45 });
+
+    // 5. Gradle build
+    const androidDir = join(projectDir, 'android');
+    await run(
+      './gradlew',
+      [
+        'assembleRelease',
+        '-x',
+        'lint',
+        '--no-daemon',
+        '-q',
+        '-Pandroid.minSdkVersion=24',
+        '-PreactNativeArchitectures=arm64-v8a',
+      ],
+      {
+        cwd: androidDir,
+        timeout: 600_000,
+        env: {
+          ...process.env,
+          ANDROID_HOME,
+          ANDROID_SDK_ROOT: ANDROID_HOME,
+          JAVA_HOME,
+          PATH: `${JAVA_HOME}/bin:${ANDROID_HOME}/platform-tools:${process.env['PATH']}`,
+        },
+      },
+    );
+
+    // 6. Signing step (APK is already signed by Gradle with debug key)
+    updateBuild(buildId, { step: 'signing', progress: 90 });
+
+    // 7. Find APK & copy to downloads
+    const apkDir = join(androidDir, 'app', 'build', 'outputs', 'apk', 'release');
+    const apkFiles = await readdir(apkDir).catch(() => []);
+    const apkFile = apkFiles.find((f) => f.endsWith('.apk'));
+    if (!apkFile) throw new Error('APK not found after build.');
+
+    const apkPath = join(apkDir, apkFile);
+    const filename = `forkcart-mobile-${buildId}.apk`;
+    const destDir = resolve(process.cwd(), 'uploads', 'builds');
+    await mkdir(destDir, { recursive: true });
+    const destPath = resolve(destDir, filename);
+    await cp(apkPath, destPath);
+
+    const apkStat = await stat(destPath);
+
+    updateBuild(buildId, {
+      step: 'done',
+      progress: 100,
+      downloadUrl: `/uploads/builds/${filename}`,
+      filename,
+      size: apkStat.size,
+    });
+
+    logger.info({ buildId, size: apkStat.size }, 'Async APK build complete');
+
+    // Cleanup tmp
+    await rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+  } catch (err) {
+    logger.error({ buildId, err }, 'Async native build failed');
+    updateBuild(buildId, {
+      step: 'error',
+      error: err instanceof Error ? err.message : 'Build failed',
+    });
+  }
+}
+
+/** Apply gradle patches after prebuild */
+async function applyGradlePatches(buildId: string, projectDir: string): Promise<void> {
+  try {
+    const gradlePropsPath = join(projectDir, 'android', 'gradle.properties');
+    let gradleProps = await readFile(gradlePropsPath, 'utf-8');
+    gradleProps = gradleProps.replace(/newArchEnabled\s*=\s*true/, 'newArchEnabled=false');
+    if (!gradleProps.includes('android.ndkVersion'))
+      gradleProps += '\nandroid.ndkVersion=27.2.12479018\n';
+    if (!gradleProps.includes('android.minSdkVersion')) {
+      gradleProps += '\nandroid.minSdkVersion=24\n';
+    } else {
+      gradleProps = gradleProps.replace(
+        /android\.minSdkVersion\s*=\s*\d+/,
+        'android.minSdkVersion=24',
+      );
+    }
+    gradleProps += '\nprefab.enableValidation=false\n';
+    await writeFile(gradlePropsPath, gradleProps, 'utf-8');
+
+    const prefabModules = ['react-native-screens'];
+    for (const mod of prefabModules) {
+      const modGradlePath = join(projectDir, 'node_modules', mod, 'android', 'build.gradle');
+      try {
+        let gradle = await readFile(modGradlePath, 'utf-8');
+        gradle = gradle.replace(/prefab\s+true/g, 'prefab false');
+        const lines = gradle.split('\n');
+        const filtered: string[] = [];
+        let depth = 0;
+        let removing = false;
+        for (const line of lines) {
+          if (!removing && /^\s*externalNativeBuild\s*\{/.test(line)) {
+            removing = true;
+            depth = 0;
+          }
+          if (removing) {
+            for (const c of line) {
+              if (c === '{') depth++;
+              if (c === '}') depth--;
+            }
+            if (depth <= 0) removing = false;
+            continue;
+          }
+          filtered.push(line);
+        }
+        await writeFile(modGradlePath, filtered.join('\n'), 'utf-8');
+      } catch {
+        /* Module may not exist */
+      }
+    }
+
+    await writeFile(
+      join(projectDir, 'android', 'local.properties'),
+      `sdk.dir=/opt/android-sdk\n`,
+      'utf-8',
+    );
+
+    const buildGradlePath = join(projectDir, 'android', 'build.gradle');
+    let buildGradle = await readFile(buildGradlePath, 'utf-8');
+    buildGradle = buildGradle.replace(/ndkVersion\s*=\s*"[^"]*"/, 'ndkVersion = "27.2.12479018"');
+    await writeFile(buildGradlePath, buildGradle, 'utf-8');
+
+    const expoPluginPath = join(
+      projectDir,
+      'node_modules',
+      'expo-modules-core',
+      'android',
+      'ExpoModulesCorePlugin.gradle',
+    );
+    try {
+      let expoPlugin = await readFile(expoPluginPath, 'utf-8');
+      expoPlugin = expoPlugin.replace(
+        'from components.release',
+        'if (components.findByName("release")) { from components.release }',
+      );
+      await writeFile(expoPluginPath, expoPlugin, 'utf-8');
+    } catch {
+      /* May not exist */
+    }
+
+    logger.info({ buildId }, 'Applied gradle patches');
+  } catch (e) {
+    logger.warn({ buildId, e }, 'Could not apply gradle patches');
+  }
+}
+
 async function run(
   cmd: string,
   args: string[],
