@@ -14,6 +14,7 @@ import {
   TestTube,
   ArrowDownToLine,
   ArrowUpFromLine,
+  Globe,
 } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
@@ -54,15 +55,15 @@ interface ConnectionForm {
   sellerId: string;
 }
 
-const MARKETPLACE_OPTIONS = [
-  { value: 'amazon', label: 'Amazon', icon: '🛒' },
-  { value: 'ebay', label: 'eBay', icon: '🏷️' },
-  { value: 'otto', label: 'OTTO', icon: '🏬' },
-  { value: 'kaufland', label: 'Kaufland', icon: '🛍️' },
-];
+const ALL_MARKETPLACES: Record<string, string> = {
+  amazon: 'Amazon',
+  ebay: 'eBay',
+  otto: 'OTTO',
+  kaufland: 'Kaufland',
+};
 
 const emptyForm: ConnectionForm = {
-  marketplaceId: 'amazon',
+  marketplaceId: '',
   name: '',
   apiKey: '',
   apiSecret: '',
@@ -92,6 +93,22 @@ export default function MarketplacePage() {
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState<ConnectionForm>(emptyForm);
+
+  // Fetch active marketplace plugins
+  const { data: pluginsData } = useQuery({
+    queryKey: ['plugins'],
+    queryFn: () =>
+      apiClient<{
+        data: Array<{ name: string; type: string; isActive: boolean; description: string }>;
+      }>('/plugins'),
+  });
+
+  const activeMarketplaces = (pluginsData?.data ?? [])
+    .filter((p) => p.type === 'marketplace' && p.isActive)
+    .map((p) => ({
+      value: p.name.replace('marketplace-', ''),
+      label: ALL_MARKETPLACES[p.name.replace('marketplace-', '')] ?? p.name,
+    }));
 
   // Queries
   const { data: connectionsData, isLoading: loadingConnections } = useQuery({
@@ -180,7 +197,7 @@ export default function MarketplacePage() {
     e.preventDefault();
     createMutation.mutate({
       marketplaceId: form.marketplaceId,
-      name: form.name || MARKETPLACE_OPTIONS.find((m) => m.value === form.marketplaceId)?.label,
+      name: form.name || ALL_MARKETPLACES[form.marketplaceId] || form.marketplaceId,
       settings: {
         apiKey: form.apiKey,
         apiSecret: form.apiSecret,
@@ -208,7 +225,13 @@ export default function MarketplacePage() {
           </p>
         </div>
         <button
-          onClick={() => setModalOpen(true)}
+          onClick={() => {
+            setForm({
+              ...emptyForm,
+              marketplaceId: activeMarketplaces[0]?.value ?? '',
+            });
+            setModalOpen(true);
+          }}
           className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus className="h-4 w-4" />
@@ -231,15 +254,18 @@ export default function MarketplacePage() {
         )}
 
         {connections.map((conn) => {
-          const mp = MARKETPLACE_OPTIONS.find((m) => m.value === conn.marketplaceId);
           return (
             <div key={conn.id} className="rounded-lg border bg-card p-5 shadow-sm">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">{mp?.icon ?? '🏪'}</span>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                    <Globe className="h-5 w-5 text-muted-foreground" />
+                  </div>
                   <div>
                     <h3 className="font-semibold">{conn.name}</h3>
-                    <p className="text-sm text-muted-foreground">{conn.marketplaceId}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {ALL_MARKETPLACES[conn.marketplaceId] ?? conn.marketplaceId}
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
@@ -418,9 +444,14 @@ export default function MarketplacePage() {
                   onChange={(e) => setForm((f) => ({ ...f, marketplaceId: e.target.value }))}
                   className="mt-1 h-10 w-full rounded-md border px-3 text-sm"
                 >
-                  {MARKETPLACE_OPTIONS.map((opt) => (
+                  {activeMarketplaces.length === 0 && (
+                    <option value="" disabled>
+                      No marketplace plugins active
+                    </option>
+                  )}
+                  {activeMarketplaces.map((opt) => (
                     <option key={opt.value} value={opt.value}>
-                      {opt.icon} {opt.label}
+                      {opt.label}
                     </option>
                   ))}
                 </select>
