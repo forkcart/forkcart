@@ -56,4 +56,26 @@ export class EventBus {
   clear(): void {
     this.handlers.clear();
   }
+
+  /** Remove specific handlers for multiple event types (used during plugin deactivation) */
+  removeHandlers(handlerMap: Map<string, EventHandler<unknown>>): void {
+    for (const [eventType, handler] of handlerMap) {
+      const existing = this.handlers.get(eventType);
+      if (existing) {
+        existing.delete(handler);
+        if (existing.size === 0) {
+          this.handlers.delete(eventType);
+        }
+      }
+    }
+  }
+
+  /** Get the count of registered handlers (useful for diagnostics) */
+  get handlerCount(): number {
+    let count = 0;
+    for (const handlers of this.handlers.values()) {
+      count += handlers.size;
+    }
+    return count;
+  }
 }
