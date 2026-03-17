@@ -19,6 +19,7 @@ import {
   CircleDollarSign,
   Layers,
   Smartphone,
+  Globe,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -53,11 +54,17 @@ const NAV_ITEMS: NavItem[] = [
   },
   { href: '/reviews', label: 'Reviews', icon: Star, roles: ['admin', 'superadmin'] },
   {
+    href: '/marketplace',
+    label: 'Marketplaces',
+    icon: Globe,
+    roles: ['admin', 'superadmin'],
+    group: 'Channels',
+  },
+  {
     href: '/mobile-app',
     label: 'Mobile App',
     icon: Smartphone,
     roles: ['admin', 'superadmin'],
-    group: 'Channels',
   },
   {
     href: '/plugins',
