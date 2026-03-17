@@ -60,6 +60,8 @@ import {
   VariantService,
   AttributeRepository,
   AttributeService,
+  MarketplaceService,
+  MarketplaceProviderRegistry,
 } from '@forkcart/core';
 import {
   AISettingsRepository,
@@ -73,6 +75,10 @@ import { LogEmailProvider } from '@forkcart/core';
 import { stripePlugin } from '@forkcart/plugin-stripe';
 import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
 import { smtpPlugin, createSmtpProvider } from '@forkcart/plugin-smtp';
+import { amazonMarketplacePlugin } from '@forkcart/plugin-marketplace-amazon';
+import { ebayMarketplacePlugin } from '@forkcart/plugin-marketplace-ebay';
+import { ottoMarketplacePlugin } from '@forkcart/plugin-marketplace-otto';
+import { kauflandMarketplacePlugin } from '@forkcart/plugin-marketplace-kaufland';
 import { errorHandler } from './middleware/error-handler';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
@@ -112,6 +118,7 @@ import { createVariantRoutes } from './routes/v1/variants';
 import { createAttributeRoutes } from './routes/v1/attributes';
 import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { createMobileAppRoutes } from './routes/v1/mobile-app';
+import { createMarketplaceRoutes } from './routes/v1/marketplace';
 import { requireRole } from './middleware/permissions';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
 import { flattenTranslations } from '@forkcart/i18n';
@@ -204,6 +211,9 @@ export async function createApp(db: Database) {
   // Initialize payment provider registry
   const paymentProviderRegistry = new PaymentProviderRegistry();
 
+  // Initialize marketplace provider registry
+  const marketplaceProviderRegistry = new MarketplaceProviderRegistry();
+
   // Initialize services with dependency injection
   const productService = new ProductService({ productRepository, eventBus });
   const categoryService = new CategoryService({ categoryRepository, eventBus });
@@ -241,6 +251,12 @@ export async function createApp(db: Database) {
     mobileAppRepository,
     templatePath: mobileTemplatePath,
     mediaStoragePath: storagePath,
+  });
+
+  // Marketplace service
+  const marketplaceService = new MarketplaceService({
+    db,
+    registry: marketplaceProviderRegistry,
   });
 
   // Product translations
@@ -332,7 +348,12 @@ export async function createApp(db: Database) {
   });
 
   // Initialize plugin loader and register built-in plugins
-  const pluginLoader = new PluginLoader(db, paymentProviderRegistry, emailProviderRegistry);
+  const pluginLoader = new PluginLoader(
+    db,
+    paymentProviderRegistry,
+    emailProviderRegistry,
+    marketplaceProviderRegistry,
+  );
   pluginLoader.registerDefinition(stripePlugin);
   pluginLoader.registerDefinition({
     ...mailgunPlugin,
@@ -342,6 +363,12 @@ export async function createApp(db: Database) {
     ...smtpPlugin,
     createEmailProvider: createSmtpProvider,
   });
+
+  // Marketplace plugins
+  pluginLoader.registerDefinition(amazonMarketplacePlugin);
+  pluginLoader.registerDefinition(ebayMarketplacePlugin);
+  pluginLoader.registerDefinition(ottoMarketplacePlugin);
+  pluginLoader.registerDefinition(kauflandMarketplacePlugin);
 
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
@@ -431,6 +458,7 @@ export async function createApp(db: Database) {
   v1.use('/mobile-app/*', requireRole('admin', 'superadmin'));
   v1.use('/search/analytics/*', requireRole('admin', 'superadmin'));
   v1.use('/search/zero-results', requireRole('admin', 'superadmin'));
+  v1.use('/marketplace/*', requireRole('admin', 'superadmin'));
 
   v1.route('/auth', createAuthRoutes(authService));
   v1.route(
@@ -475,6 +503,7 @@ export async function createApp(db: Database) {
   v1.route('/products', createVariantRoutes(variantService));
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
+  v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/carts', createCartAssignRoute(cartService));
   v1.route(

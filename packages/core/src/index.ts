@@ -24,4 +24,5 @@ export * from './currencies/index';
 export * from './variants/index';
 export * from './attributes/index';
 export * from './mobile-app/index';
+export * from './marketplace/index';
 export { createLogger } from './lib/logger';
