@@ -72,13 +72,13 @@ import {
   MobileAppService,
 } from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
-import { stripePlugin } from '@forkcart/plugin-stripe';
-import { mailgunPlugin, createMailgunProvider } from '@forkcart/plugin-mailgun';
-import { smtpPlugin, createSmtpProvider } from '@forkcart/plugin-smtp';
-import { amazonMarketplacePlugin } from '@forkcart/plugin-marketplace-amazon';
-import { ebayMarketplacePlugin } from '@forkcart/plugin-marketplace-ebay';
-import { ottoMarketplacePlugin } from '@forkcart/plugin-marketplace-otto';
-import { kauflandMarketplacePlugin } from '@forkcart/plugin-marketplace-kaufland';
+import stripePlugin from '@forkcart/plugin-stripe';
+import mailgunPlugin from '@forkcart/plugin-mailgun';
+import smtpPlugin from '@forkcart/plugin-smtp';
+import amazonMarketplacePlugin from '@forkcart/plugin-marketplace-amazon';
+import ebayMarketplacePlugin from '@forkcart/plugin-marketplace-ebay';
+import ottoMarketplacePlugin from '@forkcart/plugin-marketplace-otto';
+import kauflandMarketplacePlugin from '@forkcart/plugin-marketplace-kaufland';
 import { errorHandler } from './middleware/error-handler';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
@@ -355,21 +355,18 @@ export async function createApp(db: Database) {
     marketplaceProviderRegistry,
     eventBus,
   );
-  pluginLoader.registerDefinition(stripePlugin);
-  pluginLoader.registerDefinition({
-    ...mailgunPlugin,
-    createEmailProvider: createMailgunProvider,
-  });
-  pluginLoader.registerDefinition({
-    ...smtpPlugin,
-    createEmailProvider: createSmtpProvider,
-  });
+  // Register SDK plugins (cast needed: typed PluginContext<T> → untyped SdkPluginDefinition)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const register = (def: any) => pluginLoader.registerSdkPlugin(def);
+  register(stripePlugin);
+  register(mailgunPlugin);
+  register(smtpPlugin);
 
   // Marketplace plugins
-  pluginLoader.registerDefinition(amazonMarketplacePlugin);
-  pluginLoader.registerDefinition(ebayMarketplacePlugin);
-  pluginLoader.registerDefinition(ottoMarketplacePlugin);
-  pluginLoader.registerDefinition(kauflandMarketplacePlugin);
+  register(amazonMarketplacePlugin);
+  register(ebayMarketplacePlugin);
+  register(ottoMarketplacePlugin);
+  register(kauflandMarketplacePlugin);
 
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();

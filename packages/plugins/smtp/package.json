@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@forkcart/core": "workspace:*",
-    "nodemailer": "^6.9.0"
+    "nodemailer": "^6.9.0",
+    "@forkcart/plugin-sdk": "workspace:*"
   },
   "devDependencies": {
     "@types/nodemailer": "^6.4.0",
