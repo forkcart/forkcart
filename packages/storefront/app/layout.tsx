@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { getThemeSettings, generateThemeCSS } from '@/lib/theme';
+import { StorefrontSlot } from '@/components/plugins/StorefrontSlot';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -25,12 +26,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en" suppressHydrationWarning>
-      {themeCSS && (
-        <head>
-          <style dangerouslySetInnerHTML={{ __html: themeCSS }} />
-        </head>
-      )}
-      <body className={`${inter.className} flex min-h-screen flex-col`}>{children}</body>
+      <head>
+        {themeCSS && <style dangerouslySetInnerHTML={{ __html: themeCSS }} />}
+        {/* Plugin slot: head (for custom CSS, meta tags, etc.) */}
+        <StorefrontSlot slotName="head" />
+      </head>
+      <body className={`${inter.className} flex min-h-screen flex-col`}>
+        {/* Plugin slot: body start */}
+        <StorefrontSlot slotName="body-start" />
+        {children}
+        {/* Plugin slot: body end */}
+        <StorefrontSlot slotName="body-end" />
+      </body>
     </html>
   );
 }

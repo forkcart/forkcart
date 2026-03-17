@@ -46,6 +46,11 @@ interface SdkPluginDefinition {
   type: string;
   description: string;
   author: string;
+  homepage?: string;
+  repository?: string;
+  license?: string;
+  keywords?: string[];
+  minVersion?: string;
   settings?: Record<
     string,
     {
@@ -59,16 +64,63 @@ interface SdkPluginDefinition {
   >;
   onActivate?: (ctx: unknown) => void | Promise<void>;
   onDeactivate?: (ctx: unknown) => void | Promise<void>;
+  onInstall?: (ctx: unknown) => void | Promise<void>;
+  onUninstall?: (ctx: unknown) => void | Promise<void>;
+  onUpdate?: (ctx: unknown, fromVersion: string) => void | Promise<void>;
   hooks?: Record<string, (event: unknown, ctx: unknown) => void | Promise<void>>;
+  filters?: Record<string, (data: unknown, ctx: unknown) => unknown | Promise<unknown>>;
   provider?: Record<string, unknown>;
-  adminPages?: Array<{ path: string; label: string; icon?: string }>;
+  adminPages?: Array<{ path: string; label: string; icon?: string; parent?: string; order?: number }>;
   routes?: (router: unknown) => void;
+  storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
+  migrations?: Array<{
+    version: string;
+    description: string;
+    up: (db: unknown) => Promise<void>;
+    down?: (db: unknown) => Promise<void>;
+  }>;
+  cli?: Array<{
+    name: string;
+    description: string;
+    args?: Array<{ name: string; description: string; required?: boolean }>;
+    options?: Array<{ name: string; alias?: string; description: string; type: string; default?: unknown }>;
+    handler: (args: Record<string, unknown>, ctx: unknown) => Promise<void>;
+  }>;
+  scheduledTasks?: Array<{
+    name: string;
+    schedule: string;
+    handler: (ctx: unknown) => Promise<void>;
+    enabled?: boolean;
+  }>;
+  dependencies?: string[];
+  permissions?: string[];
+}
+
+/** Filter handler type */
+type FilterHandler<T = unknown> = (data: T, ctx: unknown) => T | Promise<T>;
+
+/** CLI Command type (extracted from SdkPluginDefinition) */
+interface CliCommand {
+  name: string;
+  description: string;
+  args?: Array<{ name: string; description: string; required?: boolean }>;
+  options?: Array<{ name: string; alias?: string; description: string; type: string; default?: unknown }>;
+  handler: (args: Record<string, unknown>, ctx: unknown) => Promise<void>;
+}
+
+/** Scheduled Task type (extracted from SdkPluginDefinition) */
+interface ScheduledTask {
+  name: string;
+  schedule: string;
+  handler: (ctx: unknown) => Promise<void>;
+  enabled?: boolean;
 }
 
 /** Track registered hook handlers per plugin so we can unregister them */
 interface ActivePluginState {
   pluginName: string;
   registeredHooks: Map<string, EventHandler<unknown>>;
+  registeredFilters: Map<string, FilterHandler>;
 }
 
 /**
@@ -79,6 +131,18 @@ export class PluginLoader {
   private legacyPlugins = new Map<string, LegacyPluginDefinition>();
   private sdkPlugins = new Map<string, SdkPluginDefinition>();
   private activeStates = new Map<string, ActivePluginState>();
+
+  // ─── Filter Registry (like WordPress apply_filters) ────────────────────────
+  private filterHandlers = new Map<string, Set<{ priority: number; handler: FilterHandler }>>();
+
+  // ─── Storefront Slots Registry ─────────────────────────────────────────────
+  private storefrontSlots = new Map<string, Array<{ pluginName: string; content: string; order: number; pages?: string[] }>>();
+
+  // ─── CLI Commands Registry ─────────────────────────────────────────────────
+  private cliCommands = new Map<string, { pluginName: string; command: CliCommand }>();
+
+  // ─── Scheduled Tasks Registry ──────────────────────────────────────────────
+  private scheduledTasks = new Map<string, { pluginName: string; task: ScheduledTask }>();
 
   constructor(
     private readonly db: Database,
@@ -359,6 +423,49 @@ export class PluginLoader {
     if (state && this.eventBus) {
       this.eventBus.removeHandlers(state.registeredHooks);
     }
+
+    // Unregister filters
+    if (state?.registeredFilters) {
+      for (const [filterName, handler] of state.registeredFilters) {
+        const handlers = this.filterHandlers.get(filterName);
+        if (handlers) {
+          for (const h of handlers) {
+            if (h.handler === handler) {
+              handlers.delete(h);
+              break;
+            }
+          }
+          if (handlers.size === 0) {
+            this.filterHandlers.delete(filterName);
+          }
+        }
+      }
+    }
+
+    // Unregister storefront slots
+    for (const [slotName, slots] of this.storefrontSlots) {
+      const filtered = slots.filter((s) => s.pluginName !== plugin.name);
+      if (filtered.length === 0) {
+        this.storefrontSlots.delete(slotName);
+      } else {
+        this.storefrontSlots.set(slotName, filtered);
+      }
+    }
+
+    // Unregister CLI commands
+    for (const [key, entry] of this.cliCommands) {
+      if (entry.pluginName === plugin.name) {
+        this.cliCommands.delete(key);
+      }
+    }
+
+    // Unregister scheduled tasks
+    for (const [key, entry] of this.scheduledTasks) {
+      if (entry.pluginName === plugin.name) {
+        this.scheduledTasks.delete(key);
+      }
+    }
+
     this.activeStates.delete(plugin.name);
 
     // Unregister legacy providers
@@ -388,6 +495,7 @@ export class PluginLoader {
   ): Promise<void> {
     const ctx = this.buildPluginContext(pluginName, settings);
     const hookHandlers = new Map<string, EventHandler<unknown>>();
+    const filterHandlers = new Map<string, FilterHandler>();
 
     // Register hooks
     if (def.hooks && this.eventBus) {
@@ -405,9 +513,60 @@ export class PluginLoader {
       }
     }
 
+    // Register filters (like WordPress apply_filters)
+    if (def.filters) {
+      for (const [filterName, handler] of Object.entries(def.filters)) {
+        if (!handler) continue;
+        const wrappedHandler: FilterHandler = async (data) => {
+          try {
+            return await handler(data, ctx);
+          } catch (error) {
+            logger.error({ pluginName, filterName, error }, 'Plugin filter handler failed');
+            return data; // Return unmodified data on error
+          }
+        };
+        this.registerFilter(filterName, wrappedHandler);
+        filterHandlers.set(filterName, wrappedHandler);
+      }
+    }
+
+    // Register storefront slots
+    if (def.storefrontSlots) {
+      for (const slot of def.storefrontSlots) {
+        const existing = this.storefrontSlots.get(slot.slot) ?? [];
+        existing.push({
+          pluginName,
+          content: slot.content,
+          order: slot.order ?? 10,
+          pages: slot.pages,
+        });
+        existing.sort((a, b) => a.order - b.order);
+        this.storefrontSlots.set(slot.slot, existing);
+      }
+    }
+
+    // Register CLI commands
+    if (def.cli) {
+      for (const command of def.cli) {
+        const key = `${pluginName}:${command.name}`;
+        this.cliCommands.set(key, { pluginName, command });
+        logger.debug({ pluginName, command: command.name }, 'CLI command registered');
+      }
+    }
+
+    // Register scheduled tasks
+    if (def.scheduledTasks) {
+      for (const task of def.scheduledTasks) {
+        const key = `${pluginName}:${task.name}`;
+        this.scheduledTasks.set(key, { pluginName, task });
+        logger.debug({ pluginName, task: task.name, schedule: task.schedule }, 'Scheduled task registered');
+      }
+    }
+
     this.activeStates.set(pluginName, {
       pluginName,
       registeredHooks: hookHandlers,
+      registeredFilters: filterHandlers,
     });
 
     // Call onActivate
@@ -673,6 +832,103 @@ export class PluginLoader {
       },
       'Plugin loading complete',
     );
+  }
+
+  // ─── Filter API (like WordPress apply_filters) ────────────────────────────
+
+  /** Register a filter handler */
+  private registerFilter(filterName: string, handler: FilterHandler, priority = 10): void {
+    const existing = this.filterHandlers.get(filterName) ?? new Set();
+    existing.add({ priority, handler });
+    this.filterHandlers.set(filterName, existing);
+  }
+
+  /** Apply all registered filters to data (like WordPress apply_filters) */
+  async applyFilters<T>(filterName: string, data: T, ctx?: unknown): Promise<T> {
+    const handlers = this.filterHandlers.get(filterName);
+    if (!handlers || handlers.size === 0) return data;
+
+    // Sort by priority and apply in order
+    const sorted = [...handlers].sort((a, b) => a.priority - b.priority);
+    let result = data;
+
+    for (const { handler } of sorted) {
+      try {
+        result = (await handler(result, ctx)) as T;
+      } catch (error) {
+        logger.error({ filterName, error }, 'Filter handler failed');
+      }
+    }
+
+    return result;
+  }
+
+  // ─── Storefront Slots API ─────────────────────────────────────────────────
+
+  /** Get content for a storefront slot */
+  getStorefrontSlotContent(slotName: string, currentPage?: string): Array<{ content: string; pluginName: string }> {
+    const slots = this.storefrontSlots.get(slotName) ?? [];
+    return slots
+      .filter((s) => !s.pages || s.pages.length === 0 || (currentPage && s.pages.includes(currentPage)))
+      .map((s) => ({ content: s.content, pluginName: s.pluginName }));
+  }
+
+  /** Get all registered storefront slots (for debugging/admin) */
+  getAllStorefrontSlots(): Map<string, Array<{ pluginName: string; content: string; order: number }>> {
+    return this.storefrontSlots;
+  }
+
+  // ─── CLI Commands API ─────────────────────────────────────────────────────
+
+  /** Get all registered CLI commands */
+  getAllCliCommands(): Array<{ key: string; pluginName: string; command: CliCommand }> {
+    return [...this.cliCommands.entries()].map(([key, val]) => ({ key, ...val }));
+  }
+
+  /** Execute a CLI command */
+  async executeCliCommand(commandKey: string, args: Record<string, unknown>): Promise<void> {
+    const entry = this.cliCommands.get(commandKey);
+    if (!entry) throw new Error(`CLI command not found: ${commandKey}`);
+
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.name, entry.pluginName),
+      with: { settings: true },
+    });
+
+    const settings: Record<string, unknown> = {};
+    for (const s of plugin?.settings ?? []) {
+      settings[s.key] = s.value;
+    }
+
+    const ctx = this.buildPluginContext(entry.pluginName, settings);
+    await entry.command.handler(args, ctx);
+  }
+
+  // ─── Scheduled Tasks API ──────────────────────────────────────────────────
+
+  /** Get all registered scheduled tasks */
+  getAllScheduledTasks(): Array<{ key: string; pluginName: string; task: ScheduledTask }> {
+    return [...this.scheduledTasks.entries()].map(([key, val]) => ({ key, ...val }));
+  }
+
+  /** Run a scheduled task */
+  async runScheduledTask(taskKey: string): Promise<void> {
+    const entry = this.scheduledTasks.get(taskKey);
+    if (!entry) throw new Error(`Scheduled task not found: ${taskKey}`);
+
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.name, entry.pluginName),
+      with: { settings: true },
+    });
+
+    const settings: Record<string, unknown> = {};
+    for (const s of plugin?.settings ?? []) {
+      settings[s.key] = s.value;
+    }
+
+    const ctx = this.buildPluginContext(entry.pluginName, settings);
+    logger.info({ taskKey, pluginName: entry.pluginName }, 'Running scheduled task');
+    await entry.task.handler(ctx);
   }
 
   // ─── Admin API helpers ────────────────────────────────────────────────────

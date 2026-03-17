@@ -5,6 +5,7 @@ import type {
   UpdateShippingMethodInput,
 } from './repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import { SHIPPING_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
 
@@ -44,6 +45,8 @@ const EU_COUNTRIES = [
 export interface ShippingServiceDeps {
   shippingRepository: ShippingRepository;
   eventBus: EventBus;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 /**
@@ -52,10 +55,17 @@ export interface ShippingServiceDeps {
 export class ShippingService {
   private readonly repo: ShippingRepository;
   private readonly events: EventBus;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: ShippingServiceDeps) {
     this.repo = deps.shippingRepository;
     this.events = deps.eventBus;
+    this.pluginLoader = deps.pluginLoader ?? null;
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
   }
 
   async getById(id: string) {
@@ -81,7 +91,7 @@ export class ShippingService {
   async getAvailableShippingMethods(country: string, cartTotal: number) {
     const active = await this.repo.findActive();
 
-    return active.filter((method) => {
+    let methods = active.filter((method) => {
       // Check country
       const countries = method.countries as string[];
       if (countries.length > 0) {
@@ -99,6 +109,16 @@ export class ShippingService {
 
       return true;
     });
+
+    // Apply checkout:shipping-methods filter — allows plugins to modify available shipping methods
+    if (this.pluginLoader) {
+      methods = await this.pluginLoader.applyFilters('checkout:shipping-methods', methods, {
+        country,
+        cartTotal,
+      });
+    }
+
+    return methods;
   }
 
   /**
@@ -109,11 +129,23 @@ export class ShippingService {
     const method = await this.getById(methodId);
 
     // Free shipping if cart total meets freeAbove threshold
+    let cost: number;
     if (method.freeAbove && cartTotal >= method.freeAbove) {
-      return 0;
+      cost = 0;
+    } else {
+      cost = method.price;
     }
 
-    return method.price;
+    // Apply cart:shipping filter — allows plugins to modify shipping cost
+    if (this.pluginLoader) {
+      cost = await this.pluginLoader.applyFilters('cart:shipping', cost, {
+        methodId,
+        method,
+        cartTotal,
+      });
+    }
+
+    return cost;
   }
 
   async create(input: CreateShippingMethodInput) {

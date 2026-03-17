@@ -6,6 +6,7 @@ import { LocaleLink } from '@/components/locale-link';
 import { useCart } from '@/components/cart/cart-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 import { useCurrency } from '@/components/currency/currency-provider';
+import { CartPageSlots } from './cart-slots';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -75,6 +76,9 @@ export default function CartPage() {
 
   return (
     <div className="container-page py-12">
+      {/* Plugin slot: cart page top */}
+      <CartPageSlots position="top" />
+      
       <h1 className="text-3xl font-bold tracking-tight text-gray-900">{t('cart.title')}</h1>
       <p className="mt-1 text-sm text-gray-500">{t('cart.itemCount', { count: items.length })}</p>
 
@@ -231,6 +235,9 @@ export default function CartPage() {
           </div>
         </div>
       </div>
+      
+      {/* Plugin slot: cart page bottom */}
+      <CartPageSlots position="bottom" />
     </div>
   );
 }

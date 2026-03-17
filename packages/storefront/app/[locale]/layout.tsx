@@ -8,6 +8,7 @@ import { ChatWidget } from '@/components/chat/chat-widget';
 import { CartDrawer } from '@/components/cart/cart-drawer';
 import { I18nWrapper } from '@/components/i18n/i18n-provider-wrapper';
 import { getI18nConfig, fallbackConfig } from '@/lib/i18n-config';
+import { StorefrontSlot } from '@/components/plugins/StorefrontSlot';
 
 /**
  * Generate static params at build time (uses ENV fallback).
@@ -50,9 +51,17 @@ export default async function LocaleLayout({
       <AuthProvider>
         <CurrencyProvider>
           <CartProvider>
+            {/* Plugin slot: before header */}
+            <StorefrontSlot slotName="header-before" />
             <Header />
+            {/* Plugin slot: after header */}
+            <StorefrontSlot slotName="header-after" />
             <main className="flex-1">{children}</main>
+            {/* Plugin slot: before footer */}
+            <StorefrontSlot slotName="footer-before" />
             <Footer />
+            {/* Plugin slot: after footer */}
+            <StorefrontSlot slotName="footer-after" />
             <CartDrawer />
             <ChatWidget />
           </CartProvider>

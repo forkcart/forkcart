@@ -16,6 +16,7 @@ import { NotFoundError } from '@forkcart/shared';
 import type { TaxRepository } from './repository';
 import type { VatValidator } from './vat-validator';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import { TAX_EVENTS } from './events';
 /** EU member country codes for reverse charge eligibility */
 const EU_COUNTRIES = new Set([
@@ -54,6 +55,8 @@ export interface TaxServiceDeps {
   eventBus: EventBus;
   /** Callback to resolve a product's taxClassId by product ID */
   getProductTaxClassId?: (productId: string) => Promise<string | null>;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 export class TaxService {
@@ -61,12 +64,19 @@ export class TaxService {
   private readonly vatValidator: VatValidator;
   private readonly events: EventBus;
   private readonly getProductTaxClassId: (productId: string) => Promise<string | null>;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: TaxServiceDeps) {
     this.repo = deps.taxRepository;
     this.vatValidator = deps.vatValidator;
     this.events = deps.eventBus;
     this.getProductTaxClassId = deps.getProductTaxClassId ?? (async () => null);
+    this.pluginLoader = deps.pluginLoader ?? null;
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
   }
 
   // ─── Tax Classes ──────────────────────────────────────────────────────────────
@@ -305,8 +315,18 @@ export class TaxService {
     }
 
     const breakdown = Array.from(breakdownMap.values());
-    const totalTax = items.reduce((sum, i) => sum + i.taxAmount, 0);
+    let totalTax = items.reduce((sum, i) => sum + i.taxAmount, 0);
     const totalLineAmount = request.items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
+
+    // Apply cart:tax filter — allows plugins to modify the total tax amount
+    if (this.pluginLoader) {
+      totalTax = await this.pluginLoader.applyFilters('cart:tax', totalTax, {
+        items,
+        breakdown,
+        request,
+        reverseCharge,
+      });
+    }
 
     let totalNet: number;
     let totalGross: number;

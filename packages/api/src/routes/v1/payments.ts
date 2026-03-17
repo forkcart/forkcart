@@ -40,7 +40,7 @@ export function createPaymentRoutes(paymentService: PaymentService) {
 
   /** Get available payment providers for checkout */
   router.get('/providers', async (c) => {
-    const providers = paymentService.getActiveProviders();
+    const providers = await paymentService.getActiveProviders();
     const hasProvider = paymentService.hasActiveProvider();
     return c.json({
       data: {

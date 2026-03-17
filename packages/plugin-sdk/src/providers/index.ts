@@ -1,4 +1,5 @@
 export type {
+  ProviderSettingDef,
   PaymentIntentResult,
   PaymentIntentInput,
   PaymentWebhookEvent,

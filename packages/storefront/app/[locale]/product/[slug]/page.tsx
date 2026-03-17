@@ -3,6 +3,7 @@ import { getProductBySlug, getPageByType } from '@/lib/api';
 import { ProductContent, ProductNotFound } from './product-content';
 import { ProductJsonLd, BreadcrumbJsonLd } from '@/components/seo/json-ld';
 import { ProductPageRenderer } from '@/components/page-builder/product-page-renderer';
+import { ProductPageSlots } from './product-slots';
 
 const BASE_URL = process.env['NEXT_PUBLIC_SITE_URL'] ?? 'http://localhost:3000';
 
@@ -59,9 +60,13 @@ export default async function ProductPage({ params }: Props) {
     return (
       <>
         {seoEl}
+        {/* Plugin slot: product page top */}
+        <ProductPageSlots position="top" />
         <div className="container-page py-12">
           <ProductPageRenderer content={pbPage.content} product={product} />
         </div>
+        {/* Plugin slot: product page bottom */}
+        <ProductPageSlots position="bottom" />
       </>
     );
   }
@@ -70,7 +75,11 @@ export default async function ProductPage({ params }: Props) {
   return (
     <>
       {seoEl}
+      {/* Plugin slot: product page top */}
+      <ProductPageSlots position="top" />
       <ProductContent product={product} />
+      {/* Plugin slot: product page bottom */}
+      <ProductPageSlots position="bottom" />
     </>
   );
 }

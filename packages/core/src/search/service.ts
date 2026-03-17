@@ -8,6 +8,7 @@ import type {
 } from './repository';
 import type { RankingService, TrendingProduct, ProductScore } from './ranking';
 import type { EventBus } from '../plugins/event-bus';
+import type { PluginLoader } from '../plugins/plugin-loader';
 import type { Database } from '@forkcart/database';
 import { SEARCH_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
@@ -74,6 +75,8 @@ export interface SearchServiceDeps {
   semanticProvider?: SemanticSearchProvider | null;
   mediaBaseUrl?: string;
   db?: Database;
+  /** Optional plugin loader for filter support */
+  pluginLoader?: PluginLoader | null;
 }
 
 /** Search result with metadata */
@@ -96,6 +99,7 @@ export class SearchService {
   private readonly ai: AITextGenerator | null;
   private readonly mediaBaseUrl: string;
   private readonly db: Database | null;
+  private pluginLoader: PluginLoader | null;
 
   constructor(deps: SearchServiceDeps) {
     this.repo = deps.searchRepository;
@@ -104,7 +108,13 @@ export class SearchService {
     this.ai = deps.aiService ?? null;
     this.mediaBaseUrl = deps.mediaBaseUrl ?? '';
     this.db = deps.db ?? null;
+    this.pluginLoader = deps.pluginLoader ?? null;
     // semanticProvider reserved for future vector search (deps.semanticProvider)
+  }
+
+  /** Set plugin loader (for late injection after PluginLoader is initialized) */
+  setPluginLoader(loader: PluginLoader): void {
+    this.pluginLoader = loader;
   }
 
   /** Resolve a media path to a full URL */
@@ -153,9 +163,14 @@ export class SearchService {
 
   /** Main search method — tries enhanced mode first, falls back to basic */
   async search(query: string, options: SearchOptions = {}): Promise<SearchResponse> {
-    const trimmed = query.trim();
+    let trimmed = query.trim();
     if (!trimmed) {
       return { data: [], total: 0, query: trimmed, mode: 'basic' };
+    }
+
+    // Apply search:query filter — allows plugins to modify the search query
+    if (this.pluginLoader) {
+      trimmed = await this.pluginLoader.applyFilters('search:query', trimmed, { options });
     }
 
     let mode: SearchMode = 'basic';
@@ -250,8 +265,18 @@ export class SearchService {
       suggestions = await this.repo.getSuggestions(trimmed, 5);
     }
 
+    // Apply search:results filter — allows plugins to modify/filter/reorder results
+    let finalData = rankedData;
+    if (this.pluginLoader && finalData.length > 0) {
+      finalData = await this.pluginLoader.applyFilters('search:results', finalData, {
+        query: trimmed,
+        mode,
+        options,
+      });
+    }
+
     return {
-      data: rankedData,
+      data: finalData,
       total: result.total,
       query: trimmed,
       mode,
