@@ -134,6 +134,18 @@ importers:
       '@forkcart/plugin-mailgun':
         specifier: workspace:*
         version: link:../plugins/mailgun
+      '@forkcart/plugin-marketplace-amazon':
+        specifier: workspace:*
+        version: link:../plugins/marketplace-amazon
+      '@forkcart/plugin-marketplace-ebay':
+        specifier: workspace:*
+        version: link:../plugins/marketplace-ebay
+      '@forkcart/plugin-marketplace-kaufland':
+        specifier: workspace:*
+        version: link:../plugins/marketplace-kaufland
+      '@forkcart/plugin-marketplace-otto':
+        specifier: workspace:*
+        version: link:../plugins/marketplace-otto
       '@forkcart/plugin-smtp':
         specifier: workspace:*
         version: link:../plugins/smtp
@@ -338,6 +350,46 @@ importers:
         version: 5.3.3
 
   packages/plugins/mailgun:
+    dependencies:
+      '@forkcart/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugins/marketplace-amazon:
+    dependencies:
+      '@forkcart/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugins/marketplace-ebay:
+    dependencies:
+      '@forkcart/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugins/marketplace-kaufland:
+    dependencies:
+      '@forkcart/core':
+        specifier: workspace:*
+        version: link:../../core
+    devDependencies:
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
+  packages/plugins/marketplace-otto:
     dependencies:
       '@forkcart/core':
         specifier: workspace:*

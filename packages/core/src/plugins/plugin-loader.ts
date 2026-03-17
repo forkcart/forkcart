@@ -5,6 +5,8 @@ import type { PaymentProvider } from '../payments/provider';
 import type { PaymentProviderRegistry } from '../payments/registry';
 import type { EmailProvider } from '../email/provider';
 import type { EmailProviderRegistry } from '../email/registry';
+import type { MarketplaceProvider } from '../marketplace/types';
+import type { MarketplaceProviderRegistry } from '../marketplace/registry';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('plugin-loader');
@@ -15,11 +17,13 @@ export interface PluginDefinition {
   version: string;
   description: string;
   author: string;
-  type: 'payment' | 'shipping' | 'notification' | 'general';
+  type: 'payment' | 'shipping' | 'notification' | 'marketplace' | 'general';
   /** Factory function that creates the payment provider instance */
   createProvider?: () => PaymentProvider;
   /** Factory function that creates the email provider instance */
   createEmailProvider?: () => EmailProvider;
+  /** Factory function that creates the marketplace provider instance */
+  createMarketplaceProvider?: () => MarketplaceProvider;
   /** Required settings with defaults */
   defaultSettings?: Record<string, unknown>;
 }
@@ -35,6 +39,7 @@ export class PluginLoader {
     private readonly db: Database,
     private readonly paymentRegistry: PaymentProviderRegistry,
     private readonly emailRegistry?: EmailProviderRegistry,
+    private readonly marketplaceRegistry?: MarketplaceProviderRegistry,
   ) {}
 
   /** Register a plugin definition (called at app startup) */
@@ -130,6 +135,15 @@ export class PluginLoader {
         await provider.initialize(settings);
         this.emailRegistry.register(provider);
         logger.info({ pluginName: plugin.name }, 'Email provider plugin loaded');
+      } else if (
+        def.type === 'marketplace' &&
+        def.createMarketplaceProvider &&
+        this.marketplaceRegistry
+      ) {
+        const provider = def.createMarketplaceProvider();
+        await provider.connect(settings);
+        this.marketplaceRegistry.register(provider);
+        logger.info({ pluginName: plugin.name }, 'Marketplace provider plugin loaded');
       }
     }
 
@@ -226,6 +240,26 @@ export class PluginLoader {
         this.emailRegistry.unregister(provider.id);
       }
       logger.info({ pluginName: plugin.name }, 'Email plugin deactivated');
+    } else if (
+      active &&
+      def?.type === 'marketplace' &&
+      def.createMarketplaceProvider &&
+      this.marketplaceRegistry
+    ) {
+      const provider = def.createMarketplaceProvider();
+      const settings: Record<string, unknown> = {};
+      for (const s of plugin.settings) {
+        settings[s.key] = s.value;
+      }
+      await provider.connect(settings);
+      this.marketplaceRegistry.register(provider);
+      logger.info({ pluginName: plugin.name }, 'Marketplace plugin activated');
+    } else if (!active && def?.type === 'marketplace' && this.marketplaceRegistry) {
+      const provider = def.createMarketplaceProvider?.();
+      if (provider) {
+        this.marketplaceRegistry.unregister(provider.id);
+      }
+      logger.info({ pluginName: plugin.name }, 'Marketplace plugin deactivated');
     }
   }
 
@@ -276,6 +310,18 @@ export class PluginLoader {
         await provider.initialize(mergedSettings);
         this.emailRegistry.register(provider);
         logger.info({ pluginName: plugin.name }, 'Email plugin re-initialized with new settings');
+      } else if (
+        def?.type === 'marketplace' &&
+        def.createMarketplaceProvider &&
+        this.marketplaceRegistry
+      ) {
+        const provider = def.createMarketplaceProvider();
+        await provider.connect(mergedSettings);
+        this.marketplaceRegistry.register(provider);
+        logger.info(
+          { pluginName: plugin.name },
+          'Marketplace plugin re-initialized with new settings',
+        );
       }
     }
 
