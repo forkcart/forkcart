@@ -285,7 +285,7 @@ export default function CookieConsentSettingsPage() {
                 >
                   {lang.locale.toUpperCase()}
                   {lang.isDefault && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">(Standard)</span>
+                    <span className="ml-1 text-[10px] text-muted-foreground">(Default)</span>
                   )}
                 </button>
               ))}
