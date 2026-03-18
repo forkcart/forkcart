@@ -330,10 +330,11 @@ storefrontSlots: [
     slot: 'footer-before',
     content: '<script src="https://example.com/chat-widget.js"></script>',
   },
-]
+];
 ```
 
 **Available slots:**
+
 - `header-before`, `header-after`
 - `footer-before`, `footer-after`
 - `product-page-top`, `product-page-bottom`
@@ -362,7 +363,7 @@ cli: [
       // Generate report
     },
   },
-]
+];
 ```
 
 Run with: `forkcart plugin run my-plugin:sync`
@@ -387,7 +388,7 @@ scheduledTasks: [
       await checkOrderStatus();
     },
   },
-]
+];
 ```
 
 ### Lifecycle Hooks
@@ -432,7 +433,7 @@ migrations: [
     `,
     down: `DROP TABLE IF EXISTS my_plugin_data;`,
   },
-]
+];
 ```
 
 ---
@@ -547,11 +548,13 @@ export default definePlugin({
 ### Installing Plugins
 
 From Admin UI:
+
 1. Go to **Plugins** → **Marketplace**
 2. Search for the plugin
 3. Click **Install**
 
 From CLI:
+
 ```bash
 forkcart plugin install forkcart-plugin-my-awesome
 forkcart plugin activate my-awesome
@@ -567,10 +570,10 @@ Every handler receives a context object:
 
 ```typescript
 interface PluginContext {
-  db: Database;           // Database connection
-  settings: Settings;     // Plugin settings
-  logger: Logger;         // Logging utility
-  eventBus: EventBus;     // Emit events
+  db: Database; // Database connection
+  settings: Settings; // Plugin settings
+  logger: Logger; // Logging utility
+  eventBus: EventBus; // Emit events
 }
 ```
 
