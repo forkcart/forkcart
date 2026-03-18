@@ -8,6 +8,7 @@ const CreatePaymentIntentSchema = z
   .object({
     cartId: z.string().uuid(),
     providerId: z.string().min(1),
+    shippingMethodId: z.string().uuid().optional(),
     customer: z
       .object({
         email: z.string().email(),
