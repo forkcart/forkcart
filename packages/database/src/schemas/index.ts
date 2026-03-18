@@ -27,3 +27,4 @@ export * from './theme-settings';
 export * from './currencies';
 export * from './mobile-app';
 export * from './marketplace';
+export * from './cookie-consent';

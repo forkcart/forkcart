@@ -19,6 +19,7 @@ import {
   ChevronRight,
   RefreshCw,
   Loader2,
+  Cookie,
 } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
@@ -81,6 +82,12 @@ const SETTINGS_SECTIONS = [
     label: 'Translations',
     description: 'Manage languages and translate your store',
     icon: Globe,
+  },
+  {
+    href: '/settings/cookies',
+    label: 'Cookie Consent',
+    description: 'GDPR-compliant cookie banner, categories, and consent logging',
+    icon: Cookie,
   },
 ];
 
