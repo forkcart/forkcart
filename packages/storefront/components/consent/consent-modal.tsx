@@ -5,7 +5,7 @@ import { useConsent, type ConsentState } from './consent-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 
 export function ConsentModal() {
-  const { showSettings, closeSettings, consent, categories, settings, saveChoices } = useConsent();
+  const { showSettings, closeSettings, consent, categories, saveChoices } = useConsent();
   const { t } = useTranslation();
   const [localChoices, setLocalChoices] = useState<ConsentState>({});
 
@@ -44,9 +44,7 @@ export function ConsentModal() {
 
       {/* Modal */}
       <div className="relative mx-4 w-full max-w-lg animate-fade-in rounded-2xl border border-stone-200 bg-[#faf8f6] p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold text-stone-800">
-          {settings['modal_title'] ?? t('consent.modalTitle')}
-        </h2>
+        <h2 className="text-lg font-semibold text-stone-800">{t('consent.modalTitle')}</h2>
         <p className="mt-1 text-sm text-stone-500">{t('consent.modalDescription')}</p>
 
         {/* Categories */}
@@ -59,14 +57,18 @@ export function ConsentModal() {
               <div className="flex items-center justify-between">
                 <div className="flex-1 pr-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-stone-800">{cat.label}</span>
+                    <span className="text-sm font-medium text-stone-800">
+                      {t(`consent.categories.${cat.key}` as any) || cat.label}
+                    </span>
                     {cat.required && (
                       <span className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-stone-500">
                         {t('consent.required')}
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs leading-relaxed text-stone-400">{cat.description}</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-stone-400">
+                    {t(`consent.categories.${cat.key}Desc` as any) || cat.description}
+                  </p>
                 </div>
 
                 {/* Toggle switch */}
@@ -103,13 +105,13 @@ export function ConsentModal() {
             onClick={handleSave}
             className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
           >
-            {settings['modal_save'] ?? t('consent.save')}
+            {t('consent.save')}
           </button>
           <button
             onClick={handleAcceptAll}
             className="rounded-lg bg-stone-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 active:scale-[0.98]"
           >
-            {settings['banner_accept_all'] ?? t('consent.acceptAll')}
+            {t('consent.acceptAll')}
           </button>
         </div>
       </div>
