@@ -102,7 +102,7 @@
     "nothingToCheckout": "Your cart is empty",
     "browseProducts": "Browse products",
     "orderConfirmed": "Order confirmed",
-    "confirmationEmail": "A confirmation has been sent to {email}",
+    "confirmationEmail": "A confirmation has been sent to",
     "continueToShipping": "Continue to shipping",
     "continueToPayment": "Continue to payment",
     "backToAddress": "Back to address",
