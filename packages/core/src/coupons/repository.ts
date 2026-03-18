@@ -105,4 +105,39 @@ export class CouponRepository {
       .returning();
     return result ?? null;
   }
+
+  /**
+   * Atomically validate and increment coupon usage in a transaction.
+   * Returns the coupon if valid and usage was incremented, null otherwise.
+   */
+  async validateAndIncrementUsage(
+    code: string,
+    validator: (coupon: typeof coupons.$inferSelect) => boolean,
+  ) {
+    return this.db.transaction(async (tx) => {
+      // Lock the row with FOR UPDATE to prevent race conditions
+      const [coupon] = await tx
+        .select()
+        .from(coupons)
+        .where(eq(coupons.code, code.toUpperCase()))
+        .for('update');
+
+      if (!coupon) return null;
+
+      // Run validation check
+      if (!validator(coupon)) return null;
+
+      // Increment usage atomically
+      const [updated] = await tx
+        .update(coupons)
+        .set({
+          usedCount: sql`${coupons.usedCount} + 1`,
+          updatedAt: new Date(),
+        })
+        .where(eq(coupons.id, coupon.id))
+        .returning();
+
+      return updated ?? null;
+    });
+  }
 }

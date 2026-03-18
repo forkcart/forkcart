@@ -116,21 +116,34 @@ export class CouponService {
   async apply(
     code: string,
     cartTotal: number,
-    customerId?: string,
+    _customerId?: string,
   ): Promise<CouponValidationResult> {
-    const result = await this.validate(code, cartTotal, customerId);
-    if (!result.valid) return result;
+    // Use atomic transaction to prevent race condition on maxUses check
+    const coupon = await this.repo.validateAndIncrementUsage(code, (c) => {
+      if (!c.enabled) return false;
+      const now = new Date();
+      if (c.startsAt && now < c.startsAt) return false;
+      if (c.expiresAt && now > c.expiresAt) return false;
+      if (c.maxUses !== null && c.usedCount >= c.maxUses) return false;
+      if (c.minOrderAmount !== null && cartTotal < c.minOrderAmount) return false;
+      return true;
+    });
 
-    const coupon = await this.repo.findByCode(code);
-    if (coupon) {
-      await this.repo.incrementUsage(coupon.id);
-      logger.info(
-        { couponId: coupon.id, code: coupon.code, discount: result.discount },
-        'Coupon applied',
-      );
+    if (!coupon) {
+      // Fall back to validate() to get proper error message
+      return this.validate(code, cartTotal);
     }
 
-    return result;
+    const discount = this.calculateDiscount(coupon.type, coupon.value, cartTotal);
+
+    logger.info({ couponId: coupon.id, code: coupon.code, discount }, 'Coupon applied');
+
+    return {
+      valid: true,
+      discount,
+      message: 'Coupon applied successfully',
+      type: coupon.type,
+    };
   }
 
   private calculateDiscount(type: string, value: number, cartTotal: number): number {

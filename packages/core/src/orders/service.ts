@@ -3,6 +3,7 @@ import { ORDER_STATUS_TRANSITIONS } from '@forkcart/shared';
 import type { OrderStatus } from '@forkcart/shared';
 import { NotFoundError, ValidationError } from '@forkcart/shared';
 import type { OrderRepository, OrderFilter } from './repository';
+import type { VariantRepository } from '../variants/repository';
 import type { EventBus } from '../plugins/event-bus';
 import { ORDER_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
@@ -11,6 +12,7 @@ const logger = createLogger('order-service');
 
 export interface OrderServiceDeps {
   orderRepository: OrderRepository;
+  variantRepository: VariantRepository;
   eventBus: EventBus;
 }
 
@@ -24,10 +26,12 @@ function generateOrderNumber(): string {
 
 export class OrderService {
   private readonly repo: OrderRepository;
+  private readonly variantRepo: VariantRepository;
   private readonly events: EventBus;
 
   constructor(deps: OrderServiceDeps) {
     this.repo = deps.orderRepository;
+    this.variantRepo = deps.variantRepository;
     this.events = deps.eventBus;
   }
 
@@ -44,8 +48,35 @@ export class OrderService {
   }
 
   async create(input: CreateOrderInput) {
-    // Calculate totals from items
-    const subtotal = input.items.reduce((sum, item) => sum + item.totalPrice, 0);
+    // Validate and calculate prices server-side (never trust client-supplied prices)
+    const itemsWithPrices = await Promise.all(
+      input.items.map(async (item) => {
+        if (!item.variantId) {
+          throw new ValidationError(`Variant ID is required for item with product: ${item.productId}`);
+        }
+
+        const variant = await this.variantRepo.findById(item.variantId);
+        if (!variant) {
+          throw new ValidationError(`Variant not found: ${item.variantId}`);
+        }
+        if (variant.price === null) {
+          throw new ValidationError(`Variant ${item.variantId} has no price set`);
+        }
+
+        const serverUnitPrice = variant.price;
+        const serverTotalPrice = serverUnitPrice * item.quantity;
+
+        return {
+          ...item,
+          variantId: item.variantId,
+          unitPrice: serverUnitPrice,
+          totalPrice: serverTotalPrice,
+        };
+      }),
+    );
+
+    // Calculate totals from server-validated prices
+    const subtotal = itemsWithPrices.reduce((sum, item) => sum + item.totalPrice, 0);
     const total = subtotal; // Shipping/tax can be added later
 
     const orderNumber = generateOrderNumber();
@@ -65,9 +96,9 @@ export class OrderService {
       metadata: input.metadata,
     });
 
-    // Create order items
+    // Create order items with server-validated prices
     await this.repo.createItems(
-      input.items.map((item) => ({
+      itemsWithPrices.map((item) => ({
         orderId: order.id,
         productId: item.productId,
         variantId: item.variantId,
