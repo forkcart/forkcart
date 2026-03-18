@@ -9,6 +9,7 @@ import type { EventBus } from '../plugins/event-bus';
 import type { PluginLoader } from '../plugins/plugin-loader';
 import { PAYMENT_EVENTS } from './events';
 import { ORDER_EVENTS } from '../orders/events';
+import type { ShippingService } from '../shipping/service';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('payment-service');
@@ -22,11 +23,14 @@ export interface PaymentServiceDeps {
   eventBus: EventBus;
   /** Optional plugin loader for filter support */
   pluginLoader?: PluginLoader | null;
+  /** Optional shipping service for shipping cost calculation */
+  shippingService?: ShippingService | null;
 }
 
 export interface CreatePaymentIntentInput {
   cartId: string;
   providerId: string;
+  shippingMethodId?: string;
   customer: {
     email: string;
     firstName: string;
@@ -58,6 +62,7 @@ export class PaymentService {
   private readonly customerRepo: CustomerRepository;
   private readonly events: EventBus;
   private pluginLoader: PluginLoader | null;
+  private shippingService: ShippingService | null;
 
   constructor(deps: PaymentServiceDeps) {
     this.paymentRepo = deps.paymentRepository;
@@ -67,6 +72,7 @@ export class PaymentService {
     this.customerRepo = deps.customerRepository;
     this.events = deps.eventBus;
     this.pluginLoader = deps.pluginLoader ?? null;
+    this.shippingService = deps.shippingService ?? null;
   }
 
   /** Set plugin loader (for late injection after PluginLoader is initialized) */
@@ -145,6 +151,7 @@ export class PaymentService {
         cartId: input.cartId,
         customerId: customer.id,
         shippingAddress: JSON.stringify(input.shippingAddress),
+        ...(input.shippingMethodId ? { shippingMethodId: input.shippingMethodId } : {}),
       },
     });
 
@@ -211,6 +218,7 @@ export class PaymentService {
     const cartId = metadata['cartId'] ?? '';
     const customerId = metadata['customerId'] ?? '';
     const shippingAddressRaw = metadata['shippingAddress'] ?? '{}';
+    const shippingMethodId = metadata['shippingMethodId'] ?? '';
 
     if (!cartId || !customerId) {
       logger.error(
@@ -253,15 +261,22 @@ export class PaymentService {
       };
     });
 
+    // Calculate shipping cost
+    let shippingTotal = 0;
+    if (shippingMethodId && this.shippingService) {
+      const subtotal = orderItems.reduce((sum, i) => sum + i.totalPrice, 0);
+      shippingTotal = await this.shippingService.calculateShippingCost(shippingMethodId, subtotal);
+    }
+
     const orderNumber = generateOrderNumber();
     const order = await this.orderRepo.create({
       orderNumber,
       customerId,
       subtotal: amount,
-      shippingTotal: 0,
+      shippingTotal,
       taxTotal: 0,
       discountTotal: 0,
-      total: amount,
+      total: amount + shippingTotal,
       currency: 'EUR',
       shippingAddressId: addressResult.id,
     });
@@ -335,6 +350,7 @@ export class PaymentService {
   async completeDemoPayment(input: {
     cartId: string;
     customerEmail: string;
+    shippingMethodId?: string;
     shippingAddress: {
       firstName: string;
       lastName: string;
@@ -375,16 +391,26 @@ export class PaymentService {
     });
 
     const subtotal = orderItems.reduce((sum, i) => sum + i.totalPrice, 0);
+
+    // Calculate shipping cost
+    let shippingTotal = 0;
+    if (input.shippingMethodId && this.shippingService) {
+      shippingTotal = await this.shippingService.calculateShippingCost(
+        input.shippingMethodId,
+        subtotal,
+      );
+    }
+
     const orderNumber = generateOrderNumber();
 
     const order = await this.orderRepo.create({
       orderNumber,
       customerId: customer.id,
       subtotal,
-      shippingTotal: 0,
+      shippingTotal,
       taxTotal: 0,
       discountTotal: 0,
-      total: subtotal,
+      total: subtotal + shippingTotal,
       currency: 'EUR',
       shippingAddressId: addressResult.id,
     });
