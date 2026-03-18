@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { setToken } from '@/lib/auth';
 import { apiClient } from '@/lib/api-client';
+import { useAuth } from '@/lib/auth-context';
 
 interface LoginResponse {
   data: {
@@ -24,7 +25,9 @@ interface LoginResponse {
 
 export default function LoginPage() {
   const router = useRouter();
+  const { refresh } = useAuth();
   const [email, setEmail] = useState('');
+
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,6 +44,7 @@ export default function LoginPage() {
       });
 
       setToken(result.data.token);
+      await refresh();
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
