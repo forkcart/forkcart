@@ -227,7 +227,7 @@ export default function CookieConsentSettingsPage() {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   }
 
-  const l = (key: string) => (LABELS[activeLocale] ?? LABELS['de'])?.[key] ?? key;
+  const l = (key: string) => LABELS['en']?.[key] ?? key;
 
   if (loading) {
     return (
