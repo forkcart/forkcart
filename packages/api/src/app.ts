@@ -245,6 +245,8 @@ export async function createApp(db: Database) {
     productTranslationService: null,
     mediaBaseUrl: baseUrl,
   });
+  const shippingService = new ShippingService({ shippingRepository, eventBus });
+
   const paymentService = new PaymentService({
     paymentRepository,
     paymentProviderRegistry,
@@ -252,9 +254,8 @@ export async function createApp(db: Database) {
     orderRepository,
     customerRepository,
     eventBus,
+    shippingService,
   });
-
-  const shippingService = new ShippingService({ shippingRepository, eventBus });
   const couponService = new CouponService({ couponRepository });
   const wishlistService = new WishlistService({ wishlistRepository });
   const pageService = new PageService({ pageRepository, eventBus });

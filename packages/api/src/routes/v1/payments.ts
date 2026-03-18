@@ -32,6 +32,7 @@ const CreatePaymentIntentSchema = z
 const CompleteDemoPaymentSchema = z.object({
   cartId: z.string().uuid(),
   customerEmail: z.string().email(),
+  shippingMethodId: z.string().uuid().optional(),
   shippingAddress: z.object({
     firstName: z.string().min(1),
     lastName: z.string().min(1),
