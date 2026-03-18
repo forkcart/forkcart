@@ -7,6 +7,7 @@ import { AddToCartButton } from '@/app/[locale]/product/[slug]/add-to-cart-butto
 import { WishlistButton } from '@/components/product/wishlist-button';
 import { ProductReviews } from '@/components/product/product-reviews';
 import { useState, useEffect } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
@@ -260,7 +261,7 @@ export function RenderProductDescription({
       )}
       <div
         className="mt-3 text-sm leading-relaxed text-gray-600 [&_a]:text-accent [&_a]:underline [&_ol]:list-decimal [&_ol]:pl-5 [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5"
-        dangerouslySetInnerHTML={{ __html: product.description }}
+        dangerouslySetInnerHTML={{ __html: sanitizeHtml(product.description) }}
       />
     </div>
   );

@@ -7,6 +7,7 @@ import {
   IdParamSchema,
 } from '@forkcart/shared';
 import { z } from 'zod';
+import { requireRole } from '../../middleware/permissions';
 
 const CustomerFilterSchema = z.object({
   search: z.string().optional(),
@@ -17,7 +18,7 @@ export function createCustomerRoutes(customerService: CustomerService) {
   const router = new Hono();
 
   /** List customers with pagination */
-  router.get('/', async (c) => {
+  router.get('/', requireRole('admin', 'superadmin'), async (c) => {
     const query = c.req.query();
     const filter = CustomerFilterSchema.parse(query);
     const pagination = PaginationSchema.parse(query);
@@ -27,14 +28,14 @@ export function createCustomerRoutes(customerService: CustomerService) {
   });
 
   /** Get customer by ID (with addresses + order history) */
-  router.get('/:id', async (c) => {
+  router.get('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const customer = await customerService.getById(id);
     return c.json({ data: customer });
   });
 
   /** Create customer */
-  router.post('/', async (c) => {
+  router.post('/', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateCustomerSchema.parse(body);
     const customer = await customerService.create(input);
@@ -42,7 +43,7 @@ export function createCustomerRoutes(customerService: CustomerService) {
   });
 
   /** Update customer */
-  router.put('/:id', async (c) => {
+  router.put('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
     const input = UpdateCustomerSchema.parse(body);

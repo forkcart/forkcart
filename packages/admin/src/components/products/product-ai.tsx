@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Sparkles, Loader2, RefreshCw, Check } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface AIStatusResponse {
   data: {
@@ -186,7 +187,7 @@ export function ProductAIButtons({
           </div>
           <div className="mt-3 max-h-60 overflow-y-auto text-sm text-purple-900">
             {previewType === 'description' ? (
-              <div dangerouslySetInnerHTML={{ __html: preview }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(preview) }} />
             ) : (
               <pre className="whitespace-pre-wrap text-xs">{preview}</pre>
             )}

@@ -128,6 +128,21 @@ import './middleware/i18n'; // registers locale on ContextVariableMap
 
 /** Create the Hono application with all routes and middleware */
 export async function createApp(db: Database) {
+  // RVS-014: Reject known default/insecure session secrets
+  const sessionSecret = process.env['SESSION_SECRET'] ?? '';
+  const insecureSecrets = [
+    'change-me-in-production',
+    'change-me-to-a-random-string-at-least-32-chars',
+    'CHANGE_ME_GENERATE_SECURE_SECRET',
+    '',
+  ];
+  if (insecureSecrets.includes(sessionSecret) || sessionSecret.length < 32) {
+    throw new Error(
+      'SESSION_SECRET is missing, too short (<32 chars), or uses a known default value. ' +
+        'Generate a secure secret with: openssl rand -base64 48',
+    );
+  }
+
   const app = new Hono();
 
   // Global middleware
@@ -517,7 +532,7 @@ export async function createApp(db: Database) {
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
-  v1.route('/carts', createCartAssignRoute(cartService));
+  v1.route('/carts', createCartAssignRoute(cartService, customerAuthService));
   v1.route(
     '/storefront/customers',
     createStorefrontCustomerRoutes(customerAuthService, customerRepository, orderRepository),

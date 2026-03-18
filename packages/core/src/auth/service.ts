@@ -62,14 +62,20 @@ export class AuthService {
     return bcrypt.hash(password, BCRYPT_ROUNDS);
   }
 
-  /** Verify a password against a hash (supports bcrypt and legacy sha256) */
-  private async verifyPassword(password: string, hash: string): Promise<boolean> {
+  /**
+   * Verify a password against a hash (supports bcrypt and legacy sha256).
+   * Returns { valid: boolean, isLegacy: boolean } to enable migration.
+   */
+  private async verifyPassword(
+    password: string,
+    hash: string,
+  ): Promise<{ valid: boolean; isLegacy: boolean }> {
     // Support legacy sha256 hashes from seed
     if (!hash.startsWith('$2')) {
       const sha256 = crypto.createHash('sha256').update(password).digest('hex');
-      return sha256 === hash;
+      return { valid: sha256 === hash, isLegacy: true };
     }
-    return bcrypt.compare(password, hash);
+    return { valid: await bcrypt.compare(password, hash), isLegacy: false };
   }
 
   /** Authenticate user and return JWT + session */
@@ -87,9 +93,15 @@ export class AuthService {
       throw new AuthError('Account is disabled', 'ACCOUNT_DISABLED');
     }
 
-    const valid = await this.verifyPassword(password, user.passwordHash);
+    const { valid, isLegacy } = await this.verifyPassword(password, user.passwordHash);
     if (!valid) {
       throw new AuthError('Invalid email or password', 'INVALID_CREDENTIALS');
+    }
+
+    // RVS-008: Migrate legacy SHA-256 hash to bcrypt on successful login
+    if (isLegacy) {
+      const newHash = await AuthService.hashPassword(password);
+      await this.userRepository.updatePassword(user.id, newHash);
     }
 
     const expiresAt = new Date(Date.now() + TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);

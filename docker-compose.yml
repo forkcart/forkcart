@@ -4,9 +4,10 @@ services:
     container_name: forkcart-db
     restart: unless-stopped
     environment:
-      POSTGRES_USER: forkcart
-      POSTGRES_PASSWORD: forkcart
-      POSTGRES_DB: forkcart
+      # RVS-015: Database credentials MUST be changed in production!
+      POSTGRES_USER: ${POSTGRES_USER:-forkcart}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
+      POSTGRES_DB: ${POSTGRES_DB:-forkcart}
     ports:
       - '5432:5432'
     volumes:
@@ -26,11 +27,13 @@ services:
     ports:
       - '4000:4000'
     environment:
-      DATABASE_URL: postgresql://forkcart:forkcart@postgres:5432/forkcart
+      # RVS-015: Database URL uses credentials from env vars
+      DATABASE_URL: postgresql://${POSTGRES_USER:-forkcart}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-forkcart}
       API_PORT: '4000'
       API_HOST: '0.0.0.0'
-      SESSION_SECRET: 'change-me-in-production'
-      LOG_LEVEL: 'info'
+      # RVS-014: Session secret MUST be set via env var
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set}
+      LOG_LEVEL: '${LOG_LEVEL:-info}'
     depends_on:
       postgres:
         condition: service_healthy

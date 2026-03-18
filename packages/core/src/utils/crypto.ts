@@ -1,10 +1,44 @@
-import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync, createHash } from 'crypto';
 import { eq } from 'drizzle-orm';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs';
+import { join, dirname } from 'path';
 import type { Database } from '@forkcart/database';
 import { pluginSettings } from '@forkcart/database/schemas';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
+const SALT_FILE = join(process.env.FORKCART_DATA_DIR ?? '.forkcart', 'encryption-salt');
+
+/**
+ * Get or generate the encryption salt.
+ * RVS-013: Salt must be unique per installation, not hardcoded.
+ */
+function getEncryptionSalt(): Buffer {
+  // First, check environment variable
+  if (process.env.FORKCART_ENCRYPTION_SALT) {
+    return Buffer.from(process.env.FORKCART_ENCRYPTION_SALT, 'hex');
+  }
+
+  // Try to read from file
+  if (existsSync(SALT_FILE)) {
+    return readFileSync(SALT_FILE);
+  }
+
+  // Generate new salt and persist it
+  const salt = randomBytes(32);
+  try {
+    mkdirSync(dirname(SALT_FILE), { recursive: true });
+    writeFileSync(SALT_FILE, salt, { mode: 0o600 });
+    console.info(`Generated new encryption salt at ${SALT_FILE}`);
+  } catch (err) {
+    console.warn(`Could not persist encryption salt to ${SALT_FILE}:`, err);
+    // Fall back to deriving salt from machine-specific data for consistency
+    const machineId =
+      process.env.HOSTNAME ?? process.env.COMPUTERNAME ?? 'forkcart-default-instance';
+    return createHash('sha256').update(machineId).digest();
+  }
+  return salt;
+}
 
 function getEncryptionKey(): Buffer {
   const key = process.env.FORKCART_ENCRYPTION_KEY;
@@ -12,8 +46,9 @@ function getEncryptionKey(): Buffer {
     console.warn('FORKCART_ENCRYPTION_KEY not set - secrets stored in plaintext!');
     return Buffer.alloc(32); // Fallback for dev (not secure)
   }
-  // Derive a 32-byte key from the provided key
-  return scryptSync(key, 'forkcart-salt', 32);
+  // Derive a 32-byte key from the provided key using per-installation salt
+  const salt = getEncryptionSalt();
+  return scryptSync(key, salt, 32);
 }
 
 export function encryptSecret(plaintext: string): string {
