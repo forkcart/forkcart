@@ -88,21 +88,24 @@ function parseConsent(): ConsentState | null {
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
-async function fetchConsentConfig(): Promise<ConsentConfig> {
+async function fetchConsentConfig(locale?: string): Promise<ConsentConfig> {
   try {
-    const res = await fetch(`${API_URL}/api/v1/public/cookie-consent/config`);
+    const url = locale
+      ? `${API_URL}/api/v1/public/cookie-consent/config?locale=${locale}`
+      : `${API_URL}/api/v1/public/cookie-consent/config`;
+    const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch consent config');
     const json = (await res.json()) as { data: ConsentConfig };
     return json.data;
   } catch {
-    // Fallback defaults
+    // Fallback: empty settings → banner/modal will use i18n translations
     return {
       categories: [
         {
           id: '1',
           key: 'necessary',
-          label: 'Notwendig',
-          description: 'Session, Warenkorb, Sicherheit',
+          label: 'Necessary',
+          description: 'Session, cart, security',
           required: true,
           enabled: true,
           sortOrder: 0,
@@ -110,8 +113,8 @@ async function fetchConsentConfig(): Promise<ConsentConfig> {
         {
           id: '2',
           key: 'functional',
-          label: 'Funktional',
-          description: 'Spracheinstellungen, Theme',
+          label: 'Functional',
+          description: 'Language, theme',
           required: false,
           enabled: true,
           sortOrder: 1,
@@ -119,8 +122,8 @@ async function fetchConsentConfig(): Promise<ConsentConfig> {
         {
           id: '3',
           key: 'analytics',
-          label: 'Statistik',
-          description: 'Analytics & Tracking',
+          label: 'Analytics',
+          description: 'Analytics & tracking',
           required: false,
           enabled: true,
           sortOrder: 2,
@@ -129,21 +132,13 @@ async function fetchConsentConfig(): Promise<ConsentConfig> {
           id: '4',
           key: 'marketing',
           label: 'Marketing',
-          description: 'Werbung & Retargeting',
+          description: 'Advertising & retargeting',
           required: false,
           enabled: true,
           sortOrder: 3,
         },
       ],
-      settings: {
-        banner_title: 'Wir respektieren Ihre Privatsphäre',
-        banner_text: 'Wir verwenden Cookies, um Ihnen das beste Einkaufserlebnis zu bieten.',
-        banner_accept_all: 'Alle akzeptieren',
-        banner_reject_all: 'Nur notwendige',
-        banner_settings: 'Einstellungen',
-        modal_title: 'Cookie-Einstellungen',
-        modal_save: 'Auswahl speichern',
-      },
+      settings: {},
     };
   }
 }
@@ -162,7 +157,7 @@ async function logConsent(consent: ConsentState) {
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-export function ConsentProvider({ children }: { children: ReactNode }) {
+export function ConsentProvider({ children, locale }: { children: ReactNode; locale?: string }) {
   const [consent, setConsent] = useState<ConsentState>({});
   const [showBanner, setShowBanner] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -172,7 +167,7 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
   // Load config + existing consent on mount
   useEffect(() => {
     async function init() {
-      const config = await fetchConsentConfig();
+      const config = await fetchConsentConfig(locale);
       setCategories(config.categories);
       setSettings(config.settings);
 
@@ -196,7 +191,7 @@ export function ConsentProvider({ children }: { children: ReactNode }) {
       }
     }
     init();
-  }, []);
+  }, [locale]);
 
   const persistConsent = useCallback((state: ConsentState) => {
     setCookie(COOKIE_NAME, JSON.stringify(state), COOKIE_DAYS);

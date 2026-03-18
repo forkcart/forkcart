@@ -16,6 +16,7 @@ import {
   BarChart3,
   Megaphone,
   Cog,
+  Globe,
 } from 'lucide-react';
 
 interface ConsentCategory {
@@ -32,6 +33,13 @@ interface ConsentSetting {
   id: string;
   key: string;
   value: string;
+  locale?: string;
+}
+
+interface LanguageInfo {
+  locale: string;
+  name: string;
+  isDefault: boolean;
 }
 
 const CATEGORY_ICONS: Record<string, typeof Shield> = {
@@ -44,18 +52,35 @@ const CATEGORY_ICONS: Record<string, typeof Shield> = {
 export default function CookieConsentSettingsPage() {
   const [categories, setCategories] = useState<ConsentCategory[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
+  const [locales, setLocales] = useState<LanguageInfo[]>([]);
+  const [activeLocale, setActiveLocale] = useState<string>('de');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [newCategory, setNewCategory] = useState({ key: '', label: '', description: '' });
   const [showAddForm, setShowAddForm] = useState(false);
 
+  const loadLocales = useCallback(async () => {
+    try {
+      const res = await apiClient<{ data: LanguageInfo[] }>('/translations');
+      setLocales(res.data);
+      const defaultLocale = res.data.find((l) => l.isDefault);
+      if (defaultLocale) setActiveLocale(defaultLocale.locale);
+    } catch {
+      // Fallback
+      setLocales([
+        { locale: 'de', name: 'Deutsch', isDefault: true },
+        { locale: 'en', name: 'English', isDefault: false },
+      ]);
+    }
+  }, []);
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [catRes, settingsRes] = await Promise.all([
         apiClient<{ data: ConsentCategory[] }>('/cookie-consent/categories'),
-        apiClient<{ data: ConsentSetting[] }>('/cookie-consent/settings'),
+        apiClient<{ data: ConsentSetting[] }>(`/cookie-consent/settings?locale=${activeLocale}`),
       ]);
       setCategories(catRes.data);
       const map: Record<string, string> = {};
@@ -68,7 +93,11 @@ export default function CookieConsentSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeLocale]);
+
+  useEffect(() => {
+    loadLocales();
+  }, [loadLocales]);
 
   useEffect(() => {
     loadData();
@@ -78,7 +107,7 @@ export default function CookieConsentSettingsPage() {
     setSaving(true);
     try {
       const updates = Object.entries(settings).map(([key, value]) => ({ key, value }));
-      await apiClient('/cookie-consent/settings', {
+      await apiClient(`/cookie-consent/settings?locale=${activeLocale}`, {
         method: 'PUT',
         body: JSON.stringify(updates),
       });
@@ -174,22 +203,58 @@ export default function CookieConsentSettingsPage() {
       <div className="mt-8 space-y-8">
         {/* Banner Texts */}
         <div className="rounded-lg border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-3">
-            <Cookie className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <h2 className="text-lg font-semibold">Banner-Texte</h2>
-              <p className="text-sm text-muted-foreground">
-                Texte die im Cookie-Banner angezeigt werden
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Cookie className="h-5 w-5 text-muted-foreground" />
+              <div>
+                <h2 className="text-lg font-semibold">Banner-Texte</h2>
+                <p className="text-sm text-muted-foreground">
+                  Texte die im Cookie-Banner angezeigt werden
+                </p>
+              </div>
             </div>
           </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+
+          {/* Locale Tabs */}
+          {locales.length > 1 && (
+            <div className="mt-4 flex items-center gap-1 rounded-lg border bg-muted/30 p-1">
+              <Globe className="ml-2 h-4 w-4 text-muted-foreground" />
+              {locales.map((lang) => (
+                <button
+                  key={lang.locale}
+                  onClick={() => setActiveLocale(lang.locale)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-medium transition ${
+                    activeLocale === lang.locale
+                      ? 'bg-white text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {lang.locale.toUpperCase()}
+                  {lang.isDefault && (
+                    <span className="ml-1 text-[10px] text-muted-foreground">(Standard)</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+
+          <p className="mt-3 text-xs text-muted-foreground">
+            Wenn Felder leer bleiben, werden die Standard-Übersetzungen aus den Sprachdateien
+            verwendet.
+          </p>
+
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <Label htmlFor="banner_title">Banner-Überschrift</Label>
               <Input
                 id="banner_title"
                 value={settings['banner_title'] ?? ''}
                 onChange={(e) => updateSetting('banner_title', e.target.value)}
+                placeholder={
+                  activeLocale === 'de'
+                    ? 'Wir respektieren Ihre Privatsphäre'
+                    : 'We respect your privacy'
+                }
                 className="mt-1.5"
               />
             </div>
@@ -201,6 +266,11 @@ export default function CookieConsentSettingsPage() {
                 onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) =>
                   updateSetting('banner_text', e.target.value)
                 }
+                placeholder={
+                  activeLocale === 'de'
+                    ? 'Wir verwenden Cookies...'
+                    : 'We use cookies to provide you with the best shopping experience.'
+                }
                 className="mt-1.5"
                 rows={3}
               />
@@ -211,6 +281,7 @@ export default function CookieConsentSettingsPage() {
                 id="banner_accept_all"
                 value={settings['banner_accept_all'] ?? ''}
                 onChange={(e) => updateSetting('banner_accept_all', e.target.value)}
+                placeholder={activeLocale === 'de' ? 'Alle akzeptieren' : 'Accept all'}
                 className="mt-1.5"
               />
             </div>
@@ -220,6 +291,7 @@ export default function CookieConsentSettingsPage() {
                 id="banner_reject_all"
                 value={settings['banner_reject_all'] ?? ''}
                 onChange={(e) => updateSetting('banner_reject_all', e.target.value)}
+                placeholder={activeLocale === 'de' ? 'Nur notwendige' : 'Only necessary'}
                 className="mt-1.5"
               />
             </div>
@@ -229,6 +301,7 @@ export default function CookieConsentSettingsPage() {
                 id="banner_settings"
                 value={settings['banner_settings'] ?? ''}
                 onChange={(e) => updateSetting('banner_settings', e.target.value)}
+                placeholder={activeLocale === 'de' ? 'Einstellungen' : 'Settings'}
                 className="mt-1.5"
               />
             </div>
@@ -238,6 +311,7 @@ export default function CookieConsentSettingsPage() {
                 id="modal_title"
                 value={settings['modal_title'] ?? ''}
                 onChange={(e) => updateSetting('modal_title', e.target.value)}
+                placeholder={activeLocale === 'de' ? 'Cookie-Einstellungen' : 'Cookie Settings'}
                 className="mt-1.5"
               />
             </div>
@@ -247,6 +321,7 @@ export default function CookieConsentSettingsPage() {
                 id="modal_save"
                 value={settings['modal_save'] ?? ''}
                 onChange={(e) => updateSetting('modal_save', e.target.value)}
+                placeholder={activeLocale === 'de' ? 'Auswahl speichern' : 'Save selection'}
                 className="mt-1.5"
               />
             </div>

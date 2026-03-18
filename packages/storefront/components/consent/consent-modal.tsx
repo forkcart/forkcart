@@ -5,9 +5,13 @@ import { useConsent, type ConsentState } from './consent-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 
 export function ConsentModal() {
-  const { showSettings, closeSettings, consent, categories, saveChoices } = useConsent();
+  const { showSettings, closeSettings, consent, categories, settings, saveChoices } = useConsent();
   const { t } = useTranslation();
   const [localChoices, setLocalChoices] = useState<ConsentState>({});
+
+  // Admin settings override i18n translations when filled
+  const text = (settingKey: string, i18nKey: string) =>
+    settings[settingKey] || t(i18nKey as Parameters<typeof t>[0]);
 
   // Sync local state when modal opens
   useEffect(() => {
@@ -44,7 +48,9 @@ export function ConsentModal() {
 
       {/* Modal */}
       <div className="relative mx-4 w-full max-w-lg animate-fade-in rounded-2xl border border-stone-200 bg-[#faf8f6] p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold text-stone-800">{t('consent.modalTitle')}</h2>
+        <h2 className="text-lg font-semibold text-stone-800">
+          {text('modal_title', 'consent.modalTitle')}
+        </h2>
         <p className="mt-1 text-sm text-stone-500">{t('consent.modalDescription')}</p>
 
         {/* Categories */}
@@ -105,13 +111,13 @@ export function ConsentModal() {
             onClick={handleSave}
             className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
           >
-            {t('consent.save')}
+            {text('modal_save', 'consent.save')}
           </button>
           <button
             onClick={handleAcceptAll}
             className="rounded-lg bg-stone-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 active:scale-[0.98]"
           >
-            {t('consent.acceptAll')}
+            {text('banner_accept_all', 'consent.acceptAll')}
           </button>
         </div>
       </div>
