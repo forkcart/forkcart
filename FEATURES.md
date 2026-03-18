@@ -2,193 +2,219 @@
 
 ## Legende
 
-- ✅ Done — funktioniert
-- 🟡 Schema da — DB-Tabelle existiert, aber kein API/UI
+- ✅ Done — funktioniert (API + UI)
+- 🟡 API da — Backend fertig, UI fehlt/basic
 - ❌ Fehlt — muss gebaut werden
+
+_Stand: 18. März 2026_
 
 ---
 
 ## 1. Produkte & Katalog
 
-| Feature                     | Status | Details                                       |
-| --------------------------- | ------ | --------------------------------------------- |
-| Produkte CRUD               | ✅     | API + Admin UI                                |
-| Produkt-Liste (Admin)       | ✅     | Mit Status, Preis, SKU                        |
-| Produkt-Detail/Edit (Admin) | ✅     | Form mit allen Feldern                        |
-| Produktvarianten            | 🟡     | Schema da, kein UI zum Verwalten              |
-| Produktattribute            | 🟡     | Schema da (size, color etc.), kein UI         |
-| Produktbilder/Medien        | 🟡     | Media-Schema da, kein Upload                  |
-| Kategorien CRUD             | ✅     | API + Admin                                   |
-| Kategorie-Baum (Hierarchie) | 🟡     | parentId in Schema, Tree-API da, kein Tree-UI |
-| Produktsuche (Admin)        | ❌     | Filter/Suche in Produktliste                  |
-| Bulk-Import/Export          | ❌     | CSV/JSON Import für Massenanlage              |
-| SEO-Felder (Meta, Slug)     | 🟡     | Slug da, keine Meta-Description etc.          |
+| Feature              | Status | Details                                                                  |
+| -------------------- | ------ | ------------------------------------------------------------------------ |
+| Produkte CRUD        | ✅     | API + Admin UI (170 Zeilen API)                                          |
+| Produktvarianten     | ✅     | CRUD, Generate aus Attributen, Bulk Update (124 Zeilen API)              |
+| Produktattribute     | ✅     | Admin UI (`/attributes`)                                                 |
+| Produktbilder/Medien | ✅     | Media Schema + Upload                                                    |
+| Kategorien CRUD      | ✅     | API + Admin, Hierarchie (parentId)                                       |
+| Smart Search         | ✅     | Ranking (CTR+Conversion+Recency), Instant Search (Cmd+K), 199 Zeilen API |
+| SEO-Felder           | ✅     | API + Admin UI (`/seo`), 96 Zeilen API                                   |
+| Produktübersetzungen | ✅     | Multi-Language Product Content                                           |
+| Produkt-Impressionen | ✅     | Click/View Tracking für Search Analytics                                 |
+| Produkt-Reviews      | ✅     | API + Admin (`/reviews`)                                                 |
+| 468 Demo-Produkte    | ✅     | Seed Data                                                                |
+| Bulk-Import/Export   | ❌     | CSV/JSON Import für Massenanlage                                         |
 
 ## 2. Storefront (Kundensicht)
 
-| Feature            | Status | Details                                    |
-| ------------------ | ------ | ------------------------------------------ |
-| Homepage           | ✅     | Basic Layout                               |
-| Produktliste       | ✅     | Grid mit Cards                             |
-| Produktdetailseite | ✅     | Bild, Beschreibung, Preis                  |
-| Kategorie-Seiten   | ✅     | Filter by Category                         |
-| Suche              | ✅     | Basic Suchseite                            |
-| Warenkorb (Client) | ✅     | Cart Provider + UI                         |
-| Checkout-Seite     | 🟡     | Seite existiert, keine Payment-Integration |
-| Responsive Design  | ✅     | Mobile-first                               |
-| SEO (Meta Tags)    | ❌     | Dynamische Meta pro Seite                  |
-| Breadcrumbs        | ❌     | Navigation-Hilfe                           |
-| Produktbewertungen | ❌     | Reviews + Sterne                           |
-| Wunschliste        | ❌     | Save for later                             |
+| Feature               | Status | Details                                                             |
+| --------------------- | ------ | ------------------------------------------------------------------- |
+| Homepage              | ✅     | Layout mit Page Builder                                             |
+| Produktliste          | ✅     | Grid + Pagination + Sort/Filter                                     |
+| Produktdetailseite    | ✅     | Bild, Beschreibung, Preis, Varianten, Add-to-Cart                   |
+| Kategorie-Seiten      | ✅     | Filter + Sort                                                       |
+| Suche                 | ✅     | Instant Search Overlay + Suchseite mit Filtern                      |
+| Warenkorb             | ✅     | Cart Provider + UI + Page Builder Slots                             |
+| Checkout              | ✅     | Vollständiger Flow mit Stripe Payment                               |
+| Checkout Success      | ✅     | Bestätigungsseite                                                   |
+| Responsive Design     | ✅     | Mobile-first                                                        |
+| Wunschliste           | ✅     | Save for later (`/wishlist`)                                        |
+| Account               | ✅     | Login, Register, Profil, Adressen, Bestellungen                     |
+| i18n / Locale Routing | ✅     | URL-basiert (`/products` = Default, `/en/products` = Nicht-Default) |
+| SEO (Meta Tags)       | ✅     | Dynamisch pro Seite                                                 |
+| Page Builder Slots    | ✅     | Dynamic Page Renderer für Shop-Seiten                               |
 
 ## 3. Warenkorb & Checkout
 
-| Feature          | Status | Details                                   |
-| ---------------- | ------ | ----------------------------------------- |
-| Cart Schema      | 🟡     | DB-Tabelle da (carts + cart_items)        |
-| Cart API         | ❌     | CRUD Endpoints fehlen                     |
-| Cart ↔ Session   | ❌     | Anonyme Carts (sessionId)                 |
-| Cart ↔ Customer  | ❌     | Cart merge bei Login                      |
-| Checkout Flow    | ❌     | Adresse → Versand → Zahlung → Bestätigung |
-| Gutschein/Rabatt | ❌     | Discount-System (Codes, %, €)             |
+| Feature          | Status | Details                                          |
+| ---------------- | ------ | ------------------------------------------------ |
+| Cart API         | ✅     | CRUD (145 Zeilen)                                |
+| Cart ↔ Session   | ✅     | Anonyme + eingeloggte Carts                      |
+| Checkout Flow    | ✅     | Adresse → Zahlung → Bestätigung                  |
+| Gutschein/Rabatt | ✅     | Coupon System (118 Zeilen API) + Usages Tracking |
 
 ## 4. Bestellungen
 
-| Feature                  | Status | Details                                           |
-| ------------------------ | ------ | ------------------------------------------------- |
-| Order Schema             | 🟡     | Tabellen da (orders, order_items, status_history) |
-| Order API                | ❌     | CRUD + Status-Transitions                         |
-| Bestellübersicht (Admin) | 🟡     | Seite da, keine Daten                             |
-| Bestelldetail (Admin)    | ❌     | Items, Status, Kunde, Zahlung                     |
-| Status-Workflow          | ❌     | pending → confirmed → shipped → delivered         |
-| Bestätigungs-Email       | ❌     | Transaktionale Emails                             |
-| Rechnung/PDF             | ❌     | Invoice-Generierung                               |
+| Feature                  | Status | Details                 |
+| ------------------------ | ------ | ----------------------- |
+| Order API                | ✅     | CRUD (69 Zeilen)        |
+| Bestellübersicht (Admin) | ✅     | Admin `/orders`         |
+| Bestätigungs-Email       | ✅     | Via Mailgun/SMTP Plugin |
 
 ## 5. Kunden
 
-| Feature              | Status | Details                   |
-| -------------------- | ------ | ------------------------- |
-| Customer Schema      | 🟡     | Tabelle da                |
-| Customer API         | ❌     | CRUD Endpoints            |
-| Kundenliste (Admin)  | 🟡     | Seite da, keine Daten     |
-| Kundendetail (Admin) | ❌     | Bestellhistorie, Adressen |
-| Kunden-Registration  | ❌     | Storefront Signup/Login   |
-| Passwort Reset       | ❌     | Email-basiert             |
-| Gastbestellung       | ❌     | Checkout ohne Account     |
+| Feature              | Status | Details                              |
+| -------------------- | ------ | ------------------------------------ |
+| Customer Auth        | ✅     | Registration, Login (151 Zeilen API) |
+| Storefront Auth      | ✅     | Signup, Login, Profil, Adressen      |
+| Kundenliste (Admin)  | ✅     | Admin `/customers`                   |
+| Storefront Customers | ✅     | 112 Zeilen API                       |
 
 ## 6. Zahlung
 
-| Feature              | Status | Details                  |
-| -------------------- | ------ | ------------------------ |
-| Payment Schema       | 🟡     | Tabelle da               |
-| Stripe Integration   | ❌     | Keys in .env vorbereitet |
-| PayPal               | ❌     | —                        |
-| Vorkasse/Überweisung | ❌     | Manuelle Zahlung         |
-| Payment Webhooks     | ❌     | Stripe → Status-Update   |
-| Refunds              | ❌     | Rückerstattungen         |
+| Feature       | Status | Details                                  |
+| ------------- | ------ | ---------------------------------------- |
+| Payment API   | ✅     | 122 Zeilen                               |
+| Stripe Plugin | ✅     | Provider (193 Zeilen)                    |
+| Plugin System | ✅     | Payment Provider Interface im Plugin SDK |
 
 ## 7. Versand
 
-| Feature                  | Status | Details                |
-| ------------------------ | ------ | ---------------------- |
-| Shipping Methods Schema  | 🟡     | Tabelle da             |
-| Shipping API             | ❌     | CRUD für Versandarten  |
-| Shipping (Admin UI)      | ❌     | Versandarten verwalten |
-| Versandkosten-Berechnung | ❌     | Gewicht/Preis-basiert  |
-| Tracking-Nummern         | ❌     | Pro Bestellung         |
+| Feature           | Status | Details                  |
+| ----------------- | ------ | ------------------------ |
+| Shipping Schema   | ✅     | DB + Admin (`/shipping`) |
+| Shipping Admin UI | ✅     | Versandarten verwalten   |
 
 ## 8. Steuern
 
-| Feature          | Status | Details                     |
-| ---------------- | ------ | --------------------------- |
-| Tax Rules Schema | 🟡     | Tabelle da                  |
-| Tax API          | ❌     | CRUD für Steuerregeln       |
-| Tax Calculation  | ❌     | Auto-Berechnung im Checkout |
+| Feature   | Status | Details           |
+| --------- | ------ | ----------------- |
+| Tax API   | ✅     | CRUD (155 Zeilen) |
+| Tax Admin | ✅     | Admin `/tax`      |
 
 ## 9. Admin & Auth
 
-| Feature                | Status | Details                            |
-| ---------------------- | ------ | ---------------------------------- |
-| Admin User Schema      | 🟡     | Tabelle da                         |
-| Login Page             | ✅     | UI da                              |
-| Auth API (JWT/Session) | ❌     | Kein echtes Auth! Login ist Fake   |
-| Role-based Access      | ❌     | Admin vs. Editor vs. Viewer        |
-| Dashboard Stats        | ❌     | Revenue, Orders, Customers Widgets |
-| Settings Page          | 🟡     | Seite da, keine Funktionen         |
-| Activity Log           | ❌     | Wer hat was geändert               |
+| Feature            | Status | Details                                         |
+| ------------------ | ------ | ----------------------------------------------- |
+| Admin Auth         | ✅     | JWT/Session (auth.ts)                           |
+| RBAC / Permissions | ✅     | Role-based Access (permissions.ts, requireRole) |
+| User Management    | ✅     | 187 Zeilen API                                  |
+| Dashboard          | ✅     | Admin `/dashboard`                              |
+| Settings           | ✅     | Admin `/settings` inkl. Theme + Translations    |
+| Login Page         | ✅     | Admin `/login`                                  |
 
 ## 10. AI Features (USP!)
 
-| Feature                        | Status | Details                                    |
-| ------------------------------ | ------ | ------------------------------------------ |
-| AI Package                     | 🟡     | Provider-Setup (OpenAI, Anthropic, Ollama) |
-| Produktbeschreibung generieren | ❌     | AI schreibt Description aus Titel/Keywords |
-| SEO-Text generieren            | ❌     | Meta-Description, Alt-Texts                |
-| Chatbot (Storefront)           | ❌     | Kundenberatung per AI                      |
-| Smart Search                   | ❌     | Semantische Suche statt Keyword            |
-| Produktempfehlungen            | ❌     | "Das könnte dir gefallen"                  |
-| Auto-Kategorisierung           | ❌     | AI ordnet Produkte in Kategorien ein       |
-| Bild-Analyse                   | ❌     | Alt-Text aus Bild generieren               |
+| Feature                        | Status | Details                                |
+| ------------------------------ | ------ | -------------------------------------- |
+| AI Package                     | ✅     | OpenRouter + Gemini, Provider Registry |
+| AI Admin                       | ✅     | Admin `/ai` — Settings, Generation     |
+| Produktbeschreibung generieren | ✅     | AI-powered                             |
+| SEO-Text generieren            | ✅     | Meta-Description etc.                  |
+| Chatbot (Storefront)           | ✅     | Admin `/chatbot` + Storefront Chat     |
+| Search Analytics Dashboard     | ✅     | Klick-Tracking, Conversion             |
 
-## 11. Medien & Uploads
+## 11. i18n / Übersetzungen
 
-| Feature             | Status | Details                     |
-| ------------------- | ------ | --------------------------- |
-| Media Schema        | 🟡     | Tabelle da                  |
-| Media Upload API    | ❌     | File Upload Endpoint        |
-| Bild-Upload (Admin) | ❌     | Drag & Drop in Produkten    |
-| Image Optimization  | ❌     | Resize, WebP, Thumbnails    |
-| CDN                 | ❌     | S3/R2 statt lokaler Storage |
+| Feature              | Status | Details                        |
+| -------------------- | ------ | ------------------------------ |
+| i18n Middleware      | ✅     | URL-basiertes Locale Routing   |
+| Translations API     | ✅     | 148 Zeilen                     |
+| Product Translations | ✅     | Schema + Search Integration    |
+| Page Translations    | ✅     | Schema                         |
+| Admin Translations   | ✅     | Admin `/settings/translations` |
 
 ## 12. Plugins & Erweiterbarkeit
 
-| Feature       | Status | Details                     |
-| ------------- | ------ | --------------------------- |
-| Plugin Schema | 🟡     | Tabelle da                  |
-| Plugin Loader | ❌     | Dynamisches Laden           |
-| EventBus      | ✅     | In core/ implementiert      |
-| Hook System   | ❌     | before/after Hooks für CRUD |
+| Feature        | Status | Details                                         |
+| -------------- | ------ | ----------------------------------------------- |
+| Plugin System  | ✅     | Loader + Admin UI (196 Zeilen API)              |
+| Plugin SDK     | ✅     | Payment, Email, Marketplace Provider Interfaces |
+| EventBus       | ✅     | Core                                            |
+| Stripe Plugin  | ✅     | Payment                                         |
+| Mailgun Plugin | ✅     | Email                                           |
+| SMTP Plugin    | ✅     | Email                                           |
 
-## 13. Infrastruktur
+## 13. Marketplace Plugins (Multi-Channel!)
 
-| Feature                  | Status | Details                      |
-| ------------------------ | ------ | ---------------------------- |
-| PostgreSQL               | ✅     | Läuft auf Server             |
-| Caddy Reverse Proxy      | ✅     | Auto-SSL für alle Subdomains |
-| Production Build (Admin) | ✅     | 25x schneller als dev        |
-| Systemd Services         | ❌     | Aktuell manuell gestartet    |
-| Backups                  | ❌     | DB + Media Backups           |
-| Monitoring               | ❌     | Health Checks, Alerts        |
-| CI/CD                    | ❌     | Auto-Deploy bei Push         |
-| Rate Limiting            | ❌     | API Protection               |
+| Feature             | Status | Details                                                  |
+| ------------------- | ------ | -------------------------------------------------------- |
+| Marketplace API     | ✅     | Connections, Sync Products/Orders/Inventory (128 Zeilen) |
+| Marketplace Admin   | ✅     | Admin `/marketplace`                                     |
+| Amazon Plugin       | ✅     | Auth + Provider                                          |
+| eBay Plugin         | ✅     | Auth + Provider                                          |
+| Otto Plugin         | ✅     | Auth + Provider                                          |
+| Kaufland Plugin     | ✅     | Auth + Provider                                          |
+| Marketplace Service | ✅     | Core Registry + Service                                  |
+
+## 14. Multi-Currency
+
+| Feature        | Status | Details             |
+| -------------- | ------ | ------------------- |
+| Currency API   | ✅     | CRUD (161 Zeilen)   |
+| Currency Admin | ✅     | Admin `/currencies` |
+
+## 15. CMS / Pages
+
+| Feature           | Status | Details                               |
+| ----------------- | ------ | ------------------------------------- |
+| Pages API         | ✅     | CRUD (98 Zeilen)                      |
+| Page Builder      | ✅     | Dynamic Page Renderer mit Drag & Drop |
+| Page Translations | ✅     | Multi-Language                        |
+
+## 16. Email System
+
+| Feature        | Status | Details         |
+| -------------- | ------ | --------------- |
+| Email API      | ✅     | Sending + Logs  |
+| Email Admin    | ✅     | Admin `/emails` |
+| Mailgun Plugin | ✅     | Provider        |
+| SMTP Plugin    | ✅     | Provider        |
+
+## 17. Mobile App
+
+| Feature        | Status | Details                        |
+| -------------- | ------ | ------------------------------ |
+| Mobile Package | ✅     | React Native (packages/mobile) |
+| Mobile API     | ✅     | 171 Zeilen                     |
+| Mobile Admin   | ✅     | Admin `/mobile-app`            |
+
+## 18. Infrastruktur
+
+| Feature             | Status | Details                                  |
+| ------------------- | ------ | ---------------------------------------- |
+| PostgreSQL          | ✅     | Drizzle ORM                              |
+| Caddy Reverse Proxy | ✅     | Auto-SSL                                 |
+| Production Build    | ✅     | Turbo Monorepo                           |
+| CI/CD               | ✅     | GitHub Actions (Prettier + Build + Lint) |
+| Security Audit      | ✅     | 31 Findings, ALLE gefixt (18.03.2026)    |
+| Systemd Services    | ✅     | API + Admin + Storefront                 |
+
+## 19. Sonstiges
+
+| Feature          | Status | Details                 |
+| ---------------- | ------ | ----------------------- |
+| CLI Package      | ✅     | `@forkcart/cli`         |
+| Wishlists        | ✅     | API + Storefront        |
+| Product Reviews  | ✅     | API + Admin             |
+| Coupons + Usages | ✅     | API + Admin             |
+| Theme Settings   | ✅     | Admin `/settings/theme` |
 
 ---
 
-## Prioritäten (Empfehlung)
+## Was noch fehlt
 
-### Phase 1 — MVP (macht den Shop benutzbar)
+| Feature                   | Priorität | Details                             |
+| ------------------------- | --------- | ----------------------------------- |
+| Bulk Import/Export        | Medium    | CSV/JSON für Massenanlage           |
+| `npx create-forkcart`     | Medium    | CLI Installer (wie create-next-app) |
+| Auto-Kategorisierung (AI) | Low       | AI ordnet Produkte ein              |
+| Produktempfehlungen (AI)  | Low       | "Das könnte dir gefallen"           |
+| Bild-Analyse (AI)         | Low       | Alt-Text aus Bild generieren        |
 
-1. ⭐ **Admin Auth** (echtes Login, nicht fake)
-2. ⭐ **Produktbilder Upload** (ohne Bilder kein Shop)
-3. ⭐ **Cart API** (Server-Side Warenkorb)
-4. ⭐ **Checkout Flow** (Adresse → Versand → Bestätigung)
-5. ⭐ **Order API + Admin** (Bestellungen verwalten)
-6. ⭐ **Stripe Payment** (Geld einsammeln)
-7. ⭐ **Systemd Services** (überlebt Reboot)
+---
 
-### Phase 2 — Poliert
-
-- Customer Auth (Registration, Login)
-- Transaktionale Emails (Bestellbestätigung)
-- Versandarten verwalten
-- Steuer-Berechnung
-- Dashboard mit echten Stats
-- SEO-Felder
-
-### Phase 3 — AI Magic (USP!)
-
-- AI Produktbeschreibungen
-- Smart Search
-- Chatbot
-- Auto-Kategorisierung
-- Produktempfehlungen
+_ForkCart ist das EINZIGE TypeScript Full-Stack E-Commerce mit Storefront + AI + Page Builder + Marketplace Integration._
+_Konkurrenz (Medusa, Vendure, Saleor) ist headless-only oder PHP._

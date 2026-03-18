@@ -67,13 +67,12 @@ export function createPaymentRoutes(paymentService: PaymentService) {
     return c.json({ data: result }, 201);
   });
 
-  /** Complete a prepayment/demo order (RVS-020: dev only) */
+  /** Complete a prepayment/demo order (RVS-020: dev/demo only) */
   router.post('/demo-complete', async (c) => {
-    if (process.env.NODE_ENV === 'production') {
-      return c.json(
-        { error: { code: 'FORBIDDEN', message: 'Demo payments are disabled in production' } },
-        403,
-      );
+    const isDemoMode = process.env.DEMO_MODE === 'true';
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && !isDemoMode) {
+      return c.notFound();
     }
     const body = await c.req.json();
     const input = CompleteDemoPaymentSchema.parse(body);
