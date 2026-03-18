@@ -121,6 +121,7 @@ import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { createMobileAppRoutes } from './routes/v1/mobile-app';
 import { createMarketplaceRoutes } from './routes/v1/marketplace';
 import { requireRole } from './middleware/permissions';
+import { rateLimit } from './middleware/rate-limit';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -467,6 +468,16 @@ export async function createApp(db: Database) {
       };
     },
   });
+
+  // RVS-016: Rate limiting
+  app.use('/api/v1/auth/login', rateLimit('login', 5)); // 5/min
+  app.use('/api/v1/customer-auth/login', rateLimit('customer-login', 5));
+  app.use('/api/v1/customer-auth/register', rateLimit('customer-register', 5));
+  app.use('/api/v1/customer-auth/forgot-password', rateLimit('forgot-pw', 3));
+  app.use('/api/v1/payments/*', rateLimit('payments', 10)); // 10/min
+  app.use('/api/v1/public/search/*', rateLimit('search', 60)); // 60/min
+  app.use('/api/v1/search/*', rateLimit('search-admin', 60));
+  app.use('/api/v1/*', rateLimit('global', 100)); // 100/min
 
   // Auth middleware — protects all routes except /health and /auth/login
   app.use('*', createAuthMiddleware(authService));

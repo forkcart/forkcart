@@ -1,4 +1,9 @@
 import { eq, ilike, and, gte, lte, sql, asc, desc, count, inArray } from 'drizzle-orm';
+
+/** RVS-024: Escape ILIKE/LIKE special characters */
+function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
 import type { Database } from '@forkcart/database';
 import { products, productCategories } from '@forkcart/database/schemas';
 import type {
@@ -52,8 +57,10 @@ export class ProductRepository {
     }
 
     if (filter.search) {
+      // RVS-024: Escape ILIKE pattern characters
+      const escaped = escapeLike(filter.search);
       conditions.push(
-        sql`(${ilike(products.name, `%${filter.search}%`)} OR ${ilike(products.sku, `%${filter.search}%`)})`,
+        sql`(${ilike(products.name, `%${escaped}%`)} OR ${ilike(products.sku, `%${escaped}%`)})`,
       );
     }
 

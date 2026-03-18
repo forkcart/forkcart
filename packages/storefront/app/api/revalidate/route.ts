@@ -1,7 +1,8 @@
 import { revalidatePath } from 'next/cache';
 import { NextResponse, type NextRequest } from 'next/server';
 
-const REVALIDATE_SECRET = process.env['REVALIDATE_SECRET'] ?? 'forkcart-revalidate';
+// RVS-022: Reject default revalidation secret in production
+const REVALIDATE_SECRET = process.env['REVALIDATE_SECRET'] ?? '';
 
 /**
  * POST /api/revalidate — purge Next.js cache and optionally warm pages.
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest) {
     all?: boolean;
   };
 
-  if (body.secret !== REVALIDATE_SECRET) {
+  if (!REVALIDATE_SECRET || body.secret !== REVALIDATE_SECRET) {
     return NextResponse.json({ error: 'Invalid secret' }, { status: 401 });
   }
 

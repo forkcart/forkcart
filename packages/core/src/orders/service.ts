@@ -7,6 +7,7 @@ import type { VariantRepository } from '../variants/repository';
 import type { EventBus } from '../plugins/event-bus';
 import { ORDER_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
+import crypto from 'node:crypto';
 
 const logger = createLogger('order-service');
 
@@ -16,11 +17,11 @@ export interface OrderServiceDeps {
   eventBus: EventBus;
 }
 
-/** Generate order number: ORD-YYYYMMDD-XXXX */
+/** Generate order number: ORD-YYYYMMDD-XXXX (RVS-031: cryptographically secure) */
 function generateOrderNumber(): string {
   const now = new Date();
   const date = now.toISOString().slice(0, 10).replace(/-/g, '');
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const random = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 4);
   return `ORD-${date}-${random}`;
 }
 
@@ -52,7 +53,9 @@ export class OrderService {
     const itemsWithPrices = await Promise.all(
       input.items.map(async (item) => {
         if (!item.variantId) {
-          throw new ValidationError(`Variant ID is required for item with product: ${item.productId}`);
+          throw new ValidationError(
+            `Variant ID is required for item with product: ${item.productId}`,
+          );
         }
 
         const variant = await this.variantRepo.findById(item.variantId);

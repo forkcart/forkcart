@@ -216,11 +216,45 @@ export class CustomerAuthService {
     return { message: 'If the email exists, a reset link has been sent' };
   }
 
+  /** RVS-021: Reset password using a valid token */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      throw new ValidationError(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+    }
+
+    const customer = await this.repo.findByResetToken(token);
+    if (!customer) {
+      throw new UnauthorizedError('Invalid or expired reset token');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.repo.updatePasswordHash(customer.id, passwordHash);
+    await this.repo.clearResetToken(customer.id);
+
+    logger.info({ customerId: customer.id }, 'Password reset via token');
+  }
+
+  /**
+   * RVS-019: Logout — record token invalidation timestamp.
+   * Tokens issued before this timestamp are rejected.
+   */
+  private readonly tokenInvalidatedAt = new Map<string, number>();
+
+  async logout(customerId: string): Promise<void> {
+    this.tokenInvalidatedAt.set(customerId, Math.floor(Date.now() / 1000));
+    logger.info({ customerId }, 'Customer logged out, tokens invalidated');
+  }
+
   verifyToken(token: string): CustomerJwtPayload {
     try {
       const payload = jwt.verify(token, this.jwtSecret) as CustomerJwtPayload;
       if (payload.type !== 'customer') {
         throw new UnauthorizedError('Invalid token type');
+      }
+      // RVS-019: Check if token was issued before logout
+      const invalidatedAt = this.tokenInvalidatedAt.get(payload.sub);
+      if (invalidatedAt && payload.iat < invalidatedAt) {
+        throw new UnauthorizedError('Token has been revoked');
       }
       return payload;
     } catch (err) {

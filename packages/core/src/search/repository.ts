@@ -8,6 +8,11 @@ import {
   productTranslations,
 } from '@forkcart/database/schemas';
 
+/** RVS-024: Escape ILIKE/LIKE special characters to prevent pattern injection */
+function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
+
 export interface SearchResult {
   id: string;
   name: string;
@@ -102,6 +107,7 @@ export class SearchRepository {
     const limit = filters.limit ?? 20;
     const offset = filters.offset ?? 0;
     const queryText = filters.query.trim();
+    const queryTextEscaped = escapeLike(queryText); // RVS-024
 
     if (!queryText) {
       return { data: [], total: 0 };
@@ -128,26 +134,26 @@ export class SearchRepository {
       SELECT 1 FROM ${productTranslations} pt
       WHERE pt.product_id = ${products.id}
       AND (
-        pt.name ILIKE ${'%' + queryText + '%'}
-        OR pt.description ILIKE ${'%' + queryText + '%'}
-        OR pt.short_description ILIKE ${'%' + queryText + '%'}
+        pt.name ILIKE ${'%' + queryTextEscaped + '%'}
+        OR pt.description ILIKE ${'%' + queryTextEscaped + '%'}
+        OR pt.short_description ILIKE ${'%' + queryTextEscaped + '%'}
       )
     )`;
 
     // Rank by ts_rank + ILIKE boost (including translations)
     const rankExpr = sql<number>`(
       ts_rank(${tsVector}, ${tsQuery}) +
-      CASE WHEN ${products.name} ILIKE ${'%' + queryText + '%'} THEN 0.5 ELSE 0 END +
-      CASE WHEN ${products.sku} ILIKE ${'%' + queryText + '%'} THEN 0.3 ELSE 0 END +
+      CASE WHEN ${products.name} ILIKE ${'%' + queryTextEscaped + '%'} THEN 0.5 ELSE 0 END +
+      CASE WHEN ${products.sku} ILIKE ${'%' + queryTextEscaped + '%'} THEN 0.3 ELSE 0 END +
       CASE WHEN ${translationMatch} THEN 0.5 ELSE 0 END
     )`.as('rank');
 
     // Combine full-text match OR ILIKE fallback OR translation match
     const textCondition = or(
       sql`${tsVector} @@ ${tsQuery}`,
-      ilike(products.name, `%${queryText}%`),
-      ilike(products.description, `%${queryText}%`),
-      ilike(products.sku, `%${queryText}%`),
+      ilike(products.name, `%${queryTextEscaped}%`),
+      ilike(products.description, `%${queryTextEscaped}%`),
+      ilike(products.sku, `%${queryTextEscaped}%`),
       translationMatch,
     );
 
@@ -232,19 +238,20 @@ export class SearchRepository {
   async getSuggestions(partial: string, maxResults = 5): Promise<string[]> {
     const term = partial.trim();
     if (!term) return [];
+    const termEscaped = escapeLike(term); // RVS-024
 
     // Product name suggestions
     const productSuggestions = await this.db
       .selectDistinct({ name: products.name })
       .from(products)
-      .where(and(ilike(products.name, `%${term}%`), eq(products.status, 'active')))
+      .where(and(ilike(products.name, `%${termEscaped}%`), eq(products.status, 'active')))
       .limit(maxResults);
 
     // Category name suggestions
     const categorySuggestions = await this.db
       .selectDistinct({ name: categories.name })
       .from(categories)
-      .where(and(ilike(categories.name, `%${term}%`), eq(categories.isActive, true)))
+      .where(and(ilike(categories.name, `%${termEscaped}%`), eq(categories.isActive, true)))
       .limit(3);
 
     // Popular search term suggestions
@@ -254,7 +261,9 @@ export class SearchRepository {
         searchCount: count().as('search_count'),
       })
       .from(searchQueries)
-      .where(and(ilike(searchQueries.query, `%${term}%`), gte(searchQueries.resultsCount, 1)))
+      .where(
+        and(ilike(searchQueries.query, `%${termEscaped}%`), gte(searchQueries.resultsCount, 1)),
+      )
       .groupBy(searchQueries.query)
       .orderBy(desc(sql`search_count`))
       .limit(3);

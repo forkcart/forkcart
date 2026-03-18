@@ -3,23 +3,30 @@ import type { PaymentService } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
 
-const CreatePaymentIntentSchema = z.object({
-  cartId: z.string().uuid(),
-  providerId: z.string().min(1),
-  customer: z.object({
-    email: z.string().email(),
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-  }),
-  shippingAddress: z.object({
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    addressLine1: z.string().min(1),
-    city: z.string().min(1),
-    postalCode: z.string().min(1),
-    country: z.string().length(2),
-  }),
-});
+// RVS-025: .strict() prevents prototype pollution via extra keys
+const CreatePaymentIntentSchema = z
+  .object({
+    cartId: z.string().uuid(),
+    providerId: z.string().min(1),
+    customer: z
+      .object({
+        email: z.string().email(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+      })
+      .strict(),
+    shippingAddress: z
+      .object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        addressLine1: z.string().min(1),
+        city: z.string().min(1),
+        postalCode: z.string().min(1),
+        country: z.string().length(2),
+      })
+      .strict(),
+  })
+  .strict();
 
 const CompleteDemoPaymentSchema = z.object({
   cartId: z.string().uuid(),
@@ -58,8 +65,14 @@ export function createPaymentRoutes(paymentService: PaymentService) {
     return c.json({ data: result }, 201);
   });
 
-  /** Complete a prepayment/demo order (no payment provider needed) */
+  /** Complete a prepayment/demo order (RVS-020: dev only) */
   router.post('/demo-complete', async (c) => {
+    if (process.env.NODE_ENV === 'production') {
+      return c.json(
+        { error: { code: 'FORBIDDEN', message: 'Demo payments are disabled in production' } },
+        403,
+      );
+    }
     const body = await c.req.json();
     const input = CompleteDemoPaymentSchema.parse(body);
     const result = await paymentService.completeDemoPayment(input);

@@ -1,6 +1,6 @@
-import { eq, desc, sql } from 'drizzle-orm';
+import { eq, desc, sql, and, count } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
-import { coupons } from '@forkcart/database/schemas';
+import { coupons, couponUsages } from '@forkcart/database/schemas';
 
 export interface CreateCouponData {
   code: string;
@@ -139,5 +139,19 @@ export class CouponRepository {
 
       return updated ?? null;
     });
+  }
+
+  /** RVS-017: Count how many times a customer has used a specific coupon */
+  async getCustomerUsageCount(couponId: string, customerId: string): Promise<number> {
+    const [result] = await this.db
+      .select({ cnt: count() })
+      .from(couponUsages)
+      .where(and(eq(couponUsages.couponId, couponId), eq(couponUsages.customerId, customerId)));
+    return result?.cnt ?? 0;
+  }
+
+  /** RVS-017: Record a coupon usage for a customer */
+  async recordCustomerUsage(couponId: string, customerId: string): Promise<void> {
+    await this.db.insert(couponUsages).values({ couponId, customerId });
   }
 }

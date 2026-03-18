@@ -87,6 +87,11 @@ export class StripePaymentProvider implements PaymentProvider {
 
     if (this.webhookSecret) {
       event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
+    } else if (process.env.NODE_ENV === 'production') {
+      // RVS-026: Reject unverified webhooks in production
+      throw new Error(
+        'Stripe webhookSecret is not configured. Webhook verification is required in production.',
+      );
     } else {
       // Dev mode: parse without verification
       event = JSON.parse(rawBody) as Stripe.Event;

@@ -1,4 +1,5 @@
 import { baseLayout } from './base';
+import { escapeHtml } from './escape-html';
 
 export interface OrderConfirmationData {
   orderNumber: string;
@@ -40,11 +41,11 @@ function formatPrice(cents: number, currency: string): string {
 
 function formatAddress(addr: OrderConfirmationData['shippingAddress']): string {
   const lines = [
-    `${addr.firstName} ${addr.lastName}`,
-    addr.addressLine1,
-    addr.addressLine2,
-    `${addr.postalCode} ${addr.city}`,
-    addr.country,
+    `${escapeHtml(addr.firstName)} ${escapeHtml(addr.lastName)}`,
+    escapeHtml(addr.addressLine1),
+    addr.addressLine2 ? escapeHtml(addr.addressLine2) : '',
+    `${escapeHtml(addr.postalCode)} ${escapeHtml(addr.city)}`,
+    escapeHtml(addr.country),
   ].filter(Boolean);
   return lines.map((l) => `<p>${l}</p>`).join('');
 }
@@ -54,7 +55,7 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
     .map(
       (item) => `
     <tr>
-      <td>${item.name}</td>
+      <td>${escapeHtml(item.name)}</td>
       <td style="text-align:center;">${item.quantity}</td>
       <td style="text-align:right;">${formatPrice(item.unitPrice, data.currency)}</td>
       <td style="text-align:right;">${formatPrice(item.totalPrice, data.currency)}</td>
@@ -64,11 +65,11 @@ export function orderConfirmationHtml(data: OrderConfirmationData): string {
 
   const content = `
     <h1>Order Confirmation 🎉</h1>
-    <p>Hi ${data.customerName},</p>
+    <p>Hi ${escapeHtml(data.customerName)},</p>
     <p>Thank you for your order! We have received it and will process it as quickly as possible.</p>
 
     <p style="font-size:13px;color:#6b7280;margin-bottom:4px;">Order number</p>
-    <p style="font-size:20px;font-weight:700;color:#1a1a2e;margin-top:0;">${data.orderNumber}</p>
+    <p style="font-size:20px;font-weight:700;color:#1a1a2e;margin-top:0;">${escapeHtml(data.orderNumber)}</p>
 
     <hr class="divider">
 
