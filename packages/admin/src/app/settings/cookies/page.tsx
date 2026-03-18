@@ -49,6 +49,60 @@ const CATEGORY_ICONS: Record<string, typeof Shield> = {
   marketing: Megaphone,
 };
 
+const LABELS: Record<string, Record<string, string>> = {
+  de: {
+    bannerTexts: 'Banner-Texte',
+    bannerTextsDesc: 'Texte die im Cookie-Banner angezeigt werden',
+    bannerTitle: 'Banner-Überschrift',
+    bannerText: 'Banner-Text',
+    acceptAll: 'Button: Alle akzeptieren',
+    rejectAll: 'Button: Nur notwendige',
+    settings: 'Button: Einstellungen',
+    modalTitle: 'Modal-Überschrift',
+    modalSave: 'Modal: Auswahl speichern',
+    emptyHint:
+      'Wenn Felder leer bleiben, werden die Standard-Übersetzungen aus den Sprachdateien verwendet.',
+    categories: 'Cookie-Kategorien',
+    categoriesDesc: 'Kategorien die der Kunde im Cookie-Modal sieht',
+    addCategory: 'Kategorie hinzufügen',
+    label: 'Label',
+    description: 'Beschreibung',
+    active: 'Aktiv',
+    delete: 'Löschen',
+    cancel: 'Abbrechen',
+    add: 'Hinzufügen',
+    required: 'PFLICHT',
+    save: 'Texte speichern',
+    saved: 'Gespeichert!',
+    deleteConfirm: 'Kategorie wirklich löschen?',
+  },
+  en: {
+    bannerTexts: 'Banner Texts',
+    bannerTextsDesc: 'Texts shown in the cookie consent banner',
+    bannerTitle: 'Banner Title',
+    bannerText: 'Banner Text',
+    acceptAll: 'Button: Accept All',
+    rejectAll: 'Button: Only Necessary',
+    settings: 'Button: Settings',
+    modalTitle: 'Modal Title',
+    modalSave: 'Modal: Save Selection',
+    emptyHint: 'Empty fields will use the default translations from the language files.',
+    categories: 'Cookie Categories',
+    categoriesDesc: 'Categories the customer sees in the cookie modal',
+    addCategory: 'Add Category',
+    label: 'Label',
+    description: 'Description',
+    active: 'Active',
+    delete: 'Delete',
+    cancel: 'Cancel',
+    add: 'Add',
+    required: 'REQUIRED',
+    save: 'Save texts',
+    saved: 'Saved!',
+    deleteConfirm: 'Really delete this category?',
+  },
+};
+
 export default function CookieConsentSettingsPage() {
   const [categories, setCategories] = useState<ConsentCategory[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
@@ -156,7 +210,7 @@ export default function CookieConsentSettingsPage() {
   }
 
   async function handleDeleteCategory(id: string) {
-    if (!confirm('Kategorie wirklich löschen?')) return;
+    if (!confirm(l('deleteConfirm'))) return;
     try {
       await apiClient(`/cookie-consent/categories/${id}`, { method: 'DELETE' });
       loadData();
@@ -172,6 +226,8 @@ export default function CookieConsentSettingsPage() {
   function updateCategory(id: string, updates: Partial<ConsentCategory>) {
     setCategories((prev) => prev.map((c) => (c.id === id ? { ...c, ...updates } : c)));
   }
+
+  const l = (key: string) => (LABELS[activeLocale] ?? LABELS['de'])?.[key] ?? key;
 
   if (loading) {
     return (
@@ -196,7 +252,7 @@ export default function CookieConsentSettingsPage() {
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saved ? 'Gespeichert!' : 'Texte speichern'}
+          {saved ? l('saved') : l('save')}
         </button>
       </div>
 
@@ -207,10 +263,8 @@ export default function CookieConsentSettingsPage() {
             <div className="flex items-center gap-3">
               <Cookie className="h-5 w-5 text-muted-foreground" />
               <div>
-                <h2 className="text-lg font-semibold">Banner-Texte</h2>
-                <p className="text-sm text-muted-foreground">
-                  Texte die im Cookie-Banner angezeigt werden
-                </p>
+                <h2 className="text-lg font-semibold">{l('bannerTexts')}</h2>
+                <p className="text-sm text-muted-foreground">{l('bannerTextsDesc')}</p>
               </div>
             </div>
           </div>
@@ -238,14 +292,11 @@ export default function CookieConsentSettingsPage() {
             </div>
           )}
 
-          <p className="mt-3 text-xs text-muted-foreground">
-            Wenn Felder leer bleiben, werden die Standard-Übersetzungen aus den Sprachdateien
-            verwendet.
-          </p>
+          <p className="mt-3 text-xs text-muted-foreground">{l('emptyHint')}</p>
 
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Label htmlFor="banner_title">Banner-Überschrift</Label>
+              <Label htmlFor="banner_title">{l('bannerTitle')}</Label>
               <Input
                 id="banner_title"
                 value={settings['banner_title'] ?? ''}
@@ -259,7 +310,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <Label htmlFor="banner_text">Banner-Text</Label>
+              <Label htmlFor="banner_text">{l('bannerText')}</Label>
               <Textarea
                 id="banner_text"
                 value={settings['banner_text'] ?? ''}
@@ -276,7 +327,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="banner_accept_all">Button: Alle akzeptieren</Label>
+              <Label htmlFor="banner_accept_all">{l('acceptAll')}</Label>
               <Input
                 id="banner_accept_all"
                 value={settings['banner_accept_all'] ?? ''}
@@ -286,7 +337,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="banner_reject_all">Button: Nur notwendige</Label>
+              <Label htmlFor="banner_reject_all">{l('rejectAll')}</Label>
               <Input
                 id="banner_reject_all"
                 value={settings['banner_reject_all'] ?? ''}
@@ -296,7 +347,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="banner_settings">Button: Einstellungen</Label>
+              <Label htmlFor="banner_settings">{l('settings')}</Label>
               <Input
                 id="banner_settings"
                 value={settings['banner_settings'] ?? ''}
@@ -306,7 +357,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="modal_title">Modal-Überschrift</Label>
+              <Label htmlFor="modal_title">{l('modalTitle')}</Label>
               <Input
                 id="modal_title"
                 value={settings['modal_title'] ?? ''}
@@ -316,7 +367,7 @@ export default function CookieConsentSettingsPage() {
               />
             </div>
             <div>
-              <Label htmlFor="modal_save">Modal: Auswahl speichern</Label>
+              <Label htmlFor="modal_save">{l('modalSave')}</Label>
               <Input
                 id="modal_save"
                 value={settings['modal_save'] ?? ''}
@@ -334,10 +385,8 @@ export default function CookieConsentSettingsPage() {
             <div className="flex items-center gap-3">
               <Shield className="h-5 w-5 text-muted-foreground" />
               <div>
-                <h2 className="text-lg font-semibold">Cookie-Kategorien</h2>
-                <p className="text-sm text-muted-foreground">
-                  Kategorien die der Kunde im Cookie-Modal sieht
-                </p>
+                <h2 className="text-lg font-semibold">{l('categories')}</h2>
+                <p className="text-sm text-muted-foreground">{l('categoriesDesc')}</p>
               </div>
             </div>
             <button
@@ -345,7 +394,7 @@ export default function CookieConsentSettingsPage() {
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition hover:bg-muted"
             >
               <Plus className="h-4 w-4" />
-              Kategorie hinzufügen
+              {l('addCategory')}
             </button>
           </div>
 
@@ -379,7 +428,7 @@ export default function CookieConsentSettingsPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="new_desc">Beschreibung</Label>
+                  <Label htmlFor="new_desc">{l('description')}</Label>
                   <Input
                     id="new_desc"
                     value={newCategory.description}
@@ -422,7 +471,7 @@ export default function CookieConsentSettingsPage() {
                         <span className="font-mono text-xs text-muted-foreground">{cat.key}</span>
                         {cat.required && (
                           <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
-                            PFLICHT
+                            {l('required')}
                           </span>
                         )}
                       </div>
@@ -437,7 +486,7 @@ export default function CookieConsentSettingsPage() {
                           />
                         </div>
                         <div>
-                          <Label>Beschreibung</Label>
+                          <Label>{l('description')}</Label>
                           <Input
                             value={cat.description}
                             onChange={(e) =>
