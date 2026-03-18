@@ -96,19 +96,19 @@ export function createCustomerAuthRoutes(customerAuthService: CustomerAuthServic
 }
 
 /** Cart assign route — PATCH /api/v1/carts/:id/assign */
-export function createCartAssignRoute(cartService: CartService) {
+export function createCartAssignRoute(
+  cartService: CartService,
+  customerAuthService: CustomerAuthService,
+) {
   const router = new Hono();
+  const requireAuth = createCustomerAuthMiddleware(customerAuthService);
 
-  const AssignSchema = z.object({
-    customerId: z.string().uuid(),
-  });
+  router.patch('/:id/assign', requireAuth, async (c) => {
+    const cartId = c.req.param('id')!; // Always present for this route pattern
+    const customer = c.get('customer')!; // Always set by requireAuth middleware
 
-  router.patch('/:id/assign', async (c) => {
-    const cartId = c.req.param('id');
-    const body = await c.req.json();
-    const { customerId } = AssignSchema.parse(body);
-
-    const cart = await cartService.assignToCustomer(cartId, customerId);
+    // RVS-006: Only allow assigning cart to the authenticated customer
+    const cart = await cartService.assignToCustomer(cartId, customer.id);
     return c.json({ data: cart });
   });
 

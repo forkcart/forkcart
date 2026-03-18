@@ -870,6 +870,27 @@ export class PluginLoader {
 
   // ─── Plugin context builder ───────────────────────────────────────────────
 
+  /**
+   * Build the context object passed to plugin lifecycle hooks.
+   *
+   * ⚠️  SECURITY WARNING (RVS-012): The raw database handle (`db`) is exposed to plugins.
+   *     This allows plugins to execute arbitrary queries, potentially accessing or
+   *     modifying ANY data in the database (including other plugins' data, user
+   *     credentials, orders, etc.).
+   *
+   *     A malicious or compromised plugin could:
+   *     - Read sensitive data (customer PII, payment info, admin credentials)
+   *     - Modify/delete arbitrary records
+   *     - Escalate privileges by modifying user roles
+   *
+   *     TODO: Replace with a scoped database proxy that:
+   *     - Only allows access to plugin-specific tables
+   *     - Enforces row-level security for plugin data
+   *     - Logs all queries for audit purposes
+   *     - Rate-limits database operations
+   *
+   *     For now, only install plugins from TRUSTED sources!
+   */
   private buildPluginContext(pluginName: string, settings: Record<string, unknown>): unknown {
     const pluginLogger = {
       debug: (msg: string, data?: Record<string, unknown>) =>
@@ -882,6 +903,7 @@ export class PluginLoader {
         logger.error({ pluginName, ...data }, msg),
     };
 
+    // ⚠️ WARNING: Raw db handle exposed — see security note above
     return {
       settings,
       db: this.db,

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import type { MediaService } from '@forkcart/core';
 import { PaginationSchema, IdParamSchema } from '@forkcart/shared';
+import { requireRole } from '../../middleware/permissions';
 
 /** Media CRUD + upload routes */
 export function createMediaRoutes(mediaService: MediaService) {
@@ -10,6 +11,7 @@ export function createMediaRoutes(mediaService: MediaService) {
   /** Upload a file (multipart) */
   router.post(
     '/upload',
+    requireRole('admin', 'superadmin'),
     bodyLimit({ maxSize: 10 * 1024 * 1024 }), // 10MB
     async (c) => {
       const formData = await c.req.formData();
@@ -38,7 +40,7 @@ export function createMediaRoutes(mediaService: MediaService) {
   );
 
   /** List all media */
-  router.get('/', async (c) => {
+  router.get('/', requireRole('admin', 'superadmin'), async (c) => {
     const query = c.req.query();
     const pagination = PaginationSchema.parse(query);
     const result = await mediaService.list(pagination);
@@ -46,21 +48,21 @@ export function createMediaRoutes(mediaService: MediaService) {
   });
 
   /** Get single media by ID */
-  router.get('/:id', async (c) => {
+  router.get('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const result = await mediaService.getById(id);
     return c.json({ data: result });
   });
 
   /** Delete media (file + DB) */
-  router.delete('/:id', async (c) => {
+  router.delete('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     await mediaService.delete(id);
     return c.json({ success: true });
   });
 
   /** Reorder media */
-  router.put('/reorder', async (c) => {
+  router.put('/reorder', requireRole('admin', 'superadmin'), async (c) => {
     const body = (await c.req.json()) as { items: Array<{ id: string; sortOrder: number }> };
     await mediaService.reorderMedia(body.items);
     return c.json({ success: true });

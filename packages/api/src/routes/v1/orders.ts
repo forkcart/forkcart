@@ -7,6 +7,7 @@ import {
   OrderStatusSchema,
 } from '@forkcart/shared';
 import { z } from 'zod';
+import { requireRole } from '../../middleware/permissions';
 
 const OrderFilterSchema = z.object({
   status: z.string().optional(),
@@ -25,13 +26,13 @@ export function createOrderRoutes(orderService: OrderService) {
   const router = new Hono();
 
   /** Get order stats (must be before /:id) */
-  router.get('/stats', async (c) => {
+  router.get('/stats', requireRole('admin', 'superadmin'), async (c) => {
     const stats = await orderService.getStats();
     return c.json({ data: stats });
   });
 
   /** List orders with filtering and pagination */
-  router.get('/', async (c) => {
+  router.get('/', requireRole('admin', 'superadmin'), async (c) => {
     const query = c.req.query();
     const filter = OrderFilterSchema.parse(query);
     const pagination = PaginationSchema.parse(query);
@@ -41,14 +42,14 @@ export function createOrderRoutes(orderService: OrderService) {
   });
 
   /** Get order by ID */
-  router.get('/:id', async (c) => {
+  router.get('/:id', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const order = await orderService.getById(id);
     return c.json({ data: order });
   });
 
   /** Create order */
-  router.post('/', async (c) => {
+  router.post('/', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
     const input = CreateOrderSchema.parse(body);
     const order = await orderService.create(input);
@@ -56,7 +57,7 @@ export function createOrderRoutes(orderService: OrderService) {
   });
 
   /** Update order status */
-  router.put('/:id/status', async (c) => {
+  router.put('/:id/status', requireRole('admin', 'superadmin'), async (c) => {
     const { id } = IdParamSchema.parse({ id: c.req.param('id') });
     const body = await c.req.json();
     const { status, note } = UpdateStatusSchema.parse(body);

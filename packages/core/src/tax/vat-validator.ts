@@ -2,6 +2,17 @@ import { createLogger } from '../lib/logger';
 
 const logger = createLogger('vat-validator');
 
+/**
+ * Escape special XML characters to prevent XML injection attacks.
+ * RVS-011: VAT IDs are interpolated into SOAP XML and must be escaped.
+ */
+function escapeXml(str: string): string {
+  return str.replace(
+    /[<>&'"]/g,
+    (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' })[c] ?? c,
+  );
+}
+
 /** Result from VIES VAT number validation */
 export interface ViesValidationResult {
   valid: boolean;
@@ -43,14 +54,15 @@ export class VatValidator {
 
     const { countryCode, vatNumber } = parsed;
 
+    // RVS-011: Escape XML special characters to prevent XML injection
     const soapBody = `
       <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
                         xmlns:urn="urn:ec.europa.eu:taxud:vies:services:checkVat:types">
         <soapenv:Header/>
         <soapenv:Body>
           <urn:checkVat>
-            <urn:countryCode>${countryCode}</urn:countryCode>
-            <urn:vatNumber>${vatNumber}</urn:vatNumber>
+            <urn:countryCode>${escapeXml(countryCode)}</urn:countryCode>
+            <urn:vatNumber>${escapeXml(vatNumber)}</urn:vatNumber>
           </urn:checkVat>
         </soapenv:Body>
       </soapenv:Envelope>
