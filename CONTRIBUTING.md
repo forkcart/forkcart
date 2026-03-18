@@ -1,206 +1,113 @@
 # Contributing to ForkCart
 
-First off — thank you! Whether you're fixing a typo, reporting a bug, or building a new plugin, you're making ForkCart better for everyone. 🎉
+Thank you for your interest in contributing to ForkCart! This guide will help you get started.
 
-## 🛠️ Development Setup
+## Prerequisites
 
-### Prerequisites
+- **Node.js** ≥ 22 (see `.nvmrc`)
+- **pnpm** ≥ 9
+- **PostgreSQL** 15+
+- **Docker** (optional, for local DB)
 
-- **Node.js 22+** — [Download](https://nodejs.org/)
-- **pnpm 9+** — `npm install -g pnpm`
-- **PostgreSQL 16** — [Download](https://www.postgresql.org/download/) or use Docker
-- **Git**
-
-### Getting Started
+## Getting Started
 
 ```bash
-# 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/forkcart.git
+# Clone the repo
+git clone https://github.com/forkcart/forkcart.git
 cd forkcart
 
-# 2. Install dependencies
+# Install dependencies
 pnpm install
 
-# 3. Set up environment
+# Set up your environment
 cp .env.example .env
 # Edit .env with your database credentials
 
-# 4. Create the database
-createdb forkcart
-# Or: psql -c "CREATE DATABASE forkcart;"
-
-# 5. Run migrations
+# Generate & run migrations
+pnpm db:generate
 pnpm db:migrate
 
-# 6. (Optional) Seed demo data
+# Seed the database (optional)
 pnpm db:seed
 
-# 7. Start development
+# Start all packages in dev mode
 pnpm dev
 ```
 
-This starts all three services:
+## Monorepo Structure
 
-- **Storefront** → http://localhost:3000
-- **Admin Panel** → http://localhost:3001
-- **API** → http://localhost:4000
+| Package                | Path                  | Description                                  |
+| ---------------------- | --------------------- | -------------------------------------------- |
+| `@forkcart/api`        | `packages/api`        | Hono-based REST API                          |
+| `@forkcart/core`       | `packages/core`       | Business logic & services                    |
+| `@forkcart/database`   | `packages/database`   | Drizzle ORM schemas, migrations & seed       |
+| `@forkcart/shared`     | `packages/shared`     | Shared types, constants & validation schemas |
+| `@forkcart/storefront` | `packages/storefront` | Next.js storefront                           |
+| `@forkcart/admin`      | `packages/admin`      | Admin dashboard                              |
 
-### Useful Commands
+When making changes, work in the most specific package possible. Shared types go in `@forkcart/shared`, database changes in `@forkcart/database`, etc.
+
+## Branch Strategy
+
+- **`main`** — stable, production-ready code
+- **`feature/<name>`** — feature branches off `main`
+- **`fix/<name>`** — bug fix branches off `main`
+
+Always branch from `main` and open a PR back to `main`.
+
+## Code Style
+
+We use **Prettier** for formatting — no debates about style.
 
 ```bash
-pnpm dev              # Start all packages in dev mode
-pnpm build            # Production build (all packages)
-pnpm lint             # Run ESLint
-pnpm format           # Format with Prettier
-pnpm typecheck        # TypeScript type checking
-pnpm test             # Run tests
+# Check formatting
+pnpm format:check
 
-pnpm db:generate      # Generate migration from schema changes
-pnpm db:migrate       # Apply migrations
-pnpm db:seed          # Seed demo data
-pnpm db:studio        # Open Drizzle Studio (DB browser)
+# Auto-fix formatting
+pnpm format
 ```
 
-## 📁 Project Structure
+Prettier runs automatically on staged files via Husky + lint-staged.
 
-```
-forkcart/
-├── packages/
-│   ├── api/            # Hono REST API
-│   │   ├── src/
-│   │   │   ├── routes/v1/    # Endpoint handlers
-│   │   │   └── middleware/   # Auth, error handling
-│   │   └── package.json
-│   │
-│   ├── admin/          # Next.js 15 Admin Panel
-│   │   ├── src/app/          # App Router pages
-│   │   └── src/components/   # React components
-│   │
-│   ├── storefront/     # Next.js 15 Customer-facing Shop
-│   │   ├── src/app/          # App Router pages
-│   │   └── src/components/   # React components
-│   │
-│   ├── core/           # Business Logic (no HTTP, no DB details)
-│   │   ├── src/
-│   │   │   ├── products/     # Product service + repository
-│   │   │   ├── orders/       # Order service + repository
-│   │   │   ├── payments/     # Payment provider interfaces
-│   │   │   ├── plugins/      # EventBus, PluginLoader
-│   │   │   └── ...
-│   │   └── package.json
-│   │
-│   ├── database/       # Drizzle ORM schemas + migrations
-│   │   ├── src/schemas/      # Table definitions
-│   │   └── drizzle/          # Migration files
-│   │
-│   ├── shared/         # Shared types, Zod schemas, utils
-│   │
-│   ├── ai/             # AI provider integrations
-│   │
-│   └── plugins/
-│       └── stripe/     # Stripe payment plugin (reference)
-│
-├── .env.example
-├── turbo.json
-└── package.json
-```
+## Making a PR
 
-### Key Principles
-
-- **Business logic lives in `core/`** — services and repositories, no HTTP or framework specifics.
-- **Routes live in `api/`** — thin handlers that call services.
-- **Plugins are self-contained** — each in its own package under `packages/plugins/`.
-- **Types are shared** — common interfaces go in `packages/shared/`.
-
-## 🎨 Code Style
-
-- **TypeScript strict mode** — `strict: true`, no `any`.
-- **Prettier** for formatting — runs on commit via lint-staged.
-- **ESLint** for linting.
-- **Prices in cents** — `2999` means €29.99. Format only in the frontend.
-
-## 🔀 Submitting a Pull Request
-
-1. **Create a branch** from `master`:
-
+1. Create a feature/fix branch: `git checkout -b feature/my-change`
+2. Make your changes
+3. Ensure everything passes:
    ```bash
-   git checkout -b feat/my-awesome-feature
+   pnpm format:check
+   pnpm build
+   pnpm test        # if applicable
    ```
-
-2. **Make your changes** — keep commits focused and atomic.
-
-3. **Test your changes:**
-
-   ```bash
-   pnpm typecheck
-   pnpm lint
-   pnpm test
+4. Commit with a descriptive message (conventional commits preferred):
    ```
-
-4. **Push and open a PR:**
-
-   ```bash
-   git push origin feat/my-awesome-feature
+   feat(api): add bulk product import endpoint
+   fix(database): correct price constraint on variants
    ```
+5. Push and open a PR against `main`
+6. Fill in the PR template and request a review
 
-5. **Describe your changes** — what, why, and how. Include screenshots for UI changes.
+## Database Changes
 
-### PR Checklist
+All schema changes live in `packages/database/src/schemas/`.
 
-- [ ] TypeScript compiles without errors
-- [ ] Linting passes
-- [ ] New features have tests (at minimum service-layer)
-- [ ] Documentation updated if needed
-- [ ] Follows the commit convention
+```bash
+# After modifying schemas, generate a migration:
+cd packages/database
+npx drizzle-kit generate
 
-## 📝 Commit Convention
-
-We use [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: add product search to admin panel
-fix: correct price calculation in cart
-docs: update plugin development guide
-chore: upgrade drizzle-orm to v0.35
-refactor: extract shared validation schemas
-style: format with prettier
-test: add unit tests for payment service
+# Apply migrations:
+pnpm db:migrate
 ```
 
-**Types:** `feat`, `fix`, `docs`, `chore`, `refactor`, `style`, `test`, `ci`, `perf`
+Never edit generated migration files manually.
 
-**Scope (optional):** `feat(admin): add bulk product import`
+## Environment Variables
 
-## 🐛 Reporting Bugs
+- `DATABASE_URL` — PostgreSQL connection string
+- `NODE_ENV` — `development` | `production`
+- `DEMO_MODE` — Set to `true` to enable demo payment endpoints in production
 
-Use our [Bug Report template](.github/ISSUE_TEMPLATE/bug_report.md) on GitHub. Include:
+## Need Help?
 
-- Steps to reproduce
-- Expected vs. actual behavior
-- Environment details (Node version, OS, browser)
-
-## 💡 Feature Requests
-
-Use our [Feature Request template](.github/ISSUE_TEMPLATE/feature_request.md). We love hearing what you need!
-
-## 🏗️ Adding a New Feature
-
-Follow this recipe:
-
-1. **Schema** → `packages/database/src/schemas/feature.ts`
-2. **Migration** → `cd packages/database && npx drizzle-kit generate`
-3. **Repository** → `packages/core/src/feature/repository.ts`
-4. **Service** → `packages/core/src/feature/service.ts`
-5. **Events** → `packages/core/src/feature/events.ts`
-6. **API Route** → `packages/api/src/routes/v1/feature.ts`
-7. **Register** → Mount in `packages/api/src/app.ts`
-8. **Admin UI** → `packages/admin/src/app/feature/page.tsx`
-9. **Tests** → At minimum service-layer tests
-
-## 📜 License
-
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
-
----
-
-Questions? Open a [Discussion](https://github.com/forkcart/forkcart/discussions) or join our [Discord](https://discord.gg/forkcart). We're happy to help! 🚀
+Open an issue on [GitHub](https://github.com/forkcart/forkcart/issues) or start a discussion.

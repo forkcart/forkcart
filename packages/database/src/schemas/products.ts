@@ -8,8 +8,10 @@ import {
   timestamp,
   jsonb,
   index,
+  primaryKey,
+  check,
 } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import { categories } from './categories';
 import { taxClasses } from './tax';
 
@@ -46,6 +48,7 @@ export const products = pgTable(
     index('products_status_idx').on(table.status),
     index('products_sku_idx').on(table.sku),
     index('products_created_at_idx').on(table.createdAt),
+    check('products_price_non_negative', sql`${table.price} >= 0`),
   ],
 );
 
@@ -65,7 +68,14 @@ export const productVariants = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index('product_variants_product_id_idx').on(table.productId)],
+  (table) => [
+    index('product_variants_product_id_idx').on(table.productId),
+    index('product_variants_attributes_idx').using('gin', table.attributes),
+    check(
+      'product_variants_price_non_negative',
+      sql`${table.price} IS NULL OR ${table.price} >= 0`,
+    ),
+  ],
 );
 
 export const productAttributes = pgTable('product_attributes', {
@@ -79,14 +89,18 @@ export const productAttributes = pgTable('product_attributes', {
 });
 
 /** Junction table for products ↔ categories */
-export const productCategories = pgTable('product_categories', {
-  productId: uuid('product_id')
-    .notNull()
-    .references(() => products.id, { onDelete: 'cascade' }),
-  categoryId: uuid('category_id')
-    .notNull()
-    .references(() => categories.id, { onDelete: 'cascade' }),
-});
+export const productCategories = pgTable(
+  'product_categories',
+  {
+    productId: uuid('product_id')
+      .notNull()
+      .references(() => products.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+  },
+  (table) => [primaryKey({ columns: [table.productId, table.categoryId] })],
+);
 
 /** Relations */
 export const productsRelations = relations(products, ({ many }) => ({

@@ -57,6 +57,13 @@
       "when": 1742030000000,
       "tag": "0007_seo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1742335800000,
+      "tag": "0024_schema-hardening",
+      "breakpoints": true
     }
   ]
 }
