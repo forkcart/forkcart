@@ -1,9 +1,11 @@
 'use client';
 
 import { useConsent } from './consent-provider';
+import { useTranslation } from '@forkcart/i18n/react';
 
 export function ConsentBanner() {
   const { showBanner, settings, categories, acceptAll, rejectAll, openSettings } = useConsent();
+  const { t } = useTranslation();
 
   if (!showBanner || categories.length === 0) return null;
 
@@ -15,11 +17,10 @@ export function ConsentBanner() {
             {/* Text */}
             <div className="flex-1">
               <h3 className="text-base font-semibold text-stone-800">
-                {settings['banner_title'] ?? 'Wir respektieren Ihre Privatsphäre'}
+                {settings['banner_title'] ?? t('consent.bannerTitle')}
               </h3>
               <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
-                {settings['banner_text'] ??
-                  'Wir verwenden Cookies, um Ihnen das beste Einkaufserlebnis zu bieten.'}
+                {settings['banner_text'] ?? t('consent.bannerText')}
               </p>
             </div>
 
@@ -29,19 +30,19 @@ export function ConsentBanner() {
                 onClick={rejectAll}
                 className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
               >
-                {settings['banner_reject_all'] ?? 'Nur notwendige'}
+                {settings['banner_reject_all'] ?? t('consent.rejectAll')}
               </button>
               <button
                 onClick={openSettings}
                 className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
               >
-                {settings['banner_settings'] ?? 'Einstellungen'}
+                {settings['banner_settings'] ?? t('consent.settings')}
               </button>
               <button
                 onClick={acceptAll}
                 className="rounded-lg bg-stone-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 active:scale-[0.98]"
               >
-                {settings['banner_accept_all'] ?? 'Alle akzeptieren'}
+                {settings['banner_accept_all'] ?? t('consent.acceptAll')}
               </button>
             </div>
           </div>

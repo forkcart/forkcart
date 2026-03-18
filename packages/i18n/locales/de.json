@@ -324,5 +324,27 @@
     "noProducts": "Noch keine Produkte vorhanden",
     "shopByCategory": "Nach Kategorie shoppen",
     "viewAll": "Alle anzeigen"
+  },
+  "consent": {
+    "bannerTitle": "Wir respektieren Ihre Privatsphäre",
+    "bannerText": "Wir verwenden Cookies, um Ihnen das beste Einkaufserlebnis zu bieten.",
+    "acceptAll": "Alle akzeptieren",
+    "rejectAll": "Nur notwendige",
+    "settings": "Einstellungen",
+    "modalTitle": "Cookie-Einstellungen",
+    "modalDescription": "Wählen Sie, welche Cookies Sie zulassen möchten. Notwendige Cookies können nicht deaktiviert werden.",
+    "save": "Auswahl speichern",
+    "required": "Pflicht",
+    "cookieSettings": "Cookie-Einstellungen",
+    "categories": {
+      "necessary": "Notwendig",
+      "necessaryDesc": "Session, Warenkorb, Sicherheit",
+      "functional": "Funktional",
+      "functionalDesc": "Spracheinstellungen, Theme-Präferenzen",
+      "analytics": "Statistik",
+      "analyticsDesc": "Anonyme Nutzungsstatistiken",
+      "marketing": "Marketing",
+      "marketingDesc": "Werbung & Retargeting"
+    }
   }
 }
