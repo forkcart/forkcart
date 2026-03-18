@@ -125,31 +125,27 @@ export class PaymentService {
     }
     if (amount <= 0) throw new ValidationError('Cart total must be greater than 0');
 
-    // 3. Find or create customer
-    let customer = await this.customerRepo.findByEmail(input.customer.email);
-    if (!customer) {
-      customer = await this.customerRepo.create({
-        email: input.customer.email,
-        firstName: input.customer.firstName,
-        lastName: input.customer.lastName,
-        acceptsMarketing: false,
-      });
-    }
+    // 3. Find existing customer or proceed as guest
+    const existingCustomer = await this.customerRepo.findByEmail(input.customer.email);
+    const customerId = existingCustomer?.id ?? null;
 
     // 4. Create payment intent via provider
     const result = await provider.createPaymentIntent({
       amount,
       currency: 'eur',
       customer: {
-        id: customer.id,
-        email: customer.email,
-        firstName: customer.firstName,
-        lastName: customer.lastName,
+        id: customerId ?? `guest_${input.customer.email}`,
+        email: input.customer.email,
+        firstName: input.customer.firstName,
+        lastName: input.customer.lastName,
       },
       shippingAddress: input.shippingAddress,
       metadata: {
         cartId: input.cartId,
-        customerId: customer.id,
+        ...(customerId ? { customerId } : {}),
+        guestEmail: input.customer.email,
+        guestFirstName: input.customer.firstName,
+        guestLastName: input.customer.lastName,
         shippingAddress: JSON.stringify(input.shippingAddress),
         ...(input.shippingMethodId ? { shippingMethodId: input.shippingMethodId } : {}),
       },
@@ -217,18 +213,24 @@ export class PaymentService {
   ) {
     const cartId = metadata['cartId'] ?? '';
     const customerId = metadata['customerId'] ?? '';
+    const guestEmail = metadata['guestEmail'] ?? '';
+    const guestFirstName = metadata['guestFirstName'] ?? '';
+    const guestLastName = metadata['guestLastName'] ?? '';
     const shippingAddressRaw = metadata['shippingAddress'] ?? '{}';
     const shippingMethodId = metadata['shippingMethodId'] ?? '';
 
-    if (!cartId || !customerId) {
-      logger.error(
-        { cartId, customerId, externalId },
-        'Missing cartId or customerId in webhook metadata',
-      );
+    if (!cartId) {
+      logger.error({ cartId, externalId }, 'Missing cartId in webhook metadata');
       return;
     }
 
-    logger.info({ providerId, externalId }, 'Payment succeeded');
+    // Guest checkout: customerId is optional
+    if (!customerId && !guestEmail) {
+      logger.error({ cartId, externalId }, 'Missing both customerId and guestEmail in metadata');
+      return;
+    }
+
+    logger.info({ providerId, externalId, isGuest: !customerId }, 'Payment succeeded');
 
     const cart = await this.cartRepo.findById(cartId);
     if (!cart) {
@@ -244,10 +246,16 @@ export class PaymentService {
       postalCode: string;
       country: string;
     };
-    const addressResult = await this.customerRepo.createAddress({
-      customerId,
-      ...shippingAddress,
-    });
+
+    // Only create address record if we have a customer
+    let shippingAddressId: string | undefined;
+    if (customerId) {
+      const addressResult = await this.customerRepo.createAddress({
+        customerId,
+        ...shippingAddress,
+      });
+      shippingAddressId = addressResult.id;
+    }
 
     // Build order
     const orderItems = cart.items.map((item) => {
@@ -271,14 +279,17 @@ export class PaymentService {
     const orderNumber = generateOrderNumber();
     const order = await this.orderRepo.create({
       orderNumber,
-      customerId,
+      customerId: customerId || null,
+      guestEmail: customerId ? null : guestEmail,
+      guestFirstName: customerId ? null : guestFirstName,
+      guestLastName: customerId ? null : guestLastName,
       subtotal: amount,
       shippingTotal,
       taxTotal: 0,
       discountTotal: 0,
       total: amount + shippingTotal,
       currency: 'EUR',
-      shippingAddressId: addressResult.id,
+      shippingAddressId,
     });
 
     await this.orderRepo.createItems(
@@ -319,12 +330,17 @@ export class PaymentService {
     });
 
     await this.cartRepo.clearCart(cartId);
-    await this.customerRepo.incrementOrderStats(customerId, amount);
+    if (customerId) {
+      await this.customerRepo.incrementOrderStats(customerId, amount);
+    }
 
     await this.events.emit(PAYMENT_EVENTS.SUCCEEDED, { payment, order });
     await this.events.emit(ORDER_EVENTS.CREATED, { order });
 
-    logger.info({ orderId: order.id, orderNumber, externalId }, 'Order created from webhook');
+    logger.info(
+      { orderId: order.id, orderNumber, externalId, isGuest: !customerId },
+      'Order created from webhook',
+    );
   }
 
   private async handlePaymentFailed(providerId: string, externalId: string, errorMessage?: string) {
@@ -364,20 +380,19 @@ export class PaymentService {
     if (!cart) throw new NotFoundError('Cart', input.cartId);
     if (cart.items.length === 0) throw new ValidationError('Cart is empty');
 
-    let customer = await this.customerRepo.findByEmail(input.customerEmail);
-    if (!customer) {
-      customer = await this.customerRepo.create({
-        email: input.customerEmail,
-        firstName: input.shippingAddress.firstName,
-        lastName: input.shippingAddress.lastName,
-        acceptsMarketing: false,
-      });
-    }
+    // Check for existing customer — if found, use them. Otherwise, guest order.
+    const existingCustomer = await this.customerRepo.findByEmail(input.customerEmail);
+    const customerId = existingCustomer?.id ?? null;
 
-    const addressResult = await this.customerRepo.createAddress({
-      customerId: customer.id,
-      ...input.shippingAddress,
-    });
+    // Only create address record for registered customers
+    let shippingAddressId: string | undefined;
+    if (customerId) {
+      const addressResult = await this.customerRepo.createAddress({
+        customerId,
+        ...input.shippingAddress,
+      });
+      shippingAddressId = addressResult.id;
+    }
 
     const orderItems = cart.items.map((item) => {
       const unitPrice = item.variant?.price ?? item.product.price;
@@ -405,14 +420,17 @@ export class PaymentService {
 
     const order = await this.orderRepo.create({
       orderNumber,
-      customerId: customer.id,
+      customerId,
+      guestEmail: customerId ? null : input.customerEmail,
+      guestFirstName: customerId ? null : input.shippingAddress.firstName,
+      guestLastName: customerId ? null : input.shippingAddress.lastName,
       subtotal,
       shippingTotal,
       taxTotal: 0,
       discountTotal: 0,
       total: subtotal + shippingTotal,
       currency: 'EUR',
-      shippingAddressId: addressResult.id,
+      shippingAddressId,
     });
 
     await this.orderRepo.createItems(

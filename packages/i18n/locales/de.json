@@ -122,7 +122,13 @@
       "placeOrder": "Kostenpflichtig bestellen",
       "title": "Vorkasse"
     },
-    "qty": "Stk."
+    "qty": "Stk.",
+    "accountCreated": "Account erstellt! Du kannst dich jetzt einloggen.",
+    "createAccountTitle": "Daten speichern?",
+    "createAccountDesc": "Erstelle ein Konto um deine Bestellungen zu verfolgen und beim nächsten Mal schneller zu bestellen.",
+    "choosePassword": "Passwort wählen",
+    "passwordPlaceholder": "Min. 8 Zeichen",
+    "createAccountBtn": "Konto erstellen"
   },
   "account": {
     "title": "Mein Konto",

@@ -13,7 +13,10 @@ export interface OrderFilter {
 
 export interface CreateOrderData {
   orderNumber: string;
-  customerId: string;
+  customerId?: string | null;
+  guestEmail?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
   subtotal: number;
   shippingTotal: number;
   taxTotal: number;
@@ -134,6 +137,22 @@ export class OrderRepository {
       orderBy: [desc(orders.createdAt)],
       limit: 50,
     });
+  }
+
+  /** Link guest orders to a newly registered customer by email */
+  async linkGuestOrders(email: string, customerId: string) {
+    const result = await this.db
+      .update(orders)
+      .set({
+        customerId,
+        guestEmail: null,
+        guestFirstName: null,
+        guestLastName: null,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(orders.guestEmail, email), sql`${orders.customerId} IS NULL`))
+      .returning();
+    return result;
   }
 
   async getStats() {

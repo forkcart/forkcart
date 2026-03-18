@@ -8,7 +8,16 @@ import { useCurrency } from '@/components/currency/currency-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 import { StripePayment } from '@/components/checkout/stripe-payment';
 import { PrepaymentForm } from '@/components/checkout/prepayment-form';
-import { Lock, CreditCard, ChevronRight, ChevronLeft, Check, Loader2, Truck } from 'lucide-react';
+import {
+  Lock,
+  CreditCard,
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Loader2,
+  Truck,
+  UserPlus,
+} from 'lucide-react';
 import { LocaleLink } from '@/components/locale-link';
 
 const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
@@ -215,6 +224,16 @@ function CheckoutPage() {
         <p className="mt-2 text-gray-500">
           {t('checkout.confirmationEmail')} <span className="font-medium">{shipping.email}</span>.
         </p>
+
+        {/* Post-purchase registration for guest checkout */}
+        {!customer && (
+          <GuestRegistrationBanner
+            email={shipping.email}
+            firstName={shipping.firstName}
+            lastName={shipping.lastName}
+          />
+        )}
+
         <LocaleLink
           href="/"
           className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-medium text-white hover:bg-gray-800"
@@ -706,6 +725,95 @@ function CheckoutPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Post-purchase registration banner for guest checkout */
+function GuestRegistrationBanner({
+  email,
+  firstName,
+  lastName,
+}: {
+  email: string;
+  firstName: string;
+  lastName: string;
+}) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  if (status === 'success') {
+    return (
+      <div className="mx-auto mt-6 max-w-md rounded-lg border border-green-200 bg-green-50 p-4">
+        <p className="text-sm font-medium text-green-800">
+          <Check className="mr-1 inline h-4 w-4" />
+          {t('checkout.accountCreated')}
+        </p>
+      </div>
+    );
+  }
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setStatus('loading');
+    setErrorMsg('');
+    try {
+      const res = await fetch(`${API_URL}/api/v1/customer-auth/guest-register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, firstName, lastName }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(
+          (err as { error?: { message?: string } }).error?.message ?? 'Registration failed',
+        );
+      }
+      setStatus('success');
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Registration failed');
+      setStatus('error');
+    }
+  }
+
+  return (
+    <div className="mx-auto mt-6 max-w-md rounded-lg border border-blue-200 bg-blue-50 p-4 text-left">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-blue-900">
+        <UserPlus className="h-4 w-4" />
+        {t('checkout.createAccountTitle')}
+      </h3>
+      <p className="mt-1 text-xs text-blue-700">{t('checkout.createAccountDesc')}</p>
+      <form onSubmit={handleRegister} className="mt-3">
+        <label htmlFor="guest-password" className="text-xs font-medium text-blue-800">
+          {t('checkout.choosePassword')}
+        </label>
+        <div className="mt-1 flex gap-2">
+          <input
+            id="guest-password"
+            type="password"
+            required
+            minLength={8}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder={t('checkout.passwordPlaceholder')}
+            className="h-9 flex-1 rounded-md border border-blue-300 px-3 text-sm outline-none focus:ring-2 focus:ring-blue-400"
+          />
+          <button
+            type="submit"
+            disabled={status === 'loading'}
+            className="rounded-md bg-blue-600 px-4 py-2 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {status === 'loading' ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              t('checkout.createAccountBtn')
+            )}
+          </button>
+        </div>
+        {errorMsg && <p className="mt-2 text-xs text-red-600">{errorMsg}</p>}
+      </form>
     </div>
   );
 }

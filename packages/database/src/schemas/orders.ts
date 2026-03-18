@@ -18,9 +18,10 @@ export const orders = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
-    customerId: uuid('customer_id')
-      .notNull()
-      .references(() => customers.id),
+    customerId: uuid('customer_id').references(() => customers.id),
+    guestEmail: varchar('guest_email', { length: 255 }),
+    guestFirstName: varchar('guest_first_name', { length: 100 }),
+    guestLastName: varchar('guest_last_name', { length: 100 }),
     status: varchar('status', { length: 20 }).notNull().default('pending'),
     subtotal: integer('subtotal').notNull().default(0),
     shippingTotal: integer('shipping_total').notNull().default(0),

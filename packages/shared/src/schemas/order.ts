@@ -37,9 +37,12 @@ export type OrderItem = z.infer<typeof OrderItemSchema>;
 
 /** Create order input */
 export const CreateOrderSchema = z.object({
-  customerId: z.string().uuid(),
+  customerId: z.string().uuid().optional(),
+  guestEmail: z.string().email().optional(),
+  guestFirstName: z.string().max(100).optional(),
+  guestLastName: z.string().max(100).optional(),
   items: z.array(OrderItemSchema).min(1),
-  shippingAddressId: z.string().uuid(),
+  shippingAddressId: z.string().uuid().optional(),
   billingAddressId: z.string().uuid().optional(),
   shippingMethodId: z.string().uuid().optional(),
   notes: z.string().max(2000).optional(),
@@ -52,7 +55,10 @@ export type CreateOrderInput = z.infer<typeof CreateOrderSchema>;
 export const OrderSchema = z.object({
   id: z.string().uuid(),
   orderNumber: z.string(),
-  customerId: z.string().uuid(),
+  customerId: z.string().uuid().nullable(),
+  guestEmail: z.string().email().nullable().optional(),
+  guestFirstName: z.string().nullable().optional(),
+  guestLastName: z.string().nullable().optional(),
   status: OrderStatusSchema,
   subtotal: z.number().int(),
   shippingTotal: z.number().int(),
