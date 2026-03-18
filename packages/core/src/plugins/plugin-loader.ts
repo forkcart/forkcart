@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
@@ -17,8 +17,12 @@ import type { EventHandler } from './types';
 import { createLogger } from '../lib/logger';
 import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 const logger = createLogger('plugin-loader');
+
+/** Validate npm package name to prevent command injection */
+const VALID_PACKAGE_NAME_REGEX =
+  /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[a-zA-Z0-9._-]+)?$/;
 
 // ─── Legacy definition (backward compat with existing registerDefinition calls) ─
 
@@ -344,9 +348,13 @@ export class PluginLoader {
 
   /** Install a plugin package via pnpm */
   async installPlugin(packageName: string): Promise<SdkPluginDefinition | null> {
+    if (!VALID_PACKAGE_NAME_REGEX.test(packageName)) {
+      throw new Error(`Invalid package name: ${packageName}`);
+    }
+
     logger.info({ packageName }, 'Installing plugin');
     try {
-      await execAsync(`pnpm add ${packageName}`, { cwd: process.cwd() });
+      await execFileAsync('pnpm', ['add', packageName], { cwd: process.cwd() });
       return await this.loadPlugin(packageName);
     } catch (error) {
       logger.error({ packageName, error }, 'Failed to install plugin');
@@ -356,6 +364,10 @@ export class PluginLoader {
 
   /** Uninstall a plugin package */
   async uninstallPlugin(packageName: string): Promise<void> {
+    if (!VALID_PACKAGE_NAME_REGEX.test(packageName)) {
+      throw new Error(`Invalid package name: ${packageName}`);
+    }
+
     logger.info({ packageName }, 'Uninstalling plugin');
 
     // Deactivate first if active
@@ -367,7 +379,7 @@ export class PluginLoader {
     }
 
     try {
-      await execAsync(`pnpm remove ${packageName}`, { cwd: process.cwd() });
+      await execFileAsync('pnpm', ['remove', packageName], { cwd: process.cwd() });
       this.sdkPlugins.delete(packageName);
     } catch (error) {
       logger.error({ packageName, error }, 'Failed to uninstall plugin');

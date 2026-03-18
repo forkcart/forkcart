@@ -196,11 +196,11 @@ export class CustomerAuthService {
     logger.info({ customerId }, 'Customer password changed');
   }
 
-  async forgotPassword(email: string): Promise<{ resetToken: string }> {
+  async forgotPassword(email: string): Promise<{ message: string }> {
     const customer = await this.repo.findByEmail(email.toLowerCase().trim());
     if (!customer) {
-      // Don't reveal if email exists — return success anyway
-      return { resetToken: '' };
+      // Don't reveal if email exists — return same message regardless
+      return { message: 'If the email exists, a reset link has been sent' };
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -208,9 +208,12 @@ export class CustomerAuthService {
 
     await this.repo.setResetToken(customer.id, resetToken, resetExpires);
 
+    // TODO: Send reset token via email instead of returning it
+    // Example: await emailService.sendPasswordResetEmail(customer.email, resetToken);
+
     logger.info({ customerId: customer.id }, 'Password reset token generated');
 
-    return { resetToken };
+    return { message: 'If the email exists, a reset link has been sent' };
   }
 
   verifyToken(token: string): CustomerJwtPayload {

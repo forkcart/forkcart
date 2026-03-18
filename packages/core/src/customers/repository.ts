@@ -1,4 +1,4 @@
-import { eq, ilike, and, count, desc } from 'drizzle-orm';
+import { eq, ilike, and, count, desc, sql } from 'drizzle-orm';
 import type { Database } from '@forkcart/database';
 import { customers, addresses, orders } from '@forkcart/database/schemas';
 import type { CreateCustomerInput, UpdateCustomerInput, Pagination } from '@forkcart/shared';
@@ -87,7 +87,7 @@ export class CustomerRepository {
 
   async incrementOrderStats(customerId: string, orderTotal: number) {
     await this.db.execute(
-      `UPDATE customers SET order_count = order_count + 1, total_spent = total_spent + ${orderTotal}, updated_at = NOW() WHERE id = '${customerId}'`,
+      sql`UPDATE customers SET order_count = order_count + 1, total_spent = total_spent + ${orderTotal}, updated_at = NOW() WHERE id = ${customerId}`,
     );
   }
 

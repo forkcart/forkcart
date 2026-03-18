@@ -219,7 +219,7 @@ export async function createApp(db: Database) {
   // Note: pluginLoader injected below after initialization
   const productService = new ProductService({ productRepository, eventBus, pluginLoader: null });
   const categoryService = new CategoryService({ categoryRepository, eventBus });
-  const orderService = new OrderService({ orderRepository, eventBus });
+  const orderService = new OrderService({ orderRepository, variantRepository, eventBus });
   const customerService = new CustomerService({ customerRepository, eventBus });
   const mediaService = new MediaService({ mediaRepository, eventBus, storagePath, baseUrl });
   // productTranslationService injected below after it's created
