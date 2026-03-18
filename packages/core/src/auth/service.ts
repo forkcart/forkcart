@@ -282,7 +282,31 @@ export class AuthService {
     return updated;
   }
 
-  /** Change a user's password */
+  /** Change a user's password with current password verification (RVS-018) */
+  async changePasswordWithVerification(
+    id: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    if (newPassword.length < 8) {
+      throw new AuthError('Password must be at least 8 characters', 'WEAK_PASSWORD');
+    }
+
+    const user = await this.userRepository.findById(id);
+    if (!user) {
+      throw new AuthError('User not found', 'USER_NOT_FOUND');
+    }
+
+    const { valid } = await this.verifyPassword(currentPassword, user.passwordHash);
+    if (!valid) {
+      throw new AuthError('Current password is incorrect', 'INVALID_CURRENT_PASSWORD');
+    }
+
+    const passwordHash = await AuthService.hashPassword(newPassword);
+    await this.userRepository.updatePassword(id, passwordHash);
+  }
+
+  /** Change a user's password (superadmin reset — no current password needed) */
   async changePassword(id: string, newPassword: string): Promise<void> {
     if (newPassword.length < 8) {
       throw new AuthError('Password must be at least 8 characters', 'WEAK_PASSWORD');

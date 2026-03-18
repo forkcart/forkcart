@@ -1,4 +1,5 @@
 import { baseLayout } from './base';
+import { escapeHtml } from './escape-html';
 
 export interface WelcomeData {
   customerName: string;
@@ -6,11 +7,11 @@ export interface WelcomeData {
 }
 
 export function welcomeHtml(data: WelcomeData): string {
-  const shop = data.shopName ?? 'ForkCart';
+  const shop = escapeHtml(data.shopName ?? 'ForkCart');
 
   const content = `
     <h1>Welcome to ${shop}! 👋</h1>
-    <p>Hi ${data.customerName},</p>
+    <p>Hi ${escapeHtml(data.customerName)},</p>
     <p>Great to have you on board! Your account has been successfully created.</p>
 
     <p>You can now:</p>

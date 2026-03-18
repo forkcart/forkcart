@@ -3,24 +3,31 @@ import { z } from 'zod';
 import type { CustomerAuthService, CartService } from '@forkcart/core';
 import { createCustomerAuthMiddleware } from '../../middleware/customer-auth';
 
-const RegisterSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
-});
+// RVS-025: .strict() prevents prototype pollution via extra keys
+const RegisterSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+  })
+  .strict();
 
-const LoginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-});
+const LoginSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(1),
+  })
+  .strict();
 
-const UpdateProfileSchema = z.object({
-  firstName: z.string().min(1).max(100).optional(),
-  lastName: z.string().min(1).max(100).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().max(50).optional(),
-});
+const UpdateProfileSchema = z
+  .object({
+    firstName: z.string().min(1).max(100).optional(),
+    lastName: z.string().min(1).max(100).optional(),
+    email: z.string().email().optional(),
+    phone: z.string().max(50).optional(),
+  })
+  .strict();
 
 const ChangePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -29,6 +36,11 @@ const ChangePasswordSchema = z.object({
 
 const ForgotPasswordSchema = z.object({
   email: z.string().email(),
+});
+
+const ResetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8),
 });
 
 /** Customer auth API routes (public — no admin auth) */
@@ -52,6 +64,13 @@ export function createCustomerAuthRoutes(customerAuthService: CustomerAuthServic
 
     const result = await customerAuthService.login(input.email, input.password);
     return c.json({ data: result });
+  });
+
+  /** Logout (RVS-019: record token invalidation timestamp) */
+  router.post('/logout', requireAuth, async (c) => {
+    const customer = c.get('customer');
+    await customerAuthService.logout(customer.id);
+    return c.json({ data: { message: 'Logged out successfully' } });
   });
 
   /** Get current customer profile (auth required) */
@@ -90,6 +109,22 @@ export function createCustomerAuthRoutes(customerAuthService: CustomerAuthServic
 
     // Always return success to not reveal if email exists
     return c.json({ data: { message: 'If the email exists, a reset link has been generated' } });
+  });
+
+  /** Reset password with token (RVS-021) */
+  router.post('/reset-password', async (c) => {
+    const body = await c.req.json();
+    const input = ResetPasswordSchema.parse(body);
+
+    try {
+      await customerAuthService.resetPassword(input.token, input.newPassword);
+      return c.json({ data: { message: 'Password has been reset successfully' } });
+    } catch (error) {
+      return c.json(
+        { error: { code: 'INVALID_TOKEN', message: 'Invalid or expired reset token' } },
+        400,
+      );
+    }
   });
 
   return router;

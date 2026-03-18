@@ -43,7 +43,14 @@ function getEncryptionSalt(): Buffer {
 function getEncryptionKey(): Buffer {
   const key = process.env.FORKCART_ENCRYPTION_KEY;
   if (!key) {
-    console.warn('FORKCART_ENCRYPTION_KEY not set - secrets stored in plaintext!');
+    // RVS-027: Reject missing encryption key in production
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'FORKCART_ENCRYPTION_KEY is required in production. ' +
+          'Generate one with: openssl rand -base64 32',
+      );
+    }
+    console.warn('FORKCART_ENCRYPTION_KEY not set - secrets stored in plaintext! (dev only)');
     return Buffer.alloc(32); // Fallback for dev (not secure)
   }
   // Derive a 32-byte key from the provided key using per-installation salt

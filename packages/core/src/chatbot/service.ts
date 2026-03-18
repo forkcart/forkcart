@@ -341,7 +341,8 @@ function sanitizeInput(input: string): string {
     .replace(/'/g, '&#x27;');
 }
 
-/** Generate a random session ID */
+/** Generate a cryptographically secure session ID (RVS-030) */
 function generateSessionId(): string {
-  return `chat_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const { randomBytes } = require('node:crypto');
+  return `chat_${Date.now()}_${randomBytes(12).toString('hex')}`;
 }

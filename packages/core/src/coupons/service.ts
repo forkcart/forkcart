@@ -15,11 +15,36 @@ export interface CouponValidationResult {
   type?: string;
 }
 
+/**
+ * RVS-017: Track per-customer coupon usage in memory.
+ * RVS-017: Now persisted via coupon_usages table.
+ */
+
 export class CouponService {
   private readonly repo: CouponRepository;
 
   constructor(deps: CouponServiceDeps) {
     this.repo = deps.couponRepository;
+  }
+
+  /** RVS-017: Check if a customer has exceeded per-customer usage limit (DB-backed) */
+  private async checkPerCustomerLimit(
+    couponId: string,
+    customerId: string | undefined,
+    maxPerCustomer: number | null,
+  ): Promise<boolean> {
+    if (!maxPerCustomer || !customerId) return true;
+    const used = await this.repo.getCustomerUsageCount(couponId, customerId);
+    return used < maxPerCustomer;
+  }
+
+  /** RVS-017: Record a customer's coupon usage (DB-backed) */
+  private async recordCustomerUsage(
+    couponId: string,
+    customerId: string | undefined,
+  ): Promise<void> {
+    if (!customerId) return;
+    await this.repo.recordCustomerUsage(couponId, customerId);
   }
 
   async list() {
@@ -69,7 +94,7 @@ export class CouponService {
   async validate(
     code: string,
     cartTotal: number,
-    _customerId?: string,
+    customerId?: string,
   ): Promise<CouponValidationResult> {
     const coupon = await this.repo.findByCode(code);
 
@@ -95,6 +120,11 @@ export class CouponService {
       return { valid: false, discount: 0, message: 'Coupon usage limit reached' };
     }
 
+    // RVS-017: Check per-customer usage limit
+    if (!(await this.checkPerCustomerLimit(coupon.id, customerId, coupon.maxUsesPerCustomer))) {
+      return { valid: false, discount: 0, message: 'You have already used this coupon' };
+    }
+
     if (coupon.minOrderAmount !== null && cartTotal < coupon.minOrderAmount) {
       return {
         valid: false,
@@ -116,8 +146,18 @@ export class CouponService {
   async apply(
     code: string,
     cartTotal: number,
-    _customerId?: string,
+    customerId?: string,
   ): Promise<CouponValidationResult> {
+    // RVS-017: Check per-customer limit before attempting atomic increment
+    // We need to pre-check here because the repo validator doesn't have customerId context
+    const preCheck = await this.repo.findByCode(code);
+    if (
+      preCheck &&
+      !(await this.checkPerCustomerLimit(preCheck.id, customerId, preCheck.maxUsesPerCustomer))
+    ) {
+      return { valid: false, discount: 0, message: 'You have already used this coupon' };
+    }
+
     // Use atomic transaction to prevent race condition on maxUses check
     const coupon = await this.repo.validateAndIncrementUsage(code, (c) => {
       if (!c.enabled) return false;
@@ -131,8 +171,11 @@ export class CouponService {
 
     if (!coupon) {
       // Fall back to validate() to get proper error message
-      return this.validate(code, cartTotal);
+      return this.validate(code, cartTotal, customerId);
     }
+
+    // RVS-017: Record per-customer usage
+    await this.recordCustomerUsage(coupon.id, customerId);
 
     const discount = this.calculateDiscount(coupon.type, coupon.value, cartTotal);
 

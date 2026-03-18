@@ -22,6 +22,7 @@ const UpdateUserSchema = z.object({
 });
 
 const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1),
   password: z.string().min(8),
 });
 
@@ -64,14 +65,14 @@ export function createUserRoutes(authService: AuthService) {
     }
   });
 
-  /** PUT /users/me/password — Change own password */
+  /** PUT /users/me/password — Change own password (RVS-018: requires current password) */
   router.put('/me/password', async (c) => {
     const currentUser = c.get('user');
     const body = await c.req.json();
-    const { password } = ChangePasswordSchema.parse(body);
+    const { currentPassword, password } = ChangePasswordSchema.parse(body);
 
     try {
-      await authService.changePassword(currentUser.id, password);
+      await authService.changePasswordWithVerification(currentUser.id, currentPassword, password);
       return c.json({ data: { message: 'Password changed successfully' } });
     } catch (error) {
       if (error instanceof AuthError) {
@@ -152,7 +153,7 @@ export function createUserRoutes(authService: AuthService) {
     }
   });
 
-  /** PUT /users/:id/password — Change user password (superadmin OR own account) */
+  /** PUT /users/:id/password — Change user password (superadmin OR own account; RVS-018) */
   router.put('/:id/password', async (c) => {
     const id = c.req.param('id') as string;
     const currentUser = c.get('user');
@@ -163,10 +164,16 @@ export function createUserRoutes(authService: AuthService) {
     }
 
     const body = await c.req.json();
-    const { password } = ChangePasswordSchema.parse(body);
+    const { currentPassword, password } = ChangePasswordSchema.parse(body);
 
     try {
-      await authService.changePassword(id, password);
+      // Own password change requires current password verification
+      if (currentUser.id === id) {
+        await authService.changePasswordWithVerification(id, currentPassword, password);
+      } else {
+        // Superadmin resetting another user's password
+        await authService.changePassword(id, password);
+      }
       return c.json({ data: { message: 'Password changed successfully' } });
     } catch (error) {
       if (error instanceof AuthError) {

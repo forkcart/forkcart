@@ -1,4 +1,5 @@
 import { baseLayout } from './base';
+import { escapeHtml } from './escape-html';
 
 export interface PasswordResetData {
   customerName: string;
@@ -11,11 +12,11 @@ export function passwordResetHtml(data: PasswordResetData): string {
 
   const content = `
     <h1>Reset Your Password</h1>
-    <p>Hi ${data.customerName},</p>
+    <p>Hi ${escapeHtml(data.customerName)},</p>
     <p>We received a request to reset your password. Click the button below to create a new password:</p>
 
     <p style="text-align:center;margin:28px 0;">
-      <a href="${data.resetUrl}" class="btn">🔑 Create New Password</a>
+      <a href="${escapeHtml(data.resetUrl)}" class="btn">🔑 Create New Password</a>
     </p>
 
     <p style="font-size:13px;color:#6b7280;">This link is valid for ${expiry} minutes.</p>

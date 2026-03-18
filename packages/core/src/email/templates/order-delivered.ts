@@ -1,4 +1,5 @@
 import { baseLayout } from './base';
+import { escapeHtml } from './escape-html';
 
 export interface OrderDeliveredData {
   orderNumber: string;
@@ -8,8 +9,8 @@ export interface OrderDeliveredData {
 export function orderDeliveredHtml(data: OrderDeliveredData): string {
   const content = `
     <h1>Your Order Has Been Delivered! ✅</h1>
-    <p>Hi ${data.customerName},</p>
-    <p>Your order <strong>${data.orderNumber}</strong> has been successfully delivered.</p>
+    <p>Hi ${escapeHtml(data.customerName)},</p>
+    <p>Your order <strong>${escapeHtml(data.orderNumber)}</strong> has been successfully delivered.</p>
 
     <p>We hope you're happy with your order! If there are any issues or you have questions, simply reply to this email.</p>
 

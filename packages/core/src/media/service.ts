@@ -21,6 +21,21 @@ const MIME_TO_EXT: Record<string, string> = {
   'image/gif': '.gif',
 };
 
+/** RVS-028: Magic byte signatures for allowed image types */
+const MAGIC_BYTES: Array<{ mime: string; bytes: number[] }> = [
+  { mime: 'image/jpeg', bytes: [0xff, 0xd8, 0xff] },
+  { mime: 'image/png', bytes: [0x89, 0x50, 0x4e, 0x47] },
+  { mime: 'image/gif', bytes: [0x47, 0x49, 0x46, 0x38] },
+  { mime: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] }, // RIFF header
+];
+
+function validateMagicBytes(buffer: Buffer, declaredMime: string): boolean {
+  const sig = MAGIC_BYTES.find((s) => s.mime === declaredMime);
+  if (!sig) return false;
+  if (buffer.length < sig.bytes.length) return false;
+  return sig.bytes.every((b, i) => buffer[i] === b);
+}
+
 export interface MediaServiceDeps {
   mediaRepository: MediaRepository;
   eventBus: EventBus;
@@ -77,6 +92,14 @@ export class MediaService {
     // Write file to disk
     const filePath = join(this.storagePath, filename);
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    // RVS-028: Validate magic bytes match declared MIME type
+    if (!validateMagicBytes(buffer, file.type)) {
+      throw new ValidationError(
+        `File content does not match declared type "${file.type}". Upload rejected.`,
+      );
+    }
+
     await writeFile(filePath, buffer);
 
     // Store in database

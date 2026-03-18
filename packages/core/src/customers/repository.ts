@@ -1,4 +1,9 @@
 import { eq, ilike, and, count, desc, sql } from 'drizzle-orm';
+
+/** RVS-024: Escape ILIKE/LIKE special characters */
+function escapeLike(input: string): string {
+  return input.replace(/[%_\\]/g, (ch) => `\\${ch}`);
+}
 import type { Database } from '@forkcart/database';
 import { customers, addresses, orders } from '@forkcart/database/schemas';
 import type { CreateCustomerInput, UpdateCustomerInput, Pagination } from '@forkcart/shared';
@@ -47,7 +52,7 @@ export class CustomerRepository {
     const conditions = [];
 
     if (filter.search) {
-      conditions.push(ilike(customers.email, `%${filter.search}%`));
+      conditions.push(ilike(customers.email, `%${escapeLike(filter.search)}%`));
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -121,7 +126,23 @@ export class CustomerRepository {
     const result = await this.db.query.customers.findFirst({
       where: eq(customers.passwordResetToken, token),
     });
-    return result ?? null;
+    if (!result) return null;
+    // RVS-021: Check token expiry
+    if (result.passwordResetExpires && new Date() > result.passwordResetExpires) {
+      return null;
+    }
+    return result;
+  }
+
+  async clearResetToken(customerId: string) {
+    await this.db
+      .update(customers)
+      .set({
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, customerId));
   }
 
   async findAddressesByCustomerId(customerId: string) {

@@ -17,6 +17,7 @@ export * from './search';
 export * from './translations';
 export * from './product-translations';
 export * from './coupons';
+export * from './coupon-usages';
 export * from './product-impressions';
 export * from './wishlists';
 export * from './product-reviews';
