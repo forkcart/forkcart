@@ -243,7 +243,7 @@ export default function CookieConsentSettingsPage() {
         <div>
           <h1 className="text-3xl font-bold">Cookie Consent</h1>
           <p className="mt-1 text-muted-foreground">
-            DSGVO-konforme Cookie-Einstellungen für die Storefront
+            GDPR-compliant cookie consent settings for the storefront
           </p>
         </div>
         <button
