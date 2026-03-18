@@ -6,6 +6,7 @@ import {
   cookieConsentSettings,
   cookieConsentLogs,
   eq,
+  and,
 } from '@forkcart/database';
 import { requireRole } from '../../middleware/permissions';
 
@@ -84,32 +85,42 @@ export function createCookieConsentRoutes(db: Database) {
     return c.json({ data: { deleted: true } });
   });
 
-  /** GET /settings — list all consent settings */
+  /** GET /settings — list all consent settings (optionally filtered by locale) */
   router.get('/settings', async (c) => {
-    const rows = await db.select().from(cookieConsentSettings);
+    const locale = c.req.query('locale');
+    const rows = locale
+      ? await db
+          .select()
+          .from(cookieConsentSettings)
+          .where(eq(cookieConsentSettings.locale, locale))
+      : await db.select().from(cookieConsentSettings);
     return c.json({ data: rows });
   });
 
-  /** PUT /settings — bulk update settings (admin) */
+  /** PUT /settings — bulk update settings for a locale (admin) */
   router.put('/settings', requireRole('admin', 'superadmin'), async (c) => {
     const body = await c.req.json();
+    const locale = c.req.query('locale') ?? 'de';
     const updates = SettingsUpdateSchema.parse(body);
     const now = new Date();
     for (const { key, value } of updates) {
       const existing = await db
         .select()
         .from(cookieConsentSettings)
-        .where(eq(cookieConsentSettings.key, key));
+        .where(and(eq(cookieConsentSettings.key, key), eq(cookieConsentSettings.locale, locale)));
       if (existing.length > 0) {
         await db
           .update(cookieConsentSettings)
           .set({ value, updatedAt: now })
-          .where(eq(cookieConsentSettings.key, key));
+          .where(and(eq(cookieConsentSettings.key, key), eq(cookieConsentSettings.locale, locale)));
       } else {
-        await db.insert(cookieConsentSettings).values({ key, value });
+        await db.insert(cookieConsentSettings).values({ key, value, locale });
       }
     }
-    const rows = await db.select().from(cookieConsentSettings);
+    const rows = await db
+      .select()
+      .from(cookieConsentSettings)
+      .where(eq(cookieConsentSettings.locale, locale));
     return c.json({ data: rows });
   });
 
@@ -131,15 +142,22 @@ export function createCookieConsentRoutes(db: Database) {
 export function createPublicCookieConsentRoutes(db: Database) {
   const router = new Hono();
 
-  /** GET /config — public config for the storefront banner */
+  /** GET /config — public config for the storefront banner (locale-aware) */
   router.get('/config', async (c) => {
+    const locale = c.req.query('locale');
     const categories = await db
       .select()
       .from(cookieConsentCategories)
       .where(eq(cookieConsentCategories.enabled, true))
       .orderBy(cookieConsentCategories.sortOrder);
 
-    const settingsRows = await db.select().from(cookieConsentSettings);
+    // Fetch settings for the requested locale
+    const settingsRows = locale
+      ? await db
+          .select()
+          .from(cookieConsentSettings)
+          .where(eq(cookieConsentSettings.locale, locale))
+      : await db.select().from(cookieConsentSettings);
     const settings: Record<string, string> = {};
     for (const row of settingsRows) {
       settings[row.key] = row.value;

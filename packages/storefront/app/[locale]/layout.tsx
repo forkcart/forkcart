@@ -54,7 +54,7 @@ export default async function LocaleLayout({
       <AuthProvider>
         <CurrencyProvider>
           <CartProvider>
-            <ConsentProvider>
+            <ConsentProvider locale={locale}>
               {/* Plugin slot: before header */}
               <StorefrontSlot slotName="header-before" />
               <Header />

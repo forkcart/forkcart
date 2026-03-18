@@ -4,10 +4,14 @@ import { useConsent } from './consent-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 
 export function ConsentBanner() {
-  const { showBanner, categories, acceptAll, rejectAll, openSettings } = useConsent();
+  const { showBanner, settings, categories, acceptAll, rejectAll, openSettings } = useConsent();
   const { t } = useTranslation();
 
   if (!showBanner || categories.length === 0) return null;
+
+  // Admin settings override i18n translations when filled
+  const text = (settingKey: string, i18nKey: string) =>
+    settings[settingKey] || t(i18nKey as Parameters<typeof t>[0]);
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
@@ -16,9 +20,11 @@ export function ConsentBanner() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-6">
             {/* Text */}
             <div className="flex-1">
-              <h3 className="text-base font-semibold text-stone-800">{t('consent.bannerTitle')}</h3>
+              <h3 className="text-base font-semibold text-stone-800">
+                {text('banner_title', 'consent.bannerTitle')}
+              </h3>
               <p className="mt-1.5 text-sm leading-relaxed text-stone-500">
-                {t('consent.bannerText')}
+                {text('banner_text', 'consent.bannerText')}
               </p>
             </div>
 
@@ -28,19 +34,19 @@ export function ConsentBanner() {
                 onClick={rejectAll}
                 className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
               >
-                {t('consent.rejectAll')}
+                {text('banner_reject_all', 'consent.rejectAll')}
               </button>
               <button
                 onClick={openSettings}
                 className="rounded-lg border border-stone-300 bg-white px-5 py-2.5 text-sm font-medium text-stone-700 transition hover:bg-stone-50 active:scale-[0.98]"
               >
-                {t('consent.settings')}
+                {text('banner_settings', 'consent.settings')}
               </button>
               <button
                 onClick={acceptAll}
                 className="rounded-lg bg-stone-800 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-stone-700 active:scale-[0.98]"
               >
-                {t('consent.acceptAll')}
+                {text('banner_accept_all', 'consent.acceptAll')}
               </button>
             </div>
           </div>

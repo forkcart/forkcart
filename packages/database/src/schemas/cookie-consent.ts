@@ -22,10 +22,11 @@ export const cookieConsentCategories = pgTable('cookie_consent_categories', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** Admin-configurable banner / consent texts */
+/** Admin-configurable banner / consent texts (per locale) */
 export const cookieConsentSettings = pgTable('cookie_consent_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
-  key: varchar('key', { length: 100 }).notNull().unique(),
+  key: varchar('key', { length: 100 }).notNull(),
+  locale: varchar('locale', { length: 10 }),
   value: text('value').notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
