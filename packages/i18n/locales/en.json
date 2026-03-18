@@ -326,5 +326,27 @@
     "unauthorized": "Please log in to continue",
     "forbidden": "You don't have permission to access this",
     "validation": "Please check your input"
+  },
+  "consent": {
+    "bannerTitle": "We respect your privacy",
+    "bannerText": "We use cookies to provide you with the best shopping experience.",
+    "acceptAll": "Accept all",
+    "rejectAll": "Only necessary",
+    "settings": "Settings",
+    "modalTitle": "Cookie Settings",
+    "modalDescription": "Choose which cookies you want to allow. Necessary cookies cannot be disabled.",
+    "save": "Save selection",
+    "required": "Required",
+    "cookieSettings": "Cookie Settings",
+    "categories": {
+      "necessary": "Necessary",
+      "necessaryDesc": "Session, shopping cart, security",
+      "functional": "Functional",
+      "functionalDesc": "Language settings, theme preferences",
+      "analytics": "Analytics",
+      "analyticsDesc": "Anonymous usage statistics",
+      "marketing": "Marketing",
+      "marketingDesc": "Advertising & retargeting"
+    }
   }
 }
