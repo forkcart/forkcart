@@ -2,6 +2,7 @@
 
 import { useTranslation } from '@forkcart/i18n/react';
 import { LocaleLink } from '@/components/locale-link';
+import { CookieSettingsLink } from '@/components/consent/cookie-settings-link';
 
 export function Footer() {
   const { t } = useTranslation();
@@ -72,6 +73,9 @@ export function Footer() {
                 <LocaleLink href="/p/imprint" className="text-sm text-gray-500 hover:text-gray-900">
                   {t('footer.imprint')}
                 </LocaleLink>
+              </li>
+              <li>
+                <CookieSettingsLink />
               </li>
             </ul>
           </div>

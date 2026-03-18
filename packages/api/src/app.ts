@@ -124,6 +124,10 @@ import { createAttributeRoutes } from './routes/v1/attributes';
 import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { createMobileAppRoutes } from './routes/v1/mobile-app';
 import { createMarketplaceRoutes } from './routes/v1/marketplace';
+import {
+  createCookieConsentRoutes,
+  createPublicCookieConsentRoutes,
+} from './routes/v1/cookie-consent';
 import { requireRole } from './middleware/permissions';
 import { rateLimit } from './middleware/rate-limit';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
@@ -548,6 +552,7 @@ export async function createApp(db: Database) {
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
+  v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
   v1.route('/carts', createCartAssignRoute(cartService, customerAuthService));
@@ -585,6 +590,9 @@ export async function createApp(db: Database) {
 
   // Public plugin routes (no auth — storefront slots)
   app.route('/api/v1/public/plugins', createPublicPluginRoutes(pluginLoader));
+
+  // Public cookie consent routes (no auth — storefront banner config + logging)
+  app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));
 
   app.route('/api/v1', v1);
 
