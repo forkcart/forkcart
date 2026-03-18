@@ -20,7 +20,10 @@ interface OrderStats {
     total: number;
     currency: string;
     createdAt: string;
-    customer?: { firstName: string; lastName: string; email: string };
+    customer?: { firstName: string; lastName: string; email: string } | null;
+    guestEmail?: string | null;
+    guestFirstName?: string | null;
+    guestLastName?: string | null;
   }>;
 }
 
@@ -119,7 +122,9 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground">
                     {order.customer
                       ? `${order.customer.firstName} ${order.customer.lastName}`
-                      : 'Unknown'}{' '}
+                      : order.guestEmail
+                        ? `${order.guestFirstName ?? ''} ${order.guestLastName ?? ''}`
+                        : 'Guest'}{' '}
                     · {new Date(order.createdAt).toLocaleDateString('de-DE')}
                   </p>
                 </div>

@@ -35,7 +35,7 @@ interface StatusHistoryEntry {
 interface Order {
   id: string;
   orderNumber: string;
-  customerId: string;
+  customerId: string | null;
   status: string;
   subtotal: number;
   shippingTotal: number;
@@ -44,9 +44,12 @@ interface Order {
   total: number;
   currency: string;
   notes: string | null;
+  guestEmail?: string | null;
+  guestFirstName?: string | null;
+  guestLastName?: string | null;
   createdAt: string;
   updatedAt: string;
-  customer?: OrderCustomer;
+  customer?: OrderCustomer | null;
   items?: OrderItem[];
   statusHistory?: StatusHistoryEntry[];
 }
@@ -177,14 +180,22 @@ function OrderDetailPanel({ orderId, onClose }: { orderId: string; onClose: () =
       </div>
 
       {/* Customer Info */}
-      {order.customer && (
+      {order.customer ? (
         <div className="mt-4 rounded-md bg-muted/50 p-3">
           <p className="text-sm font-medium">
             {order.customer.firstName} {order.customer.lastName}
           </p>
           <p className="text-xs text-muted-foreground">{order.customer.email}</p>
         </div>
-      )}
+      ) : order.guestEmail ? (
+        <div className="mt-4 rounded-md bg-muted/50 p-3">
+          <p className="text-sm font-medium">
+            {order.guestFirstName} {order.guestLastName}{' '}
+            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">Guest</span>
+          </p>
+          <p className="text-xs text-muted-foreground">{order.guestEmail}</p>
+        </div>
+      ) : null}
 
       {/* Totals */}
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -349,7 +360,9 @@ export default function OrdersPage() {
                     <td className="p-4 text-sm">
                       {order.customer
                         ? `${order.customer.firstName} ${order.customer.lastName}`
-                        : '—'}
+                        : order.guestEmail
+                          ? `${order.guestFirstName ?? ''} ${order.guestLastName ?? ''} (Guest)`
+                          : '—'}
                     </td>
                     <td className="p-4 text-sm text-muted-foreground">
                       {new Date(order.createdAt).toLocaleDateString('de-DE')}

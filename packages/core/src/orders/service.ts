@@ -86,7 +86,10 @@ export class OrderService {
 
     const order = await this.repo.create({
       orderNumber,
-      customerId: input.customerId,
+      customerId: input.customerId ?? null,
+      guestEmail: input.guestEmail ?? null,
+      guestFirstName: input.guestFirstName ?? null,
+      guestLastName: input.guestLastName ?? null,
       subtotal,
       shippingTotal: 0,
       taxTotal: 0,

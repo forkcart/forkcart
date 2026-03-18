@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { CustomerAuthService, CartService } from '@forkcart/core';
+import type { CustomerAuthService, CartService, OrderRepository } from '@forkcart/core';
 import { createCustomerAuthMiddleware } from '../../middleware/customer-auth';
 
 // RVS-025: .strict() prevents prototype pollution via extra keys
@@ -125,6 +125,39 @@ export function createCustomerAuthRoutes(customerAuthService: CustomerAuthServic
         400,
       );
     }
+  });
+
+  return router;
+}
+
+/** Post-purchase registration — register after guest checkout and link orders */
+const PostPurchaseRegisterSchema = z
+  .object({
+    email: z.string().email(),
+    password: z.string().min(8),
+    firstName: z.string().min(1).max(100),
+    lastName: z.string().min(1).max(100),
+    orderId: z.string().uuid().optional(),
+  })
+  .strict();
+
+export function createPostPurchaseRegisterRoute(
+  customerAuthService: CustomerAuthService,
+  orderRepository: OrderRepository,
+) {
+  const router = new Hono();
+
+  router.post('/guest-register', async (c) => {
+    const body = await c.req.json();
+    const input = PostPurchaseRegisterSchema.parse(body);
+
+    // Register the customer (will throw ConflictError if email exists)
+    const result = await customerAuthService.register(input);
+
+    // Link any guest orders with this email to the new customer
+    await orderRepository.linkGuestOrders(input.email, result.customer.id);
+
+    return c.json({ data: result }, 201);
   });
 
   return router;

@@ -96,7 +96,11 @@ import { createEmailRoutes } from './routes/v1/emails';
 import { createShippingRoutes } from './routes/v1/shipping';
 import { createChatRoutes, createChatAdminRoutes } from './routes/v1/chat';
 import { createTaxRoutes } from './routes/v1/tax';
-import { createCustomerAuthRoutes, createCartAssignRoute } from './routes/v1/customer-auth';
+import {
+  createCustomerAuthRoutes,
+  createCartAssignRoute,
+  createPostPurchaseRegisterRoute,
+} from './routes/v1/customer-auth';
 import { createStorefrontCustomerRoutes } from './routes/v1/storefront-customers';
 import {
   createSearchRoutes,
@@ -475,6 +479,7 @@ export async function createApp(db: Database) {
   app.use('/api/v1/customer-auth/login', rateLimit('customer-login', 5));
   app.use('/api/v1/customer-auth/register', rateLimit('customer-register', 5));
   app.use('/api/v1/customer-auth/forgot-password', rateLimit('forgot-pw', 3));
+  app.use('/api/v1/customer-auth/guest-register', rateLimit('guest-register', 5));
   app.use('/api/v1/payments/*', rateLimit('payments', 10)); // 10/min
   app.use('/api/v1/public/search/*', rateLimit('search', 60)); // 60/min
   app.use('/api/v1/search/*', rateLimit('search-admin', 60));
@@ -544,6 +549,7 @@ export async function createApp(db: Database) {
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
+  v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
   v1.route('/carts', createCartAssignRoute(cartService, customerAuthService));
   v1.route(
     '/storefront/customers',

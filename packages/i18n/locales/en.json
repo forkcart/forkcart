@@ -122,7 +122,13 @@
       "description": "Please transfer the amount after receiving the order confirmation",
       "placeOrder": "Place order",
       "creating": "Creating order..."
-    }
+    },
+    "accountCreated": "Account created! You can now log in.",
+    "createAccountTitle": "Save your details?",
+    "createAccountDesc": "Create an account to track your orders and checkout faster next time.",
+    "choosePassword": "Choose a password",
+    "passwordPlaceholder": "Min. 8 characters",
+    "createAccountBtn": "Create account"
   },
   "account": {
     "title": "My Account",
