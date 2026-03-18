@@ -171,7 +171,9 @@ export default definePlugin({
 
   // React to events
   events: {
-    'order:created': async (order) => { /* ... */ },
+    'order:created': async (order) => {
+      /* ... */
+    },
   },
 
   // Transform data (like WordPress apply_filters)
@@ -180,18 +182,27 @@ export default definePlugin({
   },
 
   // Inject HTML into storefront
-  storefrontSlots: [
-    { slot: 'header-after', content: '<div>Announcement!</div>' },
-  ],
+  storefrontSlots: [{ slot: 'header-after', content: '<div>Announcement!</div>' }],
 
   // CLI commands
   cli: [
-    { name: 'sync', handler: async () => { /* ... */ } },
+    {
+      name: 'sync',
+      handler: async () => {
+        /* ... */
+      },
+    },
   ],
 
   // Cron jobs
   scheduledTasks: [
-    { name: 'cleanup', schedule: '0 3 * * *', handler: async () => { /* ... */ } },
+    {
+      name: 'cleanup',
+      schedule: '0 3 * * *',
+      handler: async () => {
+        /* ... */
+      },
+    },
   ],
 });
 ```
