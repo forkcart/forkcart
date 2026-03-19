@@ -1,6 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createLogger } from '@forkcart/core';
-import { createDatabase } from '@forkcart/database';
+import { createDatabase, runMigrations } from '@forkcart/database';
 import { createApp } from './app';
 
 const logger = createLogger('api');
@@ -16,6 +16,12 @@ if (!databaseUrl) {
 
 async function main() {
   const db = createDatabase(databaseUrl!);
+
+  // Auto-run pending migrations on startup
+  logger.info('Running database migrations...');
+  await runMigrations(db);
+  logger.info('Database migrations complete');
+
   const app = await createApp(db);
 
   serve({ fetch: app.fetch, port, hostname: host }, (info) => {

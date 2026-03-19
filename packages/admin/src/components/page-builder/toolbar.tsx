@@ -1,7 +1,7 @@
 'use client';
 
 import { useEditor } from '@craftjs/core';
-import { Undo2, Redo2, Monitor, Smartphone, Tablet, Eye, Save } from 'lucide-react';
+import { Undo2, Redo2, Monitor, Smartphone, Tablet, Eye, Save, Globe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -16,6 +16,10 @@ interface ToolbarProps {
   pageStatus?: 'draft' | 'published' | 'archived';
   deviceView: DeviceView;
   onDeviceChange: (device: DeviceView) => void;
+  currentLocale?: string;
+  defaultLocale?: string;
+  availableLocales?: Array<{ locale: string; name: string }>;
+  onLocaleChange?: (locale: string) => void;
 }
 
 export function Toolbar({
@@ -27,6 +31,10 @@ export function Toolbar({
   pageStatus,
   deviceView,
   onDeviceChange,
+  currentLocale,
+  defaultLocale,
+  availableLocales,
+  onLocaleChange,
 }: ToolbarProps) {
   const { actions, query, canUndo, canRedo } = useEditor((_state, query) => ({
     canUndo: query.history.canUndo(),
@@ -57,9 +65,29 @@ export function Toolbar({
 
   return (
     <div className="flex h-14 items-center justify-between border-b bg-white px-4">
-      {/* Left: Page info */}
+      {/* Left: Page info + locale selector */}
       <div className="flex items-center gap-3">
         <h2 className="text-sm font-medium text-gray-900">{pageTitle ?? 'Page Builder'}</h2>
+        {availableLocales && availableLocales.length > 1 && onLocaleChange && (
+          <>
+            <div className="h-6 w-px bg-gray-200" />
+            <div className="flex items-center gap-1.5">
+              <Globe className="h-4 w-4 text-gray-400" />
+              <select
+                value={currentLocale ?? defaultLocale ?? 'en'}
+                onChange={(e) => onLocaleChange(e.target.value)}
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                {availableLocales.map((loc) => (
+                  <option key={loc.locale} value={loc.locale}>
+                    {loc.name}
+                    {loc.locale === defaultLocale ? ' (Default)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Center: Device preview + undo/redo */}
