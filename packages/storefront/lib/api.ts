@@ -1,6 +1,5 @@
 import type { Product, Category, Cart, PaginatedResponse, ApiResponse } from '@forkcart/shared';
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+import { API_URL } from '@/lib/config';
 
 /** Cached default locale from API (fetched once per server lifetime / client session) */
 let _cachedDefaultLocale: string | null = null;

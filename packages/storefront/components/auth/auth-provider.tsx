@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { API_URL } from '@/lib/config';
 
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 const TOKEN_KEY = 'forkcart_customer_token';
 
 interface CustomerProfile {

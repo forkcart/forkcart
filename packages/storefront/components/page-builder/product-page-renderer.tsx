@@ -8,8 +8,7 @@ import { WishlistButton } from '@/components/product/wishlist-button';
 import { ProductReviews } from '@/components/product/product-reviews';
 import { useState, useEffect } from 'react';
 import { sanitizeHtml } from '@/lib/sanitize';
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+import { API_URL } from '@/lib/config';
 
 interface ProductImage {
   id: string;

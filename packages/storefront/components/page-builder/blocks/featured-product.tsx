@@ -2,6 +2,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { API_URL } from '@/lib/config';
 import { localePath } from '@/lib/navigation';
 
 interface FeaturedProductProps {
@@ -14,7 +15,6 @@ interface FeaturedProductProps {
 }
 
 async function fetchProduct(slug: string) {
-  const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
   try {
     const res = await fetch(`${API_URL}/api/v1/products/slug/${slug}`, {
       next: { revalidate: 60 },

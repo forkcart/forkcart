@@ -61,8 +61,141 @@
     {
       "idx": 8,
       "version": "7",
+      "when": 1742040000000,
+      "tag": "0008_ai-settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1742050000000,
+      "tag": "0009_translations",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1742060000000,
+      "tag": "0010_product-translations",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1742070000000,
+      "tag": "0011_default-language",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1742080000000,
+      "tag": "0012_coupons",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1742090000000,
+      "tag": "0013_search-ranking",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1742100000000,
+      "tag": "0014_wishlists",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1742110000000,
+      "tag": "0015_product-reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1742120000000,
+      "tag": "0016_pages",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1742130000000,
+      "tag": "0017_pages-og-image",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1742140000000,
+      "tag": "0018_page-types",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1742150000000,
+      "tag": "0019_theme-settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1742160000000,
+      "tag": "0020_multi-currency",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1742170000000,
+      "tag": "0021_product-variants",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1742180000000,
+      "tag": "0022_currency-auto-update",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1742190000000,
+      "tag": "0023_mobile-app-config",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
       "when": 1742335800000,
       "tag": "0024_schema-hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1742345800000,
+      "tag": "0025_guest-checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1742355800000,
+      "tag": "0026_cookie-consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1742365800000,
+      "tag": "0027_cookie-consent-i18n",
       "breakpoints": true
     }
   ]

@@ -9,6 +9,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
+import { API_URL } from '@/lib/config';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -85,8 +86,6 @@ function parseConsent(): ConsentState | null {
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
 async function fetchConsentConfig(locale?: string): Promise<ConsentConfig> {
   try {

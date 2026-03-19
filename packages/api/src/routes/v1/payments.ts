@@ -29,19 +29,23 @@ const CreatePaymentIntentSchema = z
   })
   .strict();
 
-const CompleteDemoPaymentSchema = z.object({
-  cartId: z.string().uuid(),
-  customerEmail: z.string().email(),
-  shippingMethodId: z.string().uuid().optional(),
-  shippingAddress: z.object({
-    firstName: z.string().min(1),
-    lastName: z.string().min(1),
-    addressLine1: z.string().min(1),
-    city: z.string().min(1),
-    postalCode: z.string().min(1),
-    country: z.string().length(2),
-  }),
-});
+const CompleteDemoPaymentSchema = z
+  .object({
+    cartId: z.string().uuid(),
+    customerEmail: z.string().email(),
+    shippingMethodId: z.string().uuid().optional(),
+    shippingAddress: z
+      .object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        addressLine1: z.string().min(1),
+        city: z.string().min(1),
+        postalCode: z.string().min(1),
+        country: z.string().length(2),
+      })
+      .strict(),
+  })
+  .strict();
 
 /** Payment routes — public (no auth required) */
 export function createPaymentRoutes(paymentService: PaymentService) {

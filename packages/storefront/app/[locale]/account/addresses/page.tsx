@@ -6,8 +6,7 @@ import { LocaleLink } from '@/components/locale-link';
 import { useTranslation } from '@forkcart/i18n/react';
 import { ProtectedRoute } from '@/components/auth/protected-route';
 import { ChevronLeft, Loader2, MapPin, Plus, Trash2, Star } from 'lucide-react';
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+import { API_URL } from '@/lib/config';
 
 interface Address {
   id: string;

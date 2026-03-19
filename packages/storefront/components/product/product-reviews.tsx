@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useTranslation } from '@forkcart/i18n/react';
 import { StarRating } from './star-rating';
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+import { API_URL } from '@/lib/config';
 
 interface Review {
   id: string;
