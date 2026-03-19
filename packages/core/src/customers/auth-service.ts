@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { ConflictError, ValidationError, UnauthorizedError, NotFoundError } from '@forkcart/shared';
 import type { CustomerRepository } from './repository';
 import type { EventBus } from '../plugins/event-bus';
+import type { EmailService } from '../email/service';
 import { CUSTOMER_EVENTS } from './events';
 import { createLogger } from '../lib/logger';
 
@@ -44,6 +45,8 @@ export interface CustomerAuthServiceDeps {
   customerRepository: CustomerRepository;
   eventBus: EventBus;
   jwtSecret: string;
+  emailService?: EmailService;
+  storefrontUrl?: string;
 }
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -52,11 +55,16 @@ export class CustomerAuthService {
   private readonly repo: CustomerRepository;
   private readonly events: EventBus;
   private readonly jwtSecret: string;
+  private readonly emailService?: EmailService;
+  private readonly storefrontUrl: string;
 
   constructor(deps: CustomerAuthServiceDeps) {
     this.repo = deps.customerRepository;
     this.events = deps.eventBus;
     this.jwtSecret = deps.jwtSecret;
+    this.emailService = deps.emailService;
+    this.storefrontUrl =
+      deps.storefrontUrl ?? process.env['STOREFRONT_URL'] ?? 'http://localhost:3000';
 
     if (!deps.jwtSecret || deps.jwtSecret.length < 32) {
       throw new Error('Customer JWT secret must be at least 32 characters');
@@ -208,8 +216,25 @@ export class CustomerAuthService {
 
     await this.repo.setResetToken(customer.id, resetToken, resetExpires);
 
-    // TODO: Send reset token via email instead of returning it
-    // Example: await emailService.sendPasswordResetEmail(customer.email, resetToken);
+    // Send password reset email
+    if (this.emailService) {
+      const resetUrl = `${this.storefrontUrl}/account/reset-password?token=${resetToken}`;
+      try {
+        await this.emailService.sendPasswordReset(customer.email, {
+          customerName: `${customer.firstName} ${customer.lastName}`,
+          resetUrl,
+          expiresInMinutes: RESET_TOKEN_EXPIRY_HOURS * 60,
+        });
+        logger.info({ customerId: customer.id }, 'Password reset email sent');
+      } catch (error) {
+        logger.error({ customerId: customer.id, error }, 'Failed to send password reset email');
+      }
+    } else {
+      logger.warn(
+        { customerId: customer.id },
+        'No email service configured — password reset email not sent',
+      );
+    }
 
     logger.info({ customerId: customer.id }, 'Password reset token generated');
 

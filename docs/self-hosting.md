@@ -308,7 +308,7 @@ rsync -av /opt/forkcart/uploads/ /backups/forkcart-uploads/
 cd /opt/forkcart
 
 # Pull latest
-git pull origin master
+git pull origin main
 
 # Install any new dependencies
 pnpm install

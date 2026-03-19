@@ -131,6 +131,7 @@ import {
 import { requireRole } from './middleware/permissions';
 import { rateLimit } from './middleware/rate-limit';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
+import { csrf } from './middleware/csrf';
 import { flattenTranslations } from '@forkcart/i18n';
 import { readFileSync, readdirSync } from 'node:fs';
 import './middleware/i18n'; // registers locale on ContextVariableMap
@@ -164,6 +165,10 @@ export async function createApp(db: Database) {
       credentials: true,
     }),
   );
+
+  // CSRF protection (Double-Submit Cookie pattern)
+  const corsOrigins = (process.env['API_CORS_ORIGIN'] ?? 'http://localhost:3000').split(',');
+  app.use('*', csrf(corsOrigins));
 
   // i18n: parse Accept-Language header, set locale on request context
   app.use('*', async (c, next) => {
@@ -358,20 +363,22 @@ export async function createApp(db: Database) {
   const jwtSecret = process.env['SESSION_SECRET'] ?? '';
   const authService = new AuthService(userRepository, jwtSecret);
 
-  // Customer auth uses a separate secret (falls back to SESSION_SECRET with prefix)
-  const customerJwtSecret = process.env['CUSTOMER_JWT_SECRET'] ?? `customer_${jwtSecret}`;
-  const customerAuthService = new CustomerAuthService({
-    customerRepository,
-    eventBus,
-    jwtSecret: customerJwtSecret,
-  });
-
   // Initialize email provider registry and service
   const emailProviderRegistry = new EmailProviderRegistry();
   const emailLogRepository = new EmailLogRepository(db);
   const emailService = new EmailService({
     emailRegistry: emailProviderRegistry,
     emailLogRepository,
+  });
+
+  // Customer auth uses a separate secret (falls back to SESSION_SECRET with prefix)
+  const customerJwtSecret = process.env['CUSTOMER_JWT_SECRET'] ?? `customer_${jwtSecret}`;
+  const customerAuthService = new CustomerAuthService({
+    customerRepository,
+    eventBus,
+    jwtSecret: customerJwtSecret,
+    emailService,
+    storefrontUrl: process.env['STOREFRONT_URL'] ?? 'http://localhost:3000',
   });
 
   // Initialize plugin loader and register built-in plugins

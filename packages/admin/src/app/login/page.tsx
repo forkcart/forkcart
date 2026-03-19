@@ -107,9 +107,11 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Default: admin@forkcart.dev / admin123
-        </p>
+        {process.env.NEXT_PUBLIC_DEMO_MODE === 'true' && (
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            Default: admin@forkcart.dev / admin123
+          </p>
+        )}
       </div>
     </div>
   );

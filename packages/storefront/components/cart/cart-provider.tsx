@@ -2,8 +2,7 @@
 
 import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import type { CartItem } from '@forkcart/shared';
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
+import { API_URL } from '@/lib/config';
 
 /** Get browser language for Accept-Language header */
 function getBrowserLocale(): string {

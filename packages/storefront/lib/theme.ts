@@ -1,11 +1,11 @@
+import { API_URL } from '@/lib/config';
+
 interface ThemeSetting {
   key: string;
   value: string;
   type: string;
   group: string;
 }
-
-const API_URL = process.env['NEXT_PUBLIC_STOREFRONT_API_URL'] ?? 'http://localhost:4000';
 
 /** Fetch theme settings from the API (server-side, cached for 60s) */
 export async function getThemeSettings(): Promise<ThemeSetting[]> {
