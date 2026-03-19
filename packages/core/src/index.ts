@@ -20,6 +20,7 @@ export * from './coupons/index';
 export * from './wishlists/index';
 export * from './product-reviews/index';
 export * from './pages/index';
+export * from './page-translations/index';
 export * from './currencies/index';
 export * from './variants/index';
 export * from './attributes/index';

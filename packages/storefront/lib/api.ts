@@ -229,6 +229,16 @@ export async function trackImpression(params: {
 }
 
 // Page types
+export interface PageTranslation {
+  id: string;
+  pageId: string;
+  locale: string;
+  title: string | null;
+  content: unknown;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
 export interface Page {
   id: string;
   title: string;
@@ -243,11 +253,31 @@ export interface Page {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+  translations?: PageTranslation[];
 }
 
 export async function getPage(slug: string): Promise<Page> {
   const res = await fetchApi<ApiResponse<Page>>(`/pages/${slug}`);
   return res.data;
+}
+
+/** Resolve a page's content/title/SEO for a specific locale.
+ *  If a translation exists for the locale, overlay its fields onto the page. */
+export function resolvePageForLocale(page: Page, locale: string, defaultLocale: string): Page {
+  if (locale === defaultLocale || !page.translations?.length) {
+    return page;
+  }
+  const translation = page.translations.find((t) => t.locale === locale);
+  if (!translation) {
+    return page;
+  }
+  return {
+    ...page,
+    title: translation.title ?? page.title,
+    content: translation.content ?? page.content,
+    seoTitle: translation.seoTitle ?? page.seoTitle,
+    seoDescription: translation.seoDescription ?? page.seoDescription,
+  };
 }
 
 export async function getHomepage(): Promise<Page | null> {

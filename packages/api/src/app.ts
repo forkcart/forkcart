@@ -55,6 +55,8 @@ import {
   ProductReviewService,
   PageRepository,
   PageService,
+  PageTranslationRepository,
+  PageTranslationService,
   CurrencyRepository,
   CurrencyService,
   VariantRepository,
@@ -117,6 +119,7 @@ import { createWishlistRoutes } from './routes/v1/wishlists';
 import { createProductReviewRoutes, createAdminReviewRoutes } from './routes/v1/reviews';
 import { createUserRoutes } from './routes/v1/users';
 import { createPageRoutes } from './routes/v1/pages';
+import { createPageTranslationRoutes } from './routes/v1/page-translations';
 import { createCurrencyRoutes, createPublicCurrencyRoutes } from './routes/v1/currencies';
 import { createThemeSettingsRoutes } from './routes/v1/theme-settings';
 import { createVariantRoutes } from './routes/v1/variants';
@@ -272,6 +275,12 @@ export async function createApp(db: Database) {
   const couponService = new CouponService({ couponRepository });
   const wishlistService = new WishlistService({ wishlistRepository });
   const pageService = new PageService({ pageRepository, eventBus });
+
+  // Page translations
+  const pageTranslationRepository = new PageTranslationRepository(db);
+  const pageTranslationService = new PageTranslationService({
+    pageTranslationRepository,
+  });
   const productReviewService = new ProductReviewService({ productReviewRepository });
   const variantService = new VariantService({ variantRepository });
   const attributeService = new AttributeService({ attributeRepository });
@@ -552,6 +561,7 @@ export async function createApp(db: Database) {
   v1.route('/reviews', createAdminReviewRoutes(productReviewService));
   v1.route('/users', createUserRoutes(authService));
   v1.route('/pages', createPageRoutes(pageService));
+  v1.route('/pages', createPageTranslationRoutes(pageTranslationService));
   v1.route('/theme-settings', createThemeSettingsRoutes(db));
   v1.route('/currencies', createCurrencyRoutes(currencyService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));

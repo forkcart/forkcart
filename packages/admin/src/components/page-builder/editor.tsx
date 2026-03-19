@@ -95,6 +95,14 @@ interface PageBuilderEditorProps {
   pageStatus?: 'draft' | 'published' | 'archived';
   /** Whether save is in progress */
   saving?: boolean;
+  /** Current locale being edited */
+  currentLocale?: string;
+  /** Default locale for the store */
+  defaultLocale?: string;
+  /** Available locales */
+  availableLocales?: Array<{ locale: string; name: string }>;
+  /** Called when locale changes */
+  onLocaleChange?: (locale: string) => void;
 }
 
 export function PageBuilderEditor({
@@ -105,6 +113,10 @@ export function PageBuilderEditor({
   pageTitle,
   pageStatus,
   saving,
+  currentLocale,
+  defaultLocale,
+  availableLocales,
+  onLocaleChange,
 }: PageBuilderEditorProps) {
   const [deviceView, setDeviceView] = useState<DeviceView>('desktop');
   const deviceWidth = getDeviceWidth(deviceView);
@@ -121,6 +133,10 @@ export function PageBuilderEditor({
           saving={saving}
           deviceView={deviceView}
           onDeviceChange={setDeviceView}
+          currentLocale={currentLocale}
+          defaultLocale={defaultLocale}
+          availableLocales={availableLocales}
+          onLocaleChange={onLocaleChange}
         />
         <div className="flex flex-1 overflow-hidden">
           <ComponentPanel />

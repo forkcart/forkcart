@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { getPage } from '@/lib/api';
+import { getPage, resolvePageForLocale } from '@/lib/api';
+import { getI18nConfig } from '@/lib/i18n-config';
 import { PageRenderer } from '@/components/page-builder/renderer';
 
 interface PageProps {
@@ -8,14 +9,16 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
+  const { slug, locale } = await params;
 
   try {
     const page = await getPage(slug);
+    const i18n = await getI18nConfig();
+    const resolved = resolvePageForLocale(page, locale, i18n.defaultLocale);
     return {
-      title: page.seoTitle ?? page.title,
-      description: page.seoDescription ?? undefined,
-      openGraph: page.ogImage ? { images: [{ url: page.ogImage }] } : undefined,
+      title: resolved.seoTitle ?? resolved.title,
+      description: resolved.seoDescription ?? undefined,
+      openGraph: resolved.ogImage ? { images: [{ url: resolved.ogImage }] } : undefined,
     };
   } catch {
     return { title: 'Page Not Found' };
@@ -42,9 +45,13 @@ export default async function DynamicPage({ params }: PageProps) {
     notFound();
   }
 
+  // Resolve translated content for the current locale
+  const i18n = await getI18nConfig();
+  const resolved = resolvePageForLocale(page, locale, i18n.defaultLocale);
+
   return (
     <main>
-      <PageRenderer content={page.content} locale={locale} />
+      <PageRenderer content={resolved.content} locale={locale} />
     </main>
   );
 }

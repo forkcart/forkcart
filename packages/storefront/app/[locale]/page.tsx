@@ -1,4 +1,5 @@
-import { getProducts, getCategories, getHomepage } from '@/lib/api';
+import { getProducts, getCategories, getHomepage, resolvePageForLocale } from '@/lib/api';
+import { getI18nConfig } from '@/lib/i18n-config';
 import { HomeContent } from './home-content';
 import { PageRenderer } from '@/components/page-builder/renderer';
 
@@ -9,9 +10,13 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   try {
     const homepage = await getHomepage();
     if (homepage?.content) {
+      // Resolve translated content for the current locale
+      const i18n = await getI18nConfig();
+      const resolved = resolvePageForLocale(homepage, locale, i18n.defaultLocale);
+
       return (
         <main>
-          <PageRenderer content={homepage.content} locale={locale} />
+          <PageRenderer content={resolved.content} locale={locale} />
         </main>
       );
     }
