@@ -93,7 +93,11 @@ import { createMediaRoutes } from './routes/v1/media';
 import { createProductImageRoutes } from './routes/v1/product-images';
 import { createCartRoutes } from './routes/v1/carts';
 import { createPaymentRoutes, createWebhookRoute } from './routes/v1/payments';
-import { createPluginRoutes, createPublicPluginRoutes } from './routes/v1/plugins';
+import {
+  createPluginRoutes,
+  createPublicPluginRoutes,
+  mountPluginRoutes,
+} from './routes/v1/plugins';
 import { createEmailRoutes } from './routes/v1/emails';
 import { createShippingRoutes } from './routes/v1/shipping';
 import { createChatRoutes, createChatAdminRoutes } from './routes/v1/chat';
@@ -610,6 +614,9 @@ export async function createApp(db: Database) {
 
   // Public cookie consent routes (no auth — storefront banner config + logging)
   app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));
+
+  // Mount plugin custom routes under /api/v1/plugins/<pluginName>/
+  mountPluginRoutes(v1, pluginLoader);
 
   app.route('/api/v1', v1);
 

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { PluginLoader, PluginScheduler } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
+import type { Context } from 'hono';
 
 const UpdateSettingsSchema = z.record(z.string(), z.unknown());
 
@@ -192,5 +193,56 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     return c.json({ data: { success: true, task: updatedTask } });
   });
 
+  // ─── Admin Pages Routes ────────────────────────────────────────────────────
+
+  /** Get admin pages for all active plugins */
+  router.get('/admin-pages', async (c) => {
+    const pages = pluginLoader.getAllAdminPages();
+    return c.json({ data: pages });
+  });
+
+  // ─── Health Check Route ───────────────────────────────────────────────────
+
+  /** Get health status of all active plugins */
+  router.get('/health', async (c) => {
+    const health = await pluginLoader.healthCheck();
+    const allHealthy = health.every((h) => h.healthy);
+    return c.json({ data: health, allHealthy }, allHealthy ? 200 : 503);
+  });
+
   return router;
+}
+
+/** Mount plugin custom routes under /api/v1/plugins/<pluginName>/ */
+export function mountPluginRoutes(parentRouter: Hono, pluginLoader: PluginLoader): void {
+  const registrars = pluginLoader.getPluginRouteRegistrars();
+
+  for (const [pluginName, registrar] of registrars) {
+    const pluginRouter = new Hono();
+
+    // Create a minimal router adapter that maps Hono-compatible handlers
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const wrap = (handler: (c: unknown) => unknown) => (c: Context) => handler(c) as any;
+    const routerAdapter = {
+      get: (path: string, handler: (c: unknown) => unknown) =>
+        pluginRouter.get(path, wrap(handler)),
+      post: (path: string, handler: (c: unknown) => unknown) =>
+        pluginRouter.post(path, wrap(handler)),
+      put: (path: string, handler: (c: unknown) => unknown) =>
+        pluginRouter.put(path, wrap(handler)),
+      delete: (path: string, handler: (c: unknown) => unknown) =>
+        pluginRouter.delete(path, wrap(handler)),
+      patch: (path: string, handler: (c: unknown) => unknown) =>
+        pluginRouter.patch(path, wrap(handler)),
+    };
+
+    try {
+      registrar(routerAdapter);
+      // Mount under /plugins/<pluginName>/
+      parentRouter.route(`/plugins/${pluginName}`, pluginRouter);
+      console.log(`[plugins] Mounted custom routes for plugin: ${pluginName}`);
+    } catch (error) {
+      console.error(`[plugins] Failed to mount routes for plugin: ${pluginName}`, error);
+    }
+  }
 }
