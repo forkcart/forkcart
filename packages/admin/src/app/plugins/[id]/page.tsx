@@ -502,6 +502,32 @@ export default function PluginDetailPage() {
         </div>
       )}
 
+      {/* Admin Pages */}
+      {plugin.isActive && plugin.adminPages && plugin.adminPages.length > 0 && (
+        <div className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
+          <h2 className="text-lg font-semibold">Admin Pages</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Custom pages provided by this plugin.
+          </p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {(plugin.adminPages as Array<{ path: string; label: string; icon?: string }>).map(
+              (page) => (
+                <button
+                  key={page.path}
+                  onClick={() =>
+                    router.push(`/plugins/${pluginId}/${page.path.replace(/^\//, '')}`)
+                  }
+                  className="flex items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:border-primary/30 hover:bg-muted/50"
+                >
+                  <Puzzle className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm font-medium">{page.label}</span>
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Plugin info */}
       <div className="mt-6 rounded-lg border bg-card p-6 shadow-sm">
         <h2 className="text-lg font-semibold">Information</h2>

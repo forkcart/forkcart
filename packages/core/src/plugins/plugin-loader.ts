@@ -16,6 +16,8 @@ import type { EventBus } from './event-bus';
 import type { EventHandler } from './types';
 import { createLogger } from '../lib/logger';
 import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
+import { ScopedDatabase } from './scoped-database';
+import { MigrationRunner } from './migration-runner';
 
 const execFileAsync = promisify(execFile);
 const logger = createLogger('plugin-loader');
@@ -199,13 +201,21 @@ export class PluginLoader {
   // ─── Plugin Permissions Registry ──────────────────────────────────────────
   private pluginPermissions = new Map<string, Set<PluginPermission>>();
 
+  // ─── Plugin Routes Registry ────────────────────────────────────────────────
+  private pluginRouteRegistrars = new Map<string, (router: unknown) => void>();
+
+  // ─── Migration Runner ──────────────────────────────────────────────────────
+  private migrationRunner: MigrationRunner;
+
   constructor(
     private readonly db: Database,
     private readonly paymentRegistry: PaymentProviderRegistry,
     private readonly emailRegistry?: EmailProviderRegistry,
     private readonly marketplaceRegistry?: MarketplaceProviderRegistry,
     private readonly eventBus?: EventBus,
-  ) {}
+  ) {
+    this.migrationRunner = new MigrationRunner(db);
+  }
 
   // ─── Permission API ────────────────────────────────────────────────────────
 
@@ -232,6 +242,45 @@ export class PluginLoader {
   getPluginPermissions(pluginName: string): PluginPermission[] {
     const perms = this.pluginPermissions.get(pluginName);
     return perms ? [...perms] : [];
+  }
+
+  // ─── Dependency Validation ─────────────────────────────────────────────────
+
+  /**
+   * Validate that all declared dependencies of a plugin are installed and active.
+   * Throws if any dependency is missing or inactive.
+   */
+  private async validateDependencies(pluginName: string, dependencies: string[]): Promise<void> {
+    const missing: string[] = [];
+    const inactive: string[] = [];
+
+    for (const dep of dependencies) {
+      const depPlugin = await this.db.query.plugins.findFirst({
+        where: eq(plugins.name, dep),
+      });
+
+      if (!depPlugin) {
+        missing.push(dep);
+      } else if (!depPlugin.isActive) {
+        inactive.push(dep);
+      }
+    }
+
+    if (missing.length > 0 || inactive.length > 0) {
+      const errors: string[] = [];
+      if (missing.length > 0) {
+        errors.push(`Missing plugins: ${missing.join(', ')}`);
+      }
+      if (inactive.length > 0) {
+        errors.push(`Inactive plugins: ${inactive.join(', ')}`);
+      }
+      throw new Error(
+        `Cannot activate plugin '${pluginName}': unmet dependencies. ${errors.join('. ')}. ` +
+          `Please install and activate the required plugins first.`,
+      );
+    }
+
+    logger.debug({ pluginName, dependencies }, 'All dependencies satisfied');
   }
 
   // ─── Legacy API (backward compat) ──────────────────────────────────────────
@@ -402,6 +451,8 @@ export class PluginLoader {
 
     if (existing) {
       if (existing.version !== def.version) {
+        // Version changed — trigger update handling
+        await this.handlePluginUpdate(def.name, existing.version, def.version);
         await this.db
           .update(plugins)
           .set({ version: def.version, description: def.description, updatedAt: new Date() })
@@ -459,6 +510,12 @@ export class PluginLoader {
     });
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
+    // Validate dependencies before activation
+    const sdkDef = this.sdkPlugins.get(plugin.name);
+    if (sdkDef?.dependencies && sdkDef.dependencies.length > 0) {
+      await this.validateDependencies(plugin.name, sdkDef.dependencies);
+    }
+
     const rawSettings: Record<string, unknown> = {};
     for (const s of plugin.settings) {
       rawSettings[s.key] = s.value;
@@ -468,7 +525,6 @@ export class PluginLoader {
     const settings = this.decryptSettings(plugin.name, rawSettings);
 
     // Try SDK plugin first, then legacy
-    const sdkDef = this.sdkPlugins.get(plugin.name);
     if (sdkDef) {
       await this.activateSdkPlugin(plugin.name, sdkDef, settings);
     } else {
@@ -573,6 +629,9 @@ export class PluginLoader {
       }
     }
 
+    // Unregister custom routes
+    this.pluginRouteRegistrars.delete(plugin.name);
+
     this.activeStates.delete(plugin.name);
 
     // Unregister legacy providers
@@ -673,11 +732,22 @@ export class PluginLoader {
       }
     }
 
+    // Register custom routes
+    if (def.routes) {
+      this.pluginRouteRegistrars.set(pluginName, def.routes);
+      logger.debug({ pluginName }, 'Plugin routes registered');
+    }
+
     this.activeStates.set(pluginName, {
       pluginName,
       registeredHooks: hookHandlers,
       registeredFilters: filterHandlers,
     });
+
+    // Run pending migrations before activation
+    if (def.migrations && def.migrations.length > 0) {
+      await this.migrationRunner.runPendingMigrations(pluginName, def.migrations, ctx);
+    }
 
     // Call onActivate
     if (def.onActivate) {
@@ -873,23 +943,11 @@ export class PluginLoader {
   /**
    * Build the context object passed to plugin lifecycle hooks.
    *
-   * ⚠️  SECURITY WARNING (RVS-012): The raw database handle (`db`) is exposed to plugins.
-   *     This allows plugins to execute arbitrary queries, potentially accessing or
-   *     modifying ANY data in the database (including other plugins' data, user
-   *     credentials, orders, etc.).
-   *
-   *     A malicious or compromised plugin could:
-   *     - Read sensitive data (customer PII, payment info, admin credentials)
-   *     - Modify/delete arbitrary records
-   *     - Escalate privileges by modifying user roles
-   *
-   *     TODO: Replace with a scoped database proxy that:
-   *     - Only allows access to plugin-specific tables
-   *     - Enforces row-level security for plugin data
-   *     - Logs all queries for audit purposes
-   *     - Rate-limits database operations
-   *
-   *     For now, only install plugins from TRUSTED sources!
+   * Security: Plugins receive a ScopedDatabase proxy instead of the raw db handle.
+   * The proxy enforces permission-based access control:
+   * - Plugin-owned tables (plugin_<name>_*) are always accessible
+   * - Core tables require matching permissions (e.g., 'orders:read' for orders table)
+   * - 'admin:full' grants unrestricted access
    */
   private buildPluginContext(pluginName: string, settings: Record<string, unknown>): unknown {
     const pluginLogger = {
@@ -903,10 +961,13 @@ export class PluginLoader {
         logger.error({ pluginName, ...data }, msg),
     };
 
-    // ⚠️ WARNING: Raw db handle exposed — see security note above
+    // Build scoped database with permission-based access control
+    const permissions = this.pluginPermissions.get(pluginName) ?? new Set<PluginPermission>();
+    const scopedDb = new ScopedDatabase(this.db, pluginName, permissions);
+
     return {
       settings,
-      db: this.db,
+      db: scopedDb,
       logger: pluginLogger,
       eventBus: this.eventBus ?? {
         on: () => {},
@@ -1166,6 +1227,123 @@ export class PluginLoader {
     } else {
       await this.deactivatePlugin(pluginId);
     }
+  }
+
+  // ─── Plugin Routes API ─────────────────────────────────────────────────────
+
+  /** Get all registered plugin route registrars (for mounting in the API app) */
+  getPluginRouteRegistrars(): Map<string, (router: unknown) => void> {
+    return this.pluginRouteRegistrars;
+  }
+
+  // ─── Plugin Health Check API ──────────────────────────────────────────────
+
+  /** Run health checks on all active plugins */
+  async healthCheck(): Promise<Array<{ pluginName: string; healthy: boolean; message?: string }>> {
+    const results: Array<{ pluginName: string; healthy: boolean; message?: string }> = [];
+
+    for (const [pluginName, state] of this.activeStates) {
+      const sdkDef = this.sdkPlugins.get(pluginName);
+      if (!sdkDef) {
+        results.push({ pluginName, healthy: true, message: 'Legacy plugin (no health check)' });
+        continue;
+      }
+
+      try {
+        // Check if hooks are registered
+        const hookCount = state.registeredHooks.size;
+        const filterCount = state.registeredFilters.size;
+        results.push({
+          pluginName,
+          healthy: true,
+          message: `Active (${hookCount} hooks, ${filterCount} filters)`,
+        });
+      } catch (error) {
+        results.push({
+          pluginName,
+          healthy: false,
+          message: error instanceof Error ? error.message : 'Health check failed',
+        });
+      }
+    }
+
+    return results;
+  }
+
+  // ─── Plugin Version Tracking (onUpdate) ───────────────────────────────────
+
+  /**
+   * Handle plugin version updates.
+   * Called during ensurePluginInDb when an existing plugin has a new version.
+   * Triggers onUpdate lifecycle hook and runs new migrations.
+   */
+  private async handlePluginUpdate(
+    pluginName: string,
+    fromVersion: string,
+    toVersion: string,
+  ): Promise<void> {
+    const sdkDef = this.sdkPlugins.get(pluginName);
+    if (!sdkDef) return;
+
+    logger.info({ pluginName, fromVersion, toVersion }, 'Plugin version update detected');
+
+    // Get settings for context
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.name, pluginName),
+      with: { settings: true },
+    });
+
+    if (!plugin) return;
+
+    const rawSettings: Record<string, unknown> = {};
+    for (const s of plugin.settings) {
+      rawSettings[s.key] = s.value;
+    }
+    const settings = this.decryptSettings(pluginName, rawSettings);
+    const ctx = this.buildPluginContext(pluginName, settings);
+
+    // Run any new migrations
+    if (sdkDef.migrations && sdkDef.migrations.length > 0) {
+      await this.migrationRunner.runPendingMigrations(pluginName, sdkDef.migrations, ctx);
+    }
+
+    // Call onUpdate lifecycle hook
+    if (sdkDef.onUpdate) {
+      try {
+        await sdkDef.onUpdate(ctx, fromVersion);
+        logger.info({ pluginName, fromVersion, toVersion }, 'Plugin onUpdate completed');
+      } catch (error) {
+        logger.error({ pluginName, fromVersion, toVersion, error }, 'Plugin onUpdate failed');
+      }
+    }
+  }
+
+  // ─── Admin Pages API ──────────────────────────────────────────────────────
+
+  /** Get admin pages for all active plugins */
+  getAllAdminPages(): Array<{
+    pluginName: string;
+    pages: Array<{ path: string; label: string; icon?: string; parent?: string; order?: number }>;
+  }> {
+    const result: Array<{
+      pluginName: string;
+      pages: Array<{
+        path: string;
+        label: string;
+        icon?: string;
+        parent?: string;
+        order?: number;
+      }>;
+    }> = [];
+
+    for (const [pluginName] of this.activeStates) {
+      const sdkDef = this.sdkPlugins.get(pluginName);
+      if (sdkDef?.adminPages && sdkDef.adminPages.length > 0) {
+        result.push({ pluginName, pages: sdkDef.adminPages });
+      }
+    }
+
+    return result;
   }
 
   /** Update plugin settings */

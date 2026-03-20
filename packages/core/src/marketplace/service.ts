@@ -9,9 +9,31 @@ import {
 import { products } from '@forkcart/database/schemas';
 import type { MarketplaceProviderRegistry } from './registry';
 import type { MarketplaceProductInput } from './types';
+import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
 import { createLogger } from '../lib/logger';
 
 const logger = createLogger('marketplace-service');
+
+/** Keys in marketplace connection settings that contain secrets */
+const SECRET_SETTING_KEYS = [
+  'apiKey',
+  'apiSecret',
+  'secretKey',
+  'secret_key',
+  'accessKey',
+  'access_key',
+  'accessToken',
+  'access_token',
+  'refreshToken',
+  'refresh_token',
+  'password',
+  'clientSecret',
+  'client_secret',
+  'lwaClientSecret',
+  'lwa_client_secret',
+  'appSecret',
+  'app_secret',
+];
 
 export interface MarketplaceServiceDeps {
   db: Database;
@@ -27,18 +49,92 @@ export class MarketplaceService {
     this.registry = deps.registry;
   }
 
+  // ─── Secret Encryption Helpers ─────────────────────────────────────────────
+
+  /** Check if a setting key is likely a secret */
+  private isSecretKey(key: string): boolean {
+    const lowerKey = key.toLowerCase();
+    return SECRET_SETTING_KEYS.some((sk) => lowerKey === sk.toLowerCase());
+  }
+
+  /** Encrypt secret values in a settings object before storing */
+  private encryptSettings(settings: Record<string, unknown>): Record<string, unknown> {
+    const encrypted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      if (
+        this.isSecretKey(key) &&
+        typeof value === 'string' &&
+        value !== '' &&
+        !isEncrypted(value)
+      ) {
+        encrypted[key] = encryptSecret(value);
+      } else {
+        encrypted[key] = value;
+      }
+    }
+    return encrypted;
+  }
+
+  /** Decrypt secret values in a settings object for use */
+  private decryptSettings(settings: Record<string, unknown>): Record<string, unknown> {
+    const decrypted: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      if (this.isSecretKey(key) && typeof value === 'string' && isEncrypted(value)) {
+        decrypted[key] = decryptSecret(value);
+      } else {
+        decrypted[key] = value;
+      }
+    }
+    return decrypted;
+  }
+
+  /** Mask secret values for API responses */
+  private maskSettings(settings: Record<string, unknown>): Record<string, unknown> {
+    const masked: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(settings)) {
+      if (this.isSecretKey(key) && typeof value === 'string' && value !== '') {
+        masked[key] = '••••••••';
+      } else {
+        masked[key] = value;
+      }
+    }
+    return masked;
+  }
+
   // ─── Connections ───────────────────────────────────────────────────────────
 
   async getConnections() {
-    return this.db.query.marketplaceConnections.findMany({
+    const connections = await this.db.query.marketplaceConnections.findMany({
       orderBy: [desc(marketplaceConnections.createdAt)],
     });
+    // Mask secrets in response
+    return connections.map((c) => ({
+      ...c,
+      settings: this.maskSettings(c.settings as Record<string, unknown>),
+    }));
   }
 
   async getConnection(id: string) {
-    return this.db.query.marketplaceConnections.findFirst({
+    const connection = await this.db.query.marketplaceConnections.findFirst({
       where: eq(marketplaceConnections.id, id),
     });
+    if (!connection) return connection;
+    return {
+      ...connection,
+      settings: this.maskSettings(connection.settings as Record<string, unknown>),
+    };
+  }
+
+  /** Get connection with decrypted settings (internal use only) */
+  private async getConnectionDecrypted(id: string) {
+    const connection = await this.db.query.marketplaceConnections.findFirst({
+      where: eq(marketplaceConnections.id, id),
+    });
+    if (!connection) return connection;
+    return {
+      ...connection,
+      settings: this.decryptSettings(connection.settings as Record<string, unknown>),
+    };
   }
 
   async saveConnection(input: {
@@ -46,16 +142,17 @@ export class MarketplaceService {
     name: string;
     settings: Record<string, unknown>;
   }) {
+    const encryptedSettings = this.encryptSettings(input.settings);
     const [connection] = await this.db
       .insert(marketplaceConnections)
       .values({
         marketplaceId: input.marketplaceId,
         name: input.name,
-        settings: input.settings,
+        settings: encryptedSettings,
         status: 'disconnected',
       })
       .returning();
-    return connection;
+    return connection ? { ...connection, settings: this.maskSettings(input.settings) } : connection;
   }
 
   async updateConnection(
@@ -68,7 +165,7 @@ export class MarketplaceService {
   ) {
     const updates: Record<string, unknown> = { updatedAt: new Date() };
     if (input.name !== undefined) updates['name'] = input.name;
-    if (input.settings !== undefined) updates['settings'] = input.settings;
+    if (input.settings !== undefined) updates['settings'] = this.encryptSettings(input.settings);
     if (input.status !== undefined) updates['status'] = input.status;
 
     const [connection] = await this.db
@@ -76,7 +173,11 @@ export class MarketplaceService {
       .set(updates)
       .where(eq(marketplaceConnections.id, id))
       .returning();
-    return connection;
+    if (!connection) return connection;
+    return {
+      ...connection,
+      settings: this.maskSettings(connection.settings as Record<string, unknown>),
+    };
   }
 
   async deleteConnection(id: string) {
@@ -84,7 +185,7 @@ export class MarketplaceService {
   }
 
   async testConnection(id: string) {
-    const connection = await this.getConnection(id);
+    const connection = await this.getConnectionDecrypted(id);
     if (!connection) throw new Error('Connection not found');
 
     const provider = this.registry.get(connection.marketplaceId);
@@ -122,7 +223,8 @@ export class MarketplaceService {
     const provider = this.registry.get(marketplaceId);
     if (!provider) throw new Error(`No provider registered for "${marketplaceId}"`);
 
-    await provider.connect(connection.settings as Record<string, unknown>);
+    const decryptedSettings = this.decryptSettings(connection.settings as Record<string, unknown>);
+    await provider.connect(decryptedSettings);
 
     // Get products to sync
     let productsToSync;
@@ -218,7 +320,8 @@ export class MarketplaceService {
     const provider = this.registry.get(marketplaceId);
     if (!provider) throw new Error(`No provider registered for "${marketplaceId}"`);
 
-    await provider.connect(connection.settings as Record<string, unknown>);
+    const decryptedSettings = this.decryptSettings(connection.settings as Record<string, unknown>);
+    await provider.connect(decryptedSettings);
 
     const lastSync = connection.lastSyncAt ?? undefined;
     const orders = await provider.fetchOrders(lastSync ?? undefined);
@@ -271,7 +374,8 @@ export class MarketplaceService {
     const provider = this.registry.get(marketplaceId);
     if (!provider) throw new Error(`No provider registered for "${marketplaceId}"`);
 
-    await provider.connect(connection.settings as Record<string, unknown>);
+    const decryptedSettings = this.decryptSettings(connection.settings as Record<string, unknown>);
+    await provider.connect(decryptedSettings);
 
     // Get all listings for this marketplace
     const listings = await this.db.query.marketplaceListings.findMany({
