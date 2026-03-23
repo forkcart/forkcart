@@ -65,6 +65,7 @@ import {
   AttributeService,
   MarketplaceService,
   MarketplaceProviderRegistry,
+  PluginStoreService,
 } from '@forkcart/core';
 import {
   AISettingsRepository,
@@ -131,6 +132,7 @@ import { createAttributeRoutes } from './routes/v1/attributes';
 import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { createMobileAppRoutes } from './routes/v1/mobile-app';
 import { createMarketplaceRoutes } from './routes/v1/marketplace';
+import { createPluginStoreRoutes } from './routes/v1/plugin-store';
 import {
   createCookieConsentRoutes,
   createPublicCookieConsentRoutes,
@@ -304,6 +306,9 @@ export async function createApp(db: Database) {
     registry: marketplaceProviderRegistry,
   });
 
+  // Plugin store service (pluginLoader injected below after initialization)
+  let pluginStoreService: PluginStoreService;
+
   // Product translations
   const productTranslationRepository = new ProductTranslationRepository(db);
   const productTranslationService = new ProductTranslationService({
@@ -414,6 +419,9 @@ export async function createApp(db: Database) {
   register(ebayMarketplacePlugin);
   register(ottoMarketplacePlugin);
   register(kauflandMarketplacePlugin);
+
+  // Initialize plugin store service with plugin loader
+  pluginStoreService = new PluginStoreService({ db, pluginLoader });
 
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
@@ -573,6 +581,7 @@ export async function createApp(db: Database) {
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
+  v1.route('/store', createPluginStoreRoutes(pluginStoreService));
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
@@ -611,6 +620,9 @@ export async function createApp(db: Database) {
 
   // Public plugin routes (no auth — storefront slots)
   app.route('/api/v1/public/plugins', createPublicPluginRoutes(pluginLoader));
+
+  // Public plugin store routes (no auth — browsing the store)
+  app.route('/api/v1/public/store', createPluginStoreRoutes(pluginStoreService));
 
   // Public cookie consent routes (no auth — storefront banner config + logging)
   app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));

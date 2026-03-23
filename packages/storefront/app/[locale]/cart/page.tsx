@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Trash2, Minus, Plus, ShoppingBag, Tag, X, Loader2 } from 'lucide-react';
 import { LocaleLink } from '@/components/locale-link';
 import { useCart } from '@/components/cart/cart-provider';
@@ -8,6 +8,19 @@ import { useTranslation } from '@forkcart/i18n/react';
 import { useCurrency } from '@/components/currency/currency-provider';
 import { CartPageSlots } from './cart-slots';
 import { API_URL } from '@/lib/config';
+
+interface TaxCalculationResult {
+  totalNet: number;
+  totalTax: number;
+  totalGross: number;
+  taxInclusive: boolean;
+  breakdown: Array<{
+    taxRate: number;
+    taxType: string;
+    taxClassName: string;
+    taxAmount: number;
+  }>;
+}
 
 interface CouponResult {
   valid: boolean;
@@ -24,6 +37,40 @@ export default function CartPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponResult, setCouponResult] = useState<CouponResult | null>(null);
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  const [taxResult, setTaxResult] = useState<TaxCalculationResult | null>(null);
+
+  // Calculate tax when items change
+  useEffect(() => {
+    if (items.length === 0) {
+      setTaxResult(null);
+      return;
+    }
+
+    const taxItems = items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+    }));
+
+    fetch(`${API_URL}/api/v1/tax/calculate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        items: taxItems,
+        country: 'DE', // Default country, will be recalculated at checkout with actual address
+      }),
+    })
+      .then((r) => {
+        if (!r.ok) return null;
+        return r.json() as Promise<{ data: TaxCalculationResult }>;
+      })
+      .then((data) => {
+        if (data?.data) setTaxResult(data.data);
+      })
+      .catch(() => {
+        // Tax calculation is optional in cart view
+      });
+  }, [items]);
 
   async function handleValidateCoupon() {
     if (!couponCode.trim()) return;
@@ -204,6 +251,16 @@ export default function CartPage() {
                 </div>
               )}
 
+              {taxResult && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">
+                    {taxResult.taxInclusive
+                      ? t('cart.taxIncluded', { defaultValue: 'Incl. Tax' })
+                      : t('cart.tax', { defaultValue: 'Tax' })}
+                  </span>
+                  <span className="text-gray-500">{formatPrice(taxResult.totalTax)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">{t('cart.shipping')}</span>
                 <span className="text-gray-500">{t('cart.shippingCalculated')}</span>
@@ -213,6 +270,11 @@ export default function CartPage() {
                   <span className="text-base font-semibold">{t('cart.total')}</span>
                   <span className="text-base font-bold">{formatPrice(totalAfterDiscount)}</span>
                 </div>
+                {taxResult && taxResult.taxInclusive && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    {t('cart.taxNote', { defaultValue: 'Prices include tax' })}
+                  </p>
+                )}
               </div>
             </div>
 

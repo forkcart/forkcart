@@ -21,6 +21,21 @@ import {
 import { LocaleLink } from '@/components/locale-link';
 import { API_URL } from '@/lib/config';
 
+interface TaxCalculationResult {
+  totalNet: number;
+  totalTax: number;
+  totalGross: number;
+  taxInclusive: boolean;
+  breakdown: Array<{
+    taxRate: number;
+    taxType: string;
+    taxClassName: string;
+    netAmount: number;
+    taxAmount: number;
+    grossAmount: number;
+  }>;
+}
+
 interface PaymentProviderConfig {
   provider: string;
   displayName: string;
@@ -123,6 +138,7 @@ function CheckoutPage() {
     postalCode: '',
     country: '',
   });
+  const [taxResult, setTaxResult] = useState<TaxCalculationResult | null>(null);
   const [shippingMethods, setShippingMethods] = useState<ShippingMethodOption[]>([]);
   const [selectedShippingMethod, setSelectedShippingMethod] = useState<string>('');
   const [shippingCost, setShippingCost] = useState(0);
@@ -259,6 +275,31 @@ function CheckoutPage() {
       if (data.data.length > 0) {
         setSelectedShippingMethod(data.data[0]!.id);
         setShippingCost(data.data[0]!.calculatedPrice);
+      }
+
+      // Calculate tax based on shipping country
+      try {
+        const taxItems = effectiveItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+        }));
+
+        const taxRes = await fetch(`${API_URL}/api/v1/tax/calculate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: taxItems,
+            country: shipping.country,
+          }),
+        });
+
+        if (taxRes.ok) {
+          const taxData = (await taxRes.json()) as { data: TaxCalculationResult };
+          setTaxResult(taxData.data);
+        }
+      } catch {
+        // Tax calculation failure is non-blocking
       }
 
       setStep('shipping');
@@ -709,12 +750,41 @@ function CheckoutPage() {
                       : formatPrice(shippingCost)}
                 </span>
               </div>
+              {taxResult && (
+                <>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">
+                      {taxResult.taxInclusive ? 'Incl. Tax' : 'Tax'}
+                    </span>
+                    <span className="font-medium">{formatPrice(taxResult.totalTax)}</span>
+                  </div>
+                  {taxResult.breakdown.length > 1 && (
+                    <div className="space-y-1 pl-2">
+                      {taxResult.breakdown.map((line, idx) => (
+                        <div key={idx} className="flex justify-between text-xs text-gray-400">
+                          <span>
+                            {line.taxClassName} ({(line.taxRate * 100).toFixed(1)}%)
+                          </span>
+                          <span>{formatPrice(line.taxAmount)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
               <div className="flex justify-between border-t pt-2">
                 <span className="font-semibold">{t('cart.total')}</span>
                 <span className="text-lg font-bold">
-                  {formatPrice(effectiveSubtotal + shippingCost)}
+                  {formatPrice(
+                    taxResult && !taxResult.taxInclusive
+                      ? effectiveSubtotal + shippingCost + taxResult.totalTax
+                      : effectiveSubtotal + shippingCost,
+                  )}
                 </span>
               </div>
+              {taxResult && taxResult.taxInclusive && (
+                <p className="text-xs text-gray-400">Prices include tax</p>
+              )}
             </div>
 
             <p className="mt-4 flex items-center gap-1 text-center text-xs text-gray-400">

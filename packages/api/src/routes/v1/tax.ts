@@ -133,6 +133,83 @@ export function createTaxRoutes(taxService: TaxService) {
     return c.json({ data: settings });
   });
 
+  // ─── Bulk Import EU Standard Rates ──────────────────────────────────────────
+
+  router.post('/classes/:id/import-eu-rates', requireRole('admin', 'superadmin'), async (c) => {
+    const taxClassId = c.req.param('id') as string;
+
+    // Verify the tax class exists
+    await taxService.getClassById(taxClassId);
+
+    const EU_STANDARD_RATES: Array<{ country: string; name: string; rate: number }> = [
+      { country: 'DE', name: 'Germany VAT', rate: 0.19 },
+      { country: 'AT', name: 'Austria VAT', rate: 0.2 },
+      { country: 'FR', name: 'France VAT', rate: 0.2 },
+      { country: 'IT', name: 'Italy VAT', rate: 0.22 },
+      { country: 'ES', name: 'Spain VAT', rate: 0.21 },
+      { country: 'NL', name: 'Netherlands VAT', rate: 0.21 },
+      { country: 'BE', name: 'Belgium VAT', rate: 0.21 },
+      { country: 'PT', name: 'Portugal VAT', rate: 0.23 },
+      { country: 'PL', name: 'Poland VAT', rate: 0.23 },
+      { country: 'SE', name: 'Sweden VAT', rate: 0.25 },
+      { country: 'DK', name: 'Denmark VAT', rate: 0.25 },
+      { country: 'FI', name: 'Finland VAT', rate: 0.255 },
+      { country: 'IE', name: 'Ireland VAT', rate: 0.23 },
+      { country: 'CZ', name: 'Czech Republic VAT', rate: 0.21 },
+      { country: 'RO', name: 'Romania VAT', rate: 0.19 },
+      { country: 'HU', name: 'Hungary VAT', rate: 0.27 },
+      { country: 'BG', name: 'Bulgaria VAT', rate: 0.2 },
+      { country: 'HR', name: 'Croatia VAT', rate: 0.25 },
+      { country: 'SK', name: 'Slovakia VAT', rate: 0.2 },
+      { country: 'SI', name: 'Slovenia VAT', rate: 0.22 },
+      { country: 'LT', name: 'Lithuania VAT', rate: 0.21 },
+      { country: 'LV', name: 'Latvia VAT', rate: 0.21 },
+      { country: 'EE', name: 'Estonia VAT', rate: 0.22 },
+      { country: 'CY', name: 'Cyprus VAT', rate: 0.19 },
+      { country: 'MT', name: 'Malta VAT', rate: 0.18 },
+      { country: 'LU', name: 'Luxembourg VAT', rate: 0.17 },
+      { country: 'GR', name: 'Greece VAT', rate: 0.24 },
+    ];
+
+    const created = [];
+    const existingZones = await taxService.listZones();
+
+    for (const entry of EU_STANDARD_RATES) {
+      // Create a zone for each country (or find existing)
+      let zone = existingZones.find(
+        (z) =>
+          (z.countries as string[]).length === 1 && (z.countries as string[])[0] === entry.country,
+      );
+      if (!zone) {
+        zone = await taxService.createZone({
+          name: entry.name.replace(' VAT', ''),
+          countries: [entry.country],
+          states: [],
+          isActive: true,
+          sortOrder: 0,
+        });
+        existingZones.push(zone);
+      }
+
+      // Create the rule
+      const rule = await taxService.createRule({
+        name: entry.name,
+        taxClassId: taxClassId as string,
+        taxZoneId: zone.id,
+        country: entry.country,
+        rate: entry.rate.toString(),
+        priority: 0,
+        taxType: 'VAT',
+        isCompound: false,
+        isDefault: false,
+        isActive: true,
+      });
+      created.push(rule);
+    }
+
+    return c.json({ data: created, count: created.length }, 201);
+  });
+
   // ─── Public: Tax Calculation ──────────────────────────────────────────────────
 
   router.post('/calculate', async (c) => {

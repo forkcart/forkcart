@@ -11,7 +11,11 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  * Paths exempt from CSRF checks:
  * - Webhook endpoints (called by external services, not browsers)
  */
-const EXEMPT_PATH_PREFIXES = ['/api/v1/payments/webhook', '/api/v1/auth/login'];
+const EXEMPT_PATH_PREFIXES = [
+  '/api/v1/payments/webhook',
+  '/api/v1/auth/login',
+  '/api/v1/tax/calculate',
+];
 
 /**
  * CSRF protection middleware using the Double-Submit Cookie pattern.

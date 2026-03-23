@@ -16,11 +16,13 @@ export class MailgunEmailProvider implements EmailProvider {
   private apiKey = '';
   private domain = '';
   private fromAddress = '';
+  private region: 'US' | 'EU' = 'US';
 
   async initialize(settings: Record<string, unknown>): Promise<void> {
     this.apiKey = (settings['apiKey'] as string) ?? '';
     this.domain = (settings['domain'] as string) ?? '';
     this.fromAddress = (settings['fromAddress'] as string) ?? '';
+    this.region = ((settings['region'] as string) ?? 'US') === 'EU' ? 'EU' : 'US';
   }
 
   isConfigured(): boolean {
@@ -53,6 +55,14 @@ export class MailgunEmailProvider implements EmailProvider {
         placeholder: 'shop@yourdomain.com',
         description: 'Default sender email address',
       },
+      {
+        key: 'region',
+        label: 'Region',
+        type: 'text',
+        required: false,
+        placeholder: 'US',
+        description: 'Mailgun API region (US or EU)',
+      },
     ];
   }
 
@@ -61,7 +71,9 @@ export class MailgunEmailProvider implements EmailProvider {
       throw new Error('Mailgun provider is not configured');
     }
 
-    const url = `https://api.mailgun.net/v3/${this.domain}/messages`;
+    const baseUrl =
+      this.region === 'EU' ? 'https://api.eu.mailgun.net/v3' : 'https://api.mailgun.net/v3';
+    const url = `${baseUrl}/${this.domain}/messages`;
 
     const formData = new URLSearchParams();
     formData.append('from', this.fromAddress);

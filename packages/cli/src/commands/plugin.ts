@@ -270,6 +270,224 @@ export function registerPluginCommands(program: Command): void {
       }
     });
 
+  // ─── plugin:search ──────────────────────────────────────────────────────────
+
+  plugin
+    .command('search <query>')
+    .description('Search the ForkCart Plugin Store')
+    .option('-c, --category <category>', 'Filter by category')
+    .option('-t, --type <type>', 'Filter by type')
+    .option('-j, --json', 'Output as JSON')
+    .action(
+      async (query: string, options: { category?: string; type?: string; json?: boolean }) => {
+        const spinner = ora(`Searching for "${query}"...`).start();
+
+        try {
+          const ctx = await createCliContext();
+          const { PluginStoreService } = await import('@forkcart/core');
+          const storeService = new PluginStoreService({
+            db: ctx.db,
+            pluginLoader: ctx.pluginLoader,
+          });
+          const result = await storeService.listPlugins({
+            search: query,
+            category: options.category,
+            type: options.type,
+          });
+
+          spinner.stop();
+
+          if (options.json) {
+            console.log(JSON.stringify(result, null, 2));
+            await ctx.cleanup();
+            return;
+          }
+
+          if (result.data.length === 0) {
+            console.log(chalk.yellow(`No plugins found for "${query}".`));
+            await ctx.cleanup();
+            return;
+          }
+
+          console.log(
+            chalk.bold(`\n🔍 Found ${result.pagination.total} plugin(s) for "${query}"\n`),
+          );
+
+          for (const p of result.data) {
+            const pricing =
+              p.pricing === 'free' ? chalk.green('FREE') : chalk.yellow(p.pricing.toUpperCase());
+            console.log(`  ${chalk.bold(p.name)} ${chalk.dim(`v${p.version}`)} ${pricing}`);
+            console.log(
+              `    ${chalk.cyan(p.slug)} — ${chalk.dim(p.shortDescription || p.description || 'No description')}`,
+            );
+            console.log(
+              `    ⬇ ${p.downloads} downloads  ⭐ ${p.rating ?? '0'} (${p.ratingCount} reviews)`,
+            );
+            console.log();
+          }
+
+          await ctx.cleanup();
+        } catch (error) {
+          spinner.fail('Search failed');
+          console.error(chalk.red((error as Error).message));
+          process.exit(1);
+        }
+      },
+    );
+
+  // ─── plugin:info ──────────────────────────────────────────────────────────
+
+  plugin
+    .command('info <slug>')
+    .description('Show detailed info about a plugin from the store')
+    .option('-j, --json', 'Output as JSON')
+    .action(async (slug: string, options: { json?: boolean }) => {
+      const spinner = ora(`Fetching info for "${slug}"...`).start();
+
+      try {
+        const ctx = await createCliContext();
+        const { PluginStoreService } = await import('@forkcart/core');
+        const storeService = new PluginStoreService({
+          db: ctx.db,
+          pluginLoader: ctx.pluginLoader,
+        });
+        const plugin = await storeService.getPlugin(slug);
+
+        spinner.stop();
+
+        if (!plugin) {
+          console.log(chalk.red(`Plugin "${slug}" not found.`));
+          await ctx.cleanup();
+          process.exit(1);
+        }
+
+        if (options.json) {
+          console.log(JSON.stringify(plugin, null, 2));
+          await ctx.cleanup();
+          return;
+        }
+
+        const pricing =
+          plugin.pricing === 'free'
+            ? chalk.green('FREE')
+            : chalk.yellow(plugin.pricing.toUpperCase());
+
+        console.log(
+          chalk.bold(`\n📦 ${plugin.name} ${chalk.dim(`v${plugin.version}`)} ${pricing}\n`),
+        );
+        console.log(`  ${chalk.dim('Package:')} ${plugin.packageName}`);
+        console.log(`  ${chalk.dim('Author:')}  ${plugin.author ?? 'Unknown'}`);
+        console.log(`  ${chalk.dim('Type:')}    ${plugin.type}`);
+        console.log(`  ${chalk.dim('License:')} ${plugin.license ?? 'N/A'}`);
+        console.log(
+          `  ${chalk.dim('Stats:')}   ⬇ ${plugin.downloads} downloads  ⭐ ${plugin.rating ?? '0'} (${plugin.ratingCount} reviews)  🔌 ${plugin.activeInstalls} active installs`,
+        );
+
+        if (plugin.description) {
+          console.log(`\n  ${plugin.description}`);
+        }
+
+        if (plugin.versions && plugin.versions.length > 0) {
+          console.log(chalk.bold('\n  Versions:'));
+          for (const v of plugin.versions.slice(0, 5)) {
+            console.log(`    ${chalk.dim('•')} v${v.version} ${chalk.dim(v.changelog ?? '')}`);
+          }
+        }
+
+        if (plugin.repository) {
+          console.log(`\n  ${chalk.dim('Repository:')} ${plugin.repository}`);
+        }
+
+        console.log();
+        await ctx.cleanup();
+      } catch (error) {
+        spinner.fail('Failed to fetch plugin info');
+        console.error(chalk.red((error as Error).message));
+        process.exit(1);
+      }
+    });
+
+  // ─── plugin:publish ───────────────────────────────────────────────────────
+
+  plugin
+    .command('publish')
+    .description('Publish current directory as a plugin to the ForkCart Plugin Store')
+    .action(async () => {
+      const spinner = ora('Reading package.json...').start();
+
+      try {
+        const { readFileSync } = await import('node:fs');
+        const { resolve } = await import('node:path');
+
+        const pkgPath = resolve(process.cwd(), 'package.json');
+        let pkg: Record<string, unknown>;
+        try {
+          pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+        } catch {
+          spinner.fail('No package.json found in current directory');
+          process.exit(1);
+        }
+
+        const name = pkg['name'] as string;
+        const version = pkg['version'] as string;
+        const description = pkg['description'] as string | undefined;
+        const author =
+          typeof pkg['author'] === 'string'
+            ? pkg['author']
+            : typeof pkg['author'] === 'object' && pkg['author']
+              ? (pkg['author'] as Record<string, string>)['name']
+              : undefined;
+
+        if (!name || !version) {
+          spinner.fail('package.json must have name and version');
+          process.exit(1);
+        }
+
+        const slug = name
+          .replace(/^@[^/]+\//, '')
+          .replace(/^forkcart-plugin-/, '')
+          .replace(/[^a-z0-9]+/g, '-');
+
+        spinner.text = `Publishing ${name}@${version}...`;
+
+        const ctx = await createCliContext();
+        const { PluginStoreService } = await import('@forkcart/core');
+        const storeService = new PluginStoreService({
+          db: ctx.db,
+          pluginLoader: ctx.pluginLoader,
+        });
+
+        // Check if plugin already exists
+        const existing = await storeService.getPlugin(slug);
+        if (existing) {
+          // Publish new version
+          await storeService.publishVersion(existing.id, {
+            version,
+            packageName: name,
+            changelog: `Release ${version}`,
+          });
+          spinner.succeed(`Published new version ${version} for ${name}`);
+        } else {
+          // Submit new plugin
+          await storeService.submitPlugin({
+            name: name.replace(/^@[^/]+\//, '').replace(/^forkcart-plugin-/, ''),
+            slug,
+            packageName: name,
+            version,
+            description: description ?? undefined,
+            author: author ?? undefined,
+          });
+          spinner.succeed(`Submitted ${name}@${version} to the Plugin Store (pending review)`);
+        }
+
+        await ctx.cleanup();
+      } catch (error) {
+        spinner.fail('Failed to publish plugin');
+        console.error(chalk.red((error as Error).message));
+        process.exit(1);
+      }
+    });
+
   // ─── plugin:run ────────────────────────────────────────────────────────────
 
   plugin

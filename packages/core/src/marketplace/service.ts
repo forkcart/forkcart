@@ -5,10 +5,17 @@ import {
   marketplaceListings,
   marketplaceOrders,
   marketplaceSyncLogs,
+  orders,
+  orderItems,
+  orderStatusHistory,
+  customers,
+  addresses,
+  media,
 } from '@forkcart/database/schemas';
 import { products } from '@forkcart/database/schemas';
+import { asc } from 'drizzle-orm';
 import type { MarketplaceProviderRegistry } from './registry';
-import type { MarketplaceProductInput } from './types';
+import type { MarketplaceProductInput, MarketplaceOrder } from './types';
 import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
 import { createLogger } from '../lib/logger';
 
@@ -245,6 +252,13 @@ export class MarketplaceService {
     for (const product of productsToSync) {
       if (!product) continue;
       try {
+        // Load product images from media table
+        const productImages = await this.db
+          .select()
+          .from(media)
+          .where(and(eq(media.entityType, 'product'), eq(media.entityId, product.id)))
+          .orderBy(asc(media.sortOrder));
+
         const input: MarketplaceProductInput = {
           sku: product.sku ?? product.id,
           name: product.name,
@@ -252,7 +266,7 @@ export class MarketplaceService {
           price: product.price,
           currency: 'EUR',
           quantity: product.inventoryQuantity ?? 0,
-          images: [], // TODO: load product images
+          images: productImages.map((img) => img.path),
         };
 
         // Check if listing already exists
@@ -343,12 +357,28 @@ export class MarketplaceService {
         continue;
       }
 
-      await this.db.insert(marketplaceOrders).values({
-        externalId: order.externalId,
-        marketplaceId,
-        orderData: order as unknown as Record<string, unknown>,
-        importedAt: new Date(),
-      });
+      const [insertedOrder] = await this.db
+        .insert(marketplaceOrders)
+        .values({
+          externalId: order.externalId,
+          marketplaceId,
+          orderData: order as unknown as Record<string, unknown>,
+          importedAt: new Date(),
+        })
+        .returning();
+
+      // Auto-convert to ForkCart order
+      try {
+        await this.convertMarketplaceOrder(insertedOrder!.id);
+      } catch (convertErr) {
+        logger.error(
+          {
+            externalId: order.externalId,
+            error: convertErr instanceof Error ? convertErr.message : 'Unknown error',
+          },
+          'Failed to convert marketplace order — raw import kept',
+        );
+      }
 
       await provider.acknowledgeOrder(order.externalId);
       imported++;
@@ -361,6 +391,219 @@ export class MarketplaceService {
     });
 
     return { total: orders.length, imported, skipped };
+  }
+
+  // ─── Order Conversion ──────────────────────────────────────────────────────
+
+  /** Map marketplace order status → ForkCart order status */
+  private mapOrderStatus(marketplaceStatus: string): string {
+    const normalized = marketplaceStatus.toLowerCase().trim();
+    const statusMap: Record<string, string> = {
+      pending: 'pending',
+      unshipped: 'pending',
+      new: 'pending',
+      processing: 'processing',
+      shipped: 'shipped',
+      delivered: 'delivered',
+      completed: 'delivered',
+      cancelled: 'cancelled',
+      canceled: 'cancelled',
+      refunded: 'refunded',
+      returned: 'refunded',
+    };
+    return statusMap[normalized] ?? 'pending';
+  }
+
+  /** Generate a unique order number for marketplace-imported orders */
+  private generateMarketplaceOrderNumber(marketplaceId: string, externalId: string): string {
+    const prefix = marketplaceId.substring(0, 3).toUpperCase();
+    const suffix = externalId.substring(0, 12).replace(/[^a-zA-Z0-9]/g, '');
+    return `MKT-${prefix}-${suffix}`;
+  }
+
+  /**
+   * Convert a raw marketplace order into a real ForkCart order.
+   * Creates/matches customer, addresses, order + items, and links back.
+   */
+  async convertMarketplaceOrder(marketplaceOrderId: string): Promise<string> {
+    const mpOrder = await this.db.query.marketplaceOrders.findFirst({
+      where: eq(marketplaceOrders.id, marketplaceOrderId),
+    });
+    if (!mpOrder) throw new Error(`Marketplace order ${marketplaceOrderId} not found`);
+    if (mpOrder.forkcartOrderId) {
+      logger.info(
+        { marketplaceOrderId, forkcartOrderId: mpOrder.forkcartOrderId },
+        'Marketplace order already converted',
+      );
+      return mpOrder.forkcartOrderId;
+    }
+
+    const orderData = mpOrder.orderData as unknown as MarketplaceOrder;
+
+    // 1. Find or create customer
+    const customerId = await this.findOrCreateCustomer(orderData);
+
+    // 2. Create shipping address
+    const shippingAddr = orderData.shippingAddress;
+    const [shippingAddress] = await this.db
+      .insert(addresses)
+      .values({
+        customerId,
+        firstName: shippingAddr.firstName,
+        lastName: shippingAddr.lastName,
+        addressLine1: shippingAddr.addressLine1,
+        addressLine2: shippingAddr.addressLine2 ?? null,
+        city: shippingAddr.city,
+        state: shippingAddr.state ?? null,
+        postalCode: shippingAddr.postalCode,
+        country: shippingAddr.country,
+      })
+      .returning();
+
+    // Use the same address as billing (marketplace orders typically don't separate them)
+    const billingAddressId = shippingAddress!.id;
+    const shippingAddressId = shippingAddress!.id;
+
+    // 3. Calculate totals from items
+    const subtotal = orderData.items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    const total = orderData.totalAmount;
+    const shippingTotal = total - subtotal > 0 ? total - subtotal : 0;
+
+    const forkcartStatus = this.mapOrderStatus(orderData.status);
+    const orderNumber = this.generateMarketplaceOrderNumber(
+      mpOrder.marketplaceId,
+      mpOrder.externalId,
+    );
+
+    // 4. Create the ForkCart order
+    const [newOrder] = await this.db
+      .insert(orders)
+      .values({
+        orderNumber,
+        customerId,
+        status: forkcartStatus,
+        subtotal,
+        shippingTotal,
+        taxTotal: 0,
+        discountTotal: 0,
+        total,
+        currency: orderData.currency ?? 'EUR',
+        shippingAddressId,
+        billingAddressId,
+        metadata: {
+          source: 'marketplace',
+          marketplaceId: mpOrder.marketplaceId,
+          externalId: mpOrder.externalId,
+        },
+        createdAt: orderData.orderedAt ? new Date(orderData.orderedAt) : new Date(),
+      })
+      .returning();
+
+    const forkcartOrderId = newOrder!.id;
+
+    // 5. Create order items — match products by SKU where possible
+    for (const item of orderData.items) {
+      let productId: string | null = null;
+
+      if (item.sku) {
+        const product = await this.db.query.products.findFirst({
+          where: eq(products.sku, item.sku),
+        });
+        if (product) productId = product.id;
+      }
+
+      // If no product found by SKU, we still create the order item with a placeholder
+      // productId is required in the schema, so we need a match
+      if (!productId) {
+        logger.warn(
+          { sku: item.sku, orderNumber, externalId: mpOrder.externalId },
+          'No matching product found for marketplace order item SKU — skipping item',
+        );
+        continue;
+      }
+
+      await this.db.insert(orderItems).values({
+        orderId: forkcartOrderId,
+        productId,
+        productName: item.name,
+        sku: item.sku ?? null,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        totalPrice: item.unitPrice * item.quantity,
+      });
+    }
+
+    // 6. Record status history
+    await this.db.insert(orderStatusHistory).values({
+      orderId: forkcartOrderId,
+      fromStatus: null,
+      toStatus: forkcartStatus,
+      note: `Imported from ${mpOrder.marketplaceId} (${mpOrder.externalId})`,
+    });
+
+    // 7. Link marketplace order → ForkCart order
+    await this.db
+      .update(marketplaceOrders)
+      .set({ forkcartOrderId })
+      .where(eq(marketplaceOrders.id, marketplaceOrderId));
+
+    // 8. Update customer stats
+    await this.db
+      .update(customers)
+      .set({
+        orderCount:
+          (await this.db.query.customers.findFirst({ where: eq(customers.id, customerId) }))!
+            .orderCount + 1,
+        totalSpent:
+          (await this.db.query.customers.findFirst({ where: eq(customers.id, customerId) }))!
+            .totalSpent + total,
+        updatedAt: new Date(),
+      })
+      .where(eq(customers.id, customerId));
+
+    logger.info(
+      {
+        marketplaceOrderId,
+        forkcartOrderId,
+        orderNumber,
+        marketplace: mpOrder.marketplaceId,
+        externalId: mpOrder.externalId,
+      },
+      'Marketplace order converted to ForkCart order',
+    );
+
+    return forkcartOrderId;
+  }
+
+  /** Find existing customer by email or create a new one */
+  private async findOrCreateCustomer(orderData: MarketplaceOrder): Promise<string> {
+    const email = orderData.customerEmail?.toLowerCase().trim();
+    const addr = orderData.shippingAddress;
+
+    // Parse customerName into first/last
+    const nameParts = (orderData.customerName ?? '').trim().split(/\s+/);
+    const firstName = nameParts[0] || addr.firstName;
+    const lastName = nameParts.slice(1).join(' ') || addr.lastName;
+
+    if (email) {
+      const existing = await this.db.query.customers.findFirst({
+        where: eq(customers.email, email),
+      });
+      if (existing) return existing.id;
+    }
+
+    // Create new customer
+    const customerEmail = email || `marketplace-${Date.now()}@placeholder.local`;
+    const [customer] = await this.db
+      .insert(customers)
+      .values({
+        email: customerEmail,
+        firstName,
+        lastName,
+      })
+      .returning();
+
+    return customer!.id;
   }
 
   // ─── Inventory Sync ───────────────────────────────────────────────────────

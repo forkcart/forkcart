@@ -86,6 +86,17 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
 
+    // Tax calculation and class listing are public (storefront cart/checkout)
+    if (path === '/api/v1/tax/calculate' && c.req.method === 'POST') {
+      return next();
+    }
+    if (path.startsWith('/api/v1/tax/classes') && c.req.method === 'GET') {
+      return next();
+    }
+    if (path.startsWith('/api/v1/tax/settings') && c.req.method === 'GET') {
+      return next();
+    }
+
     const authHeader = c.req.header('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return c.json(

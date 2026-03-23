@@ -26,6 +26,7 @@ export * from './variants/index';
 export * from './attributes/index';
 export * from './mobile-app/index';
 export * from './marketplace/index';
+export * from './plugin-store/index';
 export { createLogger } from './lib/logger';
 export {
   encryptSecret,

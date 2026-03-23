@@ -2,8 +2,9 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Plus, Trash2, Check, X } from 'lucide-react';
+import { Plus, Trash2, Check, X, ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
+import Link from 'next/link';
 
 interface TaxClass {
   id: string;
@@ -125,7 +126,11 @@ export default function TaxClassesPage() {
             )}
             {classes.map((cls) => (
               <tr key={cls.id} className="border-b last:border-0 hover:bg-muted/50">
-                <td className="p-4 font-medium">{cls.name}</td>
+                <td className="p-4 font-medium">
+                  <Link href={`/tax/${cls.id}`} className="hover:text-primary hover:underline">
+                    {cls.name}
+                  </Link>
+                </td>
                 <td className="p-4 text-sm text-muted-foreground">{cls.description ?? '—'}</td>
                 <td className="p-4">
                   {cls.isDefault && (
@@ -144,13 +149,24 @@ export default function TaxClassesPage() {
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <button
-                    onClick={() => deleteMutation.mutate(cls.id)}
-                    className="text-destructive hover:text-destructive/80"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteMutation.mutate(cls.id);
+                      }}
+                      className="text-destructive hover:text-destructive/80"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                    <Link
+                      href={`/tax/${cls.id}`}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Link>
+                  </div>
                 </td>
               </tr>
             ))}
