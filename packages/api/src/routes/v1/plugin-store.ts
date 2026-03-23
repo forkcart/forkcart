@@ -158,40 +158,6 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
     return c.json({ data: review }, 201);
   });
 
-  // ─── Review & Approval (superadmin) ───────────────────────────────────────
-
-  /** Get pending plugins for review */
-  router.get('/pending', requireRole('superadmin'), async (c) => {
-    const pending = await pluginStoreService.getPendingPlugins();
-    return c.json({ data: pending });
-  });
-
-  /** Approve a plugin */
-  router.post('/:slug/approve', requireRole('superadmin'), async (c) => {
-    const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
-    try {
-      const result = await pluginStoreService.approvePlugin(slug);
-      return c.json({ data: result });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Approval failed';
-      return c.json({ error: { code: 'BAD_REQUEST', message } }, 400);
-    }
-  });
-
-  /** Reject a plugin */
-  router.post('/:slug/reject', requireRole('superadmin'), async (c) => {
-    const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
-    const body = await c.req.json().catch(() => ({}));
-    const reason = (body as { reason?: string }).reason ?? 'No reason provided';
-    try {
-      const result = await pluginStoreService.rejectPlugin(slug, reason);
-      return c.json({ data: result });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Rejection failed';
-      return c.json({ error: { code: 'BAD_REQUEST', message } }, 400);
-    }
-  });
-
   /** Publish a new version (admin) */
   router.put('/:slug/versions', requireRole('admin', 'superadmin'), async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });

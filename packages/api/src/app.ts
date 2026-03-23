@@ -133,7 +133,6 @@ import { createPublicVariantRoutes } from './routes/v1/public-variants';
 import { createMobileAppRoutes } from './routes/v1/mobile-app';
 import { createMarketplaceRoutes } from './routes/v1/marketplace';
 import { createPluginStoreRoutes } from './routes/v1/plugin-store';
-import { createDeveloperRoutes } from './routes/v1/developer';
 import {
   createCookieConsentRoutes,
   createPublicCookieConsentRoutes,
@@ -583,7 +582,6 @@ export async function createApp(db: Database) {
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
   v1.route('/store', createPluginStoreRoutes(pluginStoreService));
-  v1.route('/developer', createDeveloperRoutes(pluginStoreService));
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
