@@ -29,3 +29,4 @@ export * from './mobile-app';
 export * from './marketplace';
 export * from './cookie-consent';
 export * from './plugin-store';
+export * from './plugin-developers';

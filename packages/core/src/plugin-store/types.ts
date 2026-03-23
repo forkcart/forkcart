@@ -23,6 +23,7 @@ export interface PluginStoreListing {
   requirements: Record<string, string>;
   repository: string | null;
   license: string | null;
+  developerId: string | null;
   status: string;
   isFeatured: boolean;
   publishedAt: Date | null;
@@ -38,6 +39,7 @@ export interface PluginStoreVersion {
   changelog: string | null;
   minForkcartVersion: string | null;
   size: number | null;
+  zipPath: string | null;
   downloads: number;
   status: string;
   publishedAt: Date | null;
@@ -112,6 +114,39 @@ export interface PublishVersionInput {
 export interface PluginStoreListingWithDetails extends PluginStoreListing {
   versions: PluginStoreVersion[];
   reviews: PluginStoreReview[];
+}
+
+export interface PluginDeveloper {
+  id: string;
+  userId: string | null;
+  companyName: string;
+  website: string | null;
+  description: string | null;
+  logo: string | null;
+  verified: boolean;
+  apiKey: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RegisterDeveloperInput {
+  companyName: string;
+  website?: string;
+  description?: string;
+  logo?: string;
+}
+
+export interface ForkcartPluginManifest {
+  name: string;
+  slug: string;
+  packageName: string;
+  version: string;
+  type: string;
+  description: string;
+  author: string;
+  license?: string;
+  minForkcartVersion?: string;
+  entryPoint?: string;
 }
 
 export interface CategoryCount {

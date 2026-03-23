@@ -25,6 +25,7 @@
     "@forkcart/database": "workspace:*",
     "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
+    "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.38.0",
@@ -33,6 +34,7 @@
     "pino": "^9.5.0"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/archiver": "^7.0.0",
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.10",

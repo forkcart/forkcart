@@ -1,46 +1,36 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  CreditCard,
-  Globe,
-  Mail,
-  Truck,
-  BarChart,
-  Puzzle,
   Search,
-  Download,
+  Package,
+  ShoppingBag,
+  CreditCard,
+  Truck,
+  Mail,
+  BarChart3,
+  Globe,
+  Palette,
+  Boxes,
+  Check,
+  X,
   Loader2,
-  Trash2,
+  Settings,
+  Power,
+  PowerOff,
+  Download,
+  Star,
+  ArrowUpCircle,
+  Clock,
   CheckCircle,
   XCircle,
-  Package,
+  Store,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 import { apiClient } from '@/lib/api-client';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
-
-interface PluginSettingSchema {
-  key: string;
-  type: string;
-  label?: string;
-  required?: boolean;
-  secret?: boolean;
-  default?: unknown;
-  options?: string[];
-  description?: string;
-}
-
-interface PluginSetting {
-  key: string;
-  value: unknown;
-}
 
 interface Plugin {
   id: string;
@@ -48,537 +38,731 @@ interface Plugin {
   version: string;
   description: string | null;
   author: string | null;
-  type: string;
+  type: string | null;
   isActive: boolean;
   source: string;
-  settings: PluginSetting[];
-  settingsSchema: PluginSettingSchema[];
-  requiredSettings: unknown[];
-  adminPages: unknown[];
-  installedAt: string;
+  settings?: { key: string; value: unknown }[];
 }
 
-interface OfficialPlugin {
+interface StoreListing {
+  id: string;
   name: string;
-  package: string;
-  description: string;
+  slug: string;
+  packageName: string;
+  description: string | null;
+  shortDescription: string | null;
+  author: string | null;
+  version: string;
   type: string;
-  icon: string;
+  icon: string | null;
+  pricing: string;
+  downloads: number;
+  rating: string | null;
+  ratingCount: number;
+  status: string;
+  tags: string[];
+  createdAt: string;
+  versions?: { version: string; changelog: string | null; createdAt: string }[];
+}
+
+interface UpdateAvailable {
+  listingId: string;
+  name: string;
+  slug: string;
+  installedVersion: string;
+  latestVersion: string;
+  changelog: string | null;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
-const OFFICIAL_PLUGINS: OfficialPlugin[] = [
-  {
-    name: 'stripe',
-    package: '@forkcart/plugin-stripe',
-    description: 'Accept payments via Stripe',
-    type: 'payment',
-    icon: 'CreditCard',
-  },
-  {
-    name: 'mailgun',
-    package: '@forkcart/plugin-mailgun',
-    description: 'Send transactional emails via Mailgun',
-    type: 'email',
-    icon: 'Mail',
-  },
-  {
-    name: 'smtp',
-    package: '@forkcart/plugin-smtp',
-    description: 'Send emails via any SMTP server',
-    type: 'email',
-    icon: 'Mail',
-  },
-  {
-    name: 'marketplace-amazon',
-    package: '@forkcart/plugin-marketplace-amazon',
-    description: 'Sell on Amazon via SP-API',
-    type: 'marketplace',
-    icon: 'Globe',
-  },
-  {
-    name: 'marketplace-ebay',
-    package: '@forkcart/plugin-marketplace-ebay',
-    description: 'Sell on eBay',
-    type: 'marketplace',
-    icon: 'Globe',
-  },
-  {
-    name: 'marketplace-otto',
-    package: '@forkcart/plugin-marketplace-otto',
-    description: 'Sell on OTTO Market',
-    type: 'marketplace',
-    icon: 'Globe',
-  },
-  {
-    name: 'marketplace-kaufland',
-    package: '@forkcart/plugin-marketplace-kaufland',
-    description: 'Sell on Kaufland',
-    type: 'marketplace',
-    icon: 'Globe',
-  },
-];
-
-const TYPE_CONFIG: Record<string, { badge: string; icon: LucideIcon; variant: string }> = {
-  payment: { badge: 'Payment', icon: CreditCard, variant: 'blue' },
-  marketplace: { badge: 'Marketplace', icon: Globe, variant: 'purple' },
-  email: { badge: 'Email', icon: Mail, variant: 'green' },
-  shipping: { badge: 'Shipping', icon: Truck, variant: 'warning' },
-  analytics: { badge: 'Analytics', icon: BarChart, variant: 'default' },
-  general: { badge: 'General', icon: Puzzle, variant: 'outline' },
+const TYPE_ICONS: Record<string, React.ReactNode> = {
+  payment: <CreditCard className="h-5 w-5" />,
+  marketplace: <ShoppingBag className="h-5 w-5" />,
+  notification: <Mail className="h-5 w-5" />,
+  email: <Mail className="h-5 w-5" />,
+  shipping: <Truck className="h-5 w-5" />,
+  analytics: <BarChart3 className="h-5 w-5" />,
+  seo: <Globe className="h-5 w-5" />,
+  theme: <Palette className="h-5 w-5" />,
+  other: <Boxes className="h-5 w-5" />,
 };
 
-const ICON_MAP: Record<string, LucideIcon> = {
-  CreditCard,
-  Globe,
-  Mail,
-  Truck,
-  BarChart,
-  Puzzle,
+const TYPE_COLORS: Record<string, string> = {
+  payment: 'bg-emerald-100 text-emerald-700',
+  marketplace: 'bg-blue-100 text-blue-700',
+  notification: 'bg-amber-100 text-amber-700',
+  email: 'bg-amber-100 text-amber-700',
+  shipping: 'bg-violet-100 text-violet-700',
+  analytics: 'bg-pink-100 text-pink-700',
+  seo: 'bg-cyan-100 text-cyan-700',
+  theme: 'bg-orange-100 text-orange-700',
+  other: 'bg-gray-100 text-gray-700',
 };
 
-function getTypeBadgeVariant(
-  type: string,
-): 'blue' | 'purple' | 'green' | 'warning' | 'default' | 'outline' {
-  const map: Record<string, 'blue' | 'purple' | 'green' | 'warning' | 'default' | 'outline'> = {
-    payment: 'blue',
-    marketplace: 'purple',
-    email: 'green',
-    shipping: 'warning',
-    analytics: 'default',
-    general: 'outline',
-  };
-  return map[type] ?? 'outline';
-}
+const FRIENDLY_NAMES: Record<string, string> = {
+  stripe: 'Stripe Payments',
+  smtp: 'SMTP Email',
+  mailgun: 'Mailgun Email',
+  'marketplace-amazon': 'Amazon Marketplace',
+  'marketplace-ebay': 'eBay Marketplace',
+  'marketplace-kaufland': 'Kaufland Marketplace',
+  'marketplace-otto': 'OTTO Marketplace',
+};
 
-function PluginTypeBadge({ type }: { type: string }) {
-  const config = TYPE_CONFIG[type] ?? TYPE_CONFIG['general']!;
-  const Icon = config.icon;
-  return (
-    <Badge variant={getTypeBadgeVariant(type)}>
-      <Icon className="mr-1 h-3 w-3" />
-      {config.badge}
-    </Badge>
-  );
-}
+const DESCRIPTIONS: Record<string, string> = {
+  stripe: 'Accept credit card payments via Stripe. Cards, Apple Pay, Google Pay & 135+ currencies.',
+  smtp: 'Send transactional emails via any SMTP server — Gmail, Outlook, or custom.',
+  mailgun: 'Reliable transactional emails via Mailgun. Supports EU and US regions.',
+  'marketplace-amazon': 'Sync products to Amazon and import orders. All EU marketplaces supported.',
+  'marketplace-ebay': 'List products on eBay, manage inventory and import orders.',
+  'marketplace-kaufland': 'Connect to Kaufland.de — sync products and manage orders.',
+  'marketplace-otto': "Sell on OTTO.de — Germany's #2 online marketplace.",
+};
 
-// ─── Page ───────────────────────────────────────────────────────────────────
+type TabType = 'installed' | 'store' | 'pending';
+
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export default function PluginsPage() {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<'installed' | 'marketplace'>('installed');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [npmPackage, setNpmPackage] = useState('');
-  const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  // ─── Queries ────────────────────────────────────────────────────────────
-
-  const {
-    data: pluginsData,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ['plugins'],
-    queryFn: () => apiClient<{ data: Plugin[] }>('/plugins'),
-  });
-
-  const plugins = pluginsData?.data ?? [];
-
-  // ─── Mutations ──────────────────────────────────────────────────────────
-
-  const toggleMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      apiClient(`/plugins/${id}/toggle`, {
-        method: 'PUT',
-        body: JSON.stringify({ isActive }),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] });
-    },
-    onError: (err) => {
-      showToast('error', err instanceof Error ? err.message : 'Failed to toggle plugin');
-    },
-  });
-
-  const installMutation = useMutation({
-    mutationFn: (packageName: string) =>
-      apiClient<{ data: { success: boolean; pluginId: string; name: string } }>(
-        '/plugins/install',
-        {
-          method: 'POST',
-          body: JSON.stringify({ packageName }),
-        },
-      ),
-    onSuccess: (res) => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] });
-      setNpmPackage('');
-      showToast('success', `Plugin "${res.data.name}" installed`);
-    },
-    onError: (err) => {
-      showToast('error', err instanceof Error ? err.message : 'Installation failed');
-    },
-  });
-
-  const uninstallMutation = useMutation({
-    mutationFn: (id: string) => apiClient(`/plugins/${id}/uninstall`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['plugins'] });
-      setConfirmUninstall(null);
-      showToast('success', 'Plugin uninstalled');
-    },
-    onError: (err) => {
-      showToast('error', err instanceof Error ? err.message : 'Uninstall failed');
-    },
-  });
-
-  function showToast(type: 'success' | 'error', text: string) {
-    setToast({ type, text });
-    setTimeout(() => setToast(null), 4000);
-  }
-
-  // ─── Marketplace helpers ────────────────────────────────────────────────
-
-  const installedNames = new Set(plugins.map((p) => p.name));
-
-  const filteredMarketplacePlugins = OFFICIAL_PLUGINS.filter(
-    (p) =>
-      !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.type.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  // ─── Render ─────────────────────────────────────────────────────────────
+  const [activeTab, setActiveTab] = useState<TabType>('installed');
 
   return (
     <div>
       {/* Header */}
-      <div>
+      <div className="rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent p-8">
         <h1 className="text-3xl font-bold">Plugins</h1>
-        <p className="mt-1 text-muted-foreground">
-          Install, configure, and manage plugins for your store
+        <p className="mt-2 text-muted-foreground">
+          Manage installed plugins, browse the store, and review submissions
         </p>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div
-          className={cn(
-            'mt-4 flex items-center gap-2 rounded-md p-3 text-sm',
-            toast.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700',
-          )}
-        >
-          {toast.type === 'success' ? (
-            <CheckCircle className="h-4 w-4 shrink-0" />
-          ) : (
-            <XCircle className="h-4 w-4 shrink-0" />
-          )}
-          {toast.text}
-        </div>
-      )}
-
       {/* Tabs */}
-      <div className="mt-6 flex gap-1 rounded-lg bg-muted p-1">
-        <button
+      <div className="mt-6 flex gap-1 rounded-lg border bg-muted/50 p-1">
+        <TabButton
+          active={activeTab === 'installed'}
           onClick={() => setActiveTab('installed')}
-          className={cn(
-            'flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-            activeTab === 'installed'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          Installed
-          {plugins.length > 0 && (
-            <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-              {plugins.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('marketplace')}
-          className={cn(
-            'flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors',
-            activeTab === 'marketplace'
-              ? 'bg-background text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground',
-          )}
-        >
-          Marketplace
-        </button>
+          icon={<Package className="h-4 w-4" />}
+          label="Installed"
+        />
+        <TabButton
+          active={activeTab === 'store'}
+          onClick={() => setActiveTab('store')}
+          icon={<Store className="h-4 w-4" />}
+          label="Store"
+        />
+        <TabButton
+          active={activeTab === 'pending'}
+          onClick={() => setActiveTab('pending')}
+          icon={<Clock className="h-4 w-4" />}
+          label="Pending Reviews"
+        />
       </div>
 
-      {/* Installed Tab */}
-      {activeTab === 'installed' && (
-        <div className="mt-6">
-          {isLoading && (
-            <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Loading plugins...
-            </div>
-          )}
+      {/* Tab Content */}
+      <div className="mt-6">
+        {activeTab === 'installed' && <InstalledTab />}
+        {activeTab === 'store' && <StoreTab />}
+        {activeTab === 'pending' && <PendingTab />}
+      </div>
+    </div>
+  );
+}
 
-          {error && (
-            <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center text-destructive">
-              Failed to load plugins. Please try again.
-            </div>
-          )}
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+        active
+          ? 'bg-background text-foreground shadow-sm'
+          : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
-          {!isLoading && !error && plugins.length === 0 && (
-            <div className="rounded-lg border border-dashed p-12 text-center">
-              <Package className="mx-auto h-12 w-12 text-muted-foreground/40" />
-              <h3 className="mt-4 text-lg font-semibold">No plugins installed</h3>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Browse the Marketplace tab to find and install plugins.
+// ─── Installed Tab ──────────────────────────────────────────────────────────
+
+function InstalledTab() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['plugins'],
+    queryFn: () => apiClient<{ data: Plugin[] }>('/plugins'),
+  });
+
+  const { data: updatesData } = useQuery({
+    queryKey: ['store-updates'],
+    queryFn: () => apiClient<{ data: UpdateAvailable[] }>('/store/updates'),
+  });
+
+  const toggleMutation = useMutation({
+    mutationFn: ({ id, activate }: { id: string; activate: boolean }) =>
+      apiClient(`/plugins/${id}/${activate ? 'activate' : 'deactivate'}`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] });
+    },
+  });
+
+  const allPlugins = data?.data ?? [];
+  const updates = updatesData?.data ?? [];
+
+  const plugins = allPlugins.filter((p) => {
+    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterType && p.type !== filterType) return false;
+    if (filterStatus === 'active' && !p.isActive) return false;
+    if (filterStatus === 'inactive' && p.isActive) return false;
+    return true;
+  });
+
+  const activeCount = allPlugins.filter((p) => p.isActive).length;
+  const types = [...new Set(allPlugins.map((p) => p.type).filter(Boolean))] as string[];
+
+  return (
+    <div>
+      {/* Updates Banner */}
+      {updates.length > 0 && (
+        <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <ArrowUpCircle className="h-5 w-5 text-amber-600" />
+            <span className="font-medium text-amber-800">
+              {updates.length} update{updates.length !== 1 ? 's' : ''} available
+            </span>
+          </div>
+          <div className="mt-2 space-y-1">
+            {updates.map((u) => (
+              <p key={u.listingId} className="text-sm text-amber-700">
+                <strong>{u.name}</strong>: {u.installedVersion} → {u.latestVersion}
               </p>
-              <button
-                onClick={() => setActiveTab('marketplace')}
-                className="mt-4 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Browse Marketplace
-              </button>
-            </div>
-          )}
-
-          {!isLoading && !error && plugins.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {plugins.map((plugin) => (
-                <div
-                  key={plugin.id}
-                  onClick={() => router.push(`/plugins/${plugin.id}`)}
-                  className="group cursor-pointer rounded-lg border bg-card p-5 shadow-sm transition-all hover:border-primary/30 hover:shadow-md"
-                >
-                  {/* Card header */}
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={cn(
-                          'flex h-10 w-10 items-center justify-center rounded-lg',
-                          plugin.isActive ? 'bg-green-100' : 'bg-muted',
-                        )}
-                      >
-                        {(() => {
-                          const config = TYPE_CONFIG[plugin.type] ?? TYPE_CONFIG['general']!;
-                          const Icon = config.icon;
-                          return (
-                            <Icon
-                              className={cn(
-                                'h-5 w-5',
-                                plugin.isActive ? 'text-green-600' : 'text-muted-foreground',
-                              )}
-                            />
-                          );
-                        })()}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="truncate font-semibold group-hover:text-primary">
-                          {plugin.name}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">v{plugin.version}</p>
-                      </div>
-                    </div>
-
-                    {/* Active indicator */}
-                    <div
-                      className={cn(
-                        'mt-1 h-2.5 w-2.5 rounded-full',
-                        plugin.isActive ? 'bg-green-500' : 'bg-gray-300',
-                      )}
-                      title={plugin.isActive ? 'Active' : 'Inactive'}
-                    />
-                  </div>
-
-                  {/* Description */}
-                  <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
-                    {plugin.description ?? 'No description'}
-                  </p>
-
-                  {/* Footer */}
-                  <div className="mt-4 flex items-center justify-between">
-                    <PluginTypeBadge type={plugin.type} />
-
-                    <div className="flex items-center gap-2">
-                      {/* Toggle */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleMutation.mutate({
-                            id: plugin.id,
-                            isActive: !plugin.isActive,
-                          });
-                        }}
-                        className={cn(
-                          'relative inline-flex h-5 w-9 items-center rounded-full transition-colors',
-                          plugin.isActive ? 'bg-green-500' : 'bg-gray-300',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform',
-                            plugin.isActive ? 'translate-x-[18px]' : 'translate-x-[3px]',
-                          )}
-                        />
-                      </button>
-
-                      {/* Uninstall */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfirmUninstall(plugin.id);
-                        }}
-                        className="rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                        title="Uninstall"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {plugin.author && (
-                    <p className="mt-2 text-xs text-muted-foreground/60">by {plugin.author}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Marketplace Tab */}
-      {activeTab === 'marketplace' && (
-        <div className="mt-6">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search plugins..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+      {/* Search & Filters */}
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search plugins..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-11 w-full rounded-lg border bg-card pl-10 pr-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setFilterStatus('all')}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${filterStatus === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+        >
+          All ({allPlugins.length})
+        </button>
+        <button
+          onClick={() => setFilterStatus('active')}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${filterStatus === 'active' ? 'bg-emerald-600 text-white' : 'bg-muted hover:bg-muted/80'}`}
+        >
+          Active ({activeCount})
+        </button>
+        <button
+          onClick={() => setFilterStatus('inactive')}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${filterStatus === 'inactive' ? 'bg-gray-600 text-white' : 'bg-muted hover:bg-muted/80'}`}
+        >
+          Inactive ({allPlugins.length - activeCount})
+        </button>
+
+        <div className="mx-2 h-5 w-px bg-border" />
+
+        <button
+          onClick={() => setFilterType(null)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!filterType ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/80'}`}
+        >
+          All Types
+        </button>
+        {types.map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(filterType === type ? null : type)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors ${filterType === type ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            {TYPE_ICONS[type] ? (
+              <span className="[&>svg]:h-3 [&>svg]:w-3">{TYPE_ICONS[type]}</span>
+            ) : null}
+            {type}
+          </button>
+        ))}
+      </div>
+
+      {/* Plugin List */}
+      <div className="mt-6 space-y-3">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-
-          {/* Plugin grid */}
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredMarketplacePlugins.map((plugin) => {
-              const isInstalled = installedNames.has(plugin.name);
-              const Icon = ICON_MAP[plugin.icon] ?? Puzzle;
-
-              return (
-                <div key={plugin.name} className="rounded-lg border bg-card p-5 shadow-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
-                      <Icon className="h-5 w-5 text-muted-foreground" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold">{plugin.name}</h3>
-                      <p className="text-xs font-mono text-muted-foreground/60">{plugin.package}</p>
-                    </div>
-                  </div>
-
-                  <p className="mt-3 text-sm text-muted-foreground">{plugin.description}</p>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <PluginTypeBadge type={plugin.type} />
-
-                    {isInstalled ? (
-                      <Badge variant="success">Installed</Badge>
-                    ) : (
-                      <button
-                        onClick={() => installMutation.mutate(plugin.package)}
-                        disabled={installMutation.isPending}
-                        className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {installMutation.isPending ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Download className="h-3 w-3" />
-                        )}
-                        Install
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {filteredMarketplacePlugins.length === 0 && (
-            <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-              No plugins match your search.
-            </div>
-          )}
-
-          {/* Install from npm */}
-          <div className="mt-8 rounded-lg border bg-card p-5 shadow-sm">
-            <h3 className="font-semibold">Install from npm</h3>
+        ) : plugins.length === 0 ? (
+          <div className="rounded-lg border bg-card p-12 text-center shadow-sm">
+            <Package className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-medium">No plugins found</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Install a custom plugin by entering its npm package name.
+              {search ? 'Try a different search term' : 'No plugins match the current filters'}
             </p>
-            <div className="mt-3 flex gap-3">
-              <Input
-                placeholder="@forkcart/plugin-example or forkcart-plugin-custom"
-                value={npmPackage}
-                onChange={(e) => setNpmPackage(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && npmPackage.trim()) {
-                    installMutation.mutate(npmPackage.trim());
-                  }
-                }}
-                className="flex-1"
-              />
-              <button
-                onClick={() => {
-                  if (npmPackage.trim()) {
-                    installMutation.mutate(npmPackage.trim());
-                  }
-                }}
-                disabled={!npmPackage.trim() || installMutation.isPending}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-              >
-                {installMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Install
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        ) : (
+          plugins.map((plugin) => (
+            <PluginRow
+              key={plugin.id}
+              plugin={plugin}
+              onToggle={(activate) => toggleMutation.mutate({ id: plugin.id, activate })}
+              toggling={toggleMutation.isPending}
+              hasUpdate={updates.some((u) =>
+                u.name.toLowerCase().includes(plugin.name.toLowerCase()),
+              )}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
 
-      {/* Uninstall confirmation modal */}
-      {confirmUninstall && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl">
-            <h2 className="text-lg font-semibold">Uninstall Plugin</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Are you sure you want to uninstall this plugin? This action cannot be undone. All
-              plugin settings will be removed.
-            </p>
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                onClick={() => setConfirmUninstall(null)}
-                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => uninstallMutation.mutate(confirmUninstall)}
-                disabled={uninstallMutation.isPending}
-                className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
-              >
-                {uninstallMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                Uninstall
-              </button>
-            </div>
+function PluginRow({
+  plugin,
+  onToggle,
+  toggling,
+  hasUpdate,
+}: {
+  plugin: Plugin;
+  onToggle: (activate: boolean) => void;
+  toggling: boolean;
+  hasUpdate?: boolean;
+}) {
+  const type = plugin.type ?? 'other';
+  const typeColor = TYPE_COLORS[type] ?? TYPE_COLORS.other;
+  const friendlyName = FRIENDLY_NAMES[plugin.name] ?? plugin.name;
+  const description =
+    DESCRIPTIONS[plugin.name] ?? plugin.description ?? 'No description available.';
+  const configuredSettings = (plugin.settings ?? []).filter(
+    (s) => s.value !== null && s.value !== '' && s.value !== '••••••••',
+  ).length;
+
+  return (
+    <div
+      className={`rounded-lg border bg-card p-5 shadow-sm transition-all ${plugin.isActive ? 'border-emerald-200 bg-emerald-50/30' : ''}`}
+    >
+      <div className="flex items-start gap-4">
+        <div
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${plugin.isActive ? 'bg-emerald-100' : 'bg-muted'}`}
+        >
+          <span className={plugin.isActive ? 'text-emerald-600' : 'text-muted-foreground'}>
+            {TYPE_ICONS[type] ?? <Package className="h-5 w-5" />}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold">{friendlyName}</h3>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              v{plugin.version}
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${typeColor}`}
+            >
+              {type}
+            </span>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${plugin.isActive ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}
+            >
+              {plugin.isActive ? (
+                <>
+                  <Check className="h-3 w-3" /> Active
+                </>
+              ) : (
+                <>
+                  <X className="h-3 w-3" /> Inactive
+                </>
+              )}
+            </span>
+            {plugin.source === 'sdk' && (
+              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                SDK
+              </span>
+            )}
+            {hasUpdate && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                <ArrowUpCircle className="h-3 w-3" /> Update
+              </span>
+            )}
           </div>
+          <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+          {plugin.isActive && configuredSettings > 0 && (
+            <p className="mt-1 text-xs text-emerald-600">
+              <Settings className="mr-1 inline h-3 w-3" />
+              {configuredSettings} setting{configuredSettings !== 1 ? 's' : ''} configured
+            </p>
+          )}
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Link
+            href={`/plugins/${plugin.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium transition-colors hover:bg-muted"
+          >
+            <Settings className="h-3.5 w-3.5" /> Configure
+          </Link>
+          <button
+            onClick={() => onToggle(!plugin.isActive)}
+            disabled={toggling}
+            className={`inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+              plugin.isActive
+                ? 'border border-red-200 text-red-600 hover:bg-red-50'
+                : 'bg-emerald-600 text-white hover:bg-emerald-700'
+            }`}
+          >
+            {toggling ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : plugin.isActive ? (
+              <>
+                <PowerOff className="h-3.5 w-3.5" /> Deactivate
+              </>
+            ) : (
+              <>
+                <Power className="h-3.5 w-3.5" /> Activate
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Store Tab ──────────────────────────────────────────────────────────────
+
+function StoreTab() {
+  const queryClient = useQueryClient();
+  const [search, setSearch] = useState('');
+  const [filterType, setFilterType] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['store-plugins', search, filterType],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (filterType) params.set('type', filterType);
+      params.set('limit', '50');
+      return apiClient<{ data: StoreListing[]; pagination: { total: number } }>(
+        `/store?${params.toString()}`,
+      );
+    },
+  });
+
+  const installMutation = useMutation({
+    mutationFn: (slug: string) => apiClient(`/store/${slug}/install`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['plugins'] });
+      queryClient.invalidateQueries({ queryKey: ['store-plugins'] });
+    },
+  });
+
+  const plugins = data?.data ?? [];
+  const types = [
+    'payment',
+    'marketplace',
+    'email',
+    'shipping',
+    'analytics',
+    'seo',
+    'theme',
+    'other',
+  ];
+
+  return (
+    <div>
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          type="text"
+          placeholder="Search the plugin store..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="h-11 w-full rounded-lg border bg-card pl-10 pr-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+        />
+      </div>
+
+      {/* Type Filter */}
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => setFilterType(null)}
+          className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${!filterType ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80'}`}
+        >
+          All
+        </button>
+        {types.map((type) => (
+          <button
+            key={type}
+            onClick={() => setFilterType(filterType === type ? null : type)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium capitalize transition-colors ${filterType === type ? 'bg-primary/10 text-primary' : 'bg-muted hover:bg-muted/80'}`}
+          >
+            {TYPE_ICONS[type] ? (
+              <span className="[&>svg]:h-3 [&>svg]:w-3">{TYPE_ICONS[type]}</span>
+            ) : null}
+            {type}
+          </button>
+        ))}
+      </div>
+
+      {/* Store Grid */}
+      <div className="mt-6">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : plugins.length === 0 ? (
+          <div className="rounded-lg border bg-card p-12 text-center shadow-sm">
+            <Store className="mx-auto h-12 w-12 text-muted-foreground/50" />
+            <h3 className="mt-4 text-lg font-medium">No plugins in store</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {search ? 'Try a different search term' : 'The plugin store is empty'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {plugins.map((plugin) => (
+              <StorePluginCard
+                key={plugin.id}
+                plugin={plugin}
+                onInstall={() => installMutation.mutate(plugin.slug)}
+                installing={installMutation.isPending}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StorePluginCard({
+  plugin,
+  onInstall,
+  installing,
+}: {
+  plugin: StoreListing;
+  onInstall: () => void;
+  installing: boolean;
+}) {
+  const type = plugin.type ?? 'other';
+  const typeColor = TYPE_COLORS[type] ?? TYPE_COLORS.other;
+
+  return (
+    <div className="flex flex-col rounded-lg border bg-card p-5 shadow-sm transition-all hover:shadow-md">
+      <div className="flex items-start gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
+          {TYPE_ICONS[type] ?? <Package className="h-5 w-5" />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="font-semibold leading-tight">{plugin.name}</h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {plugin.author ?? 'Unknown'} · v{plugin.version}
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-3 flex-1 text-sm text-muted-foreground line-clamp-2">
+        {plugin.shortDescription ?? plugin.description ?? 'No description'}
+      </p>
+
+      <div className="mt-3 flex items-center gap-2">
+        <span
+          className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${typeColor}`}
+        >
+          {type}
+        </span>
+        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium capitalize text-muted-foreground">
+          {plugin.pricing}
+        </span>
+        {plugin.rating && (
+          <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600">
+            <Star className="h-3 w-3 fill-amber-500" />
+            {parseFloat(plugin.rating).toFixed(1)}
+          </span>
+        )}
+        <span className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground">
+          <Download className="h-3 w-3" />
+          {plugin.downloads}
+        </span>
+      </div>
+
+      <button
+        onClick={onInstall}
+        disabled={installing}
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+      >
+        {installing ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <>
+            <Download className="h-4 w-4" /> Install
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
+// ─── Pending Reviews Tab ────────────────────────────────────────────────────
+
+function PendingTab() {
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['store-pending'],
+    queryFn: () => apiClient<{ data: StoreListing[] }>('/store/pending'),
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (slug: string) => apiClient(`/store/${slug}/approve`, { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['store-pending'] });
+      queryClient.invalidateQueries({ queryKey: ['store-plugins'] });
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: (slug: string) =>
+      apiClient(`/store/${slug}/reject`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: 'Rejected by admin' }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['store-pending'] });
+    },
+  });
+
+  const pending = data?.data ?? [];
+
+  return (
+    <div>
+      {isLoading ? (
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : pending.length === 0 ? (
+        <div className="rounded-lg border bg-card p-12 text-center shadow-sm">
+          <CheckCircle className="mx-auto h-12 w-12 text-emerald-500/50" />
+          <h3 className="mt-4 text-lg font-medium">All caught up!</h3>
+          <p className="mt-1 text-sm text-muted-foreground">No plugins pending review</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {pending.map((plugin) => (
+            <PendingPluginRow
+              key={plugin.id}
+              plugin={plugin}
+              onApprove={() => approveMutation.mutate(plugin.slug)}
+              onReject={() => rejectMutation.mutate(plugin.slug)}
+              loading={approveMutation.isPending || rejectMutation.isPending}
+            />
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function PendingPluginRow({
+  plugin,
+  onApprove,
+  onReject,
+  loading,
+}: {
+  plugin: StoreListing;
+  onApprove: () => void;
+  onReject: () => void;
+  loading: boolean;
+}) {
+  const type = plugin.type ?? 'other';
+  const typeColor = TYPE_COLORS[type] ?? TYPE_COLORS.other;
+
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50/30 p-5 shadow-sm">
+      <div className="flex items-start gap-4">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+          <span className="text-amber-600">
+            {TYPE_ICONS[type] ?? <Package className="h-5 w-5" />}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold">{plugin.name}</h3>
+            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+              v{plugin.version}
+            </span>
+            <span
+              className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${typeColor}`}
+            >
+              {type}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+              <Clock className="h-3 w-3" /> In Review
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {plugin.shortDescription ?? plugin.description ?? 'No description'}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            by {plugin.author ?? 'Unknown'} · {plugin.packageName} · submitted{' '}
+            {new Date(plugin.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            onClick={onApprove}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-emerald-700 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                <CheckCircle className="h-3.5 w-3.5" /> Approve
+              </>
+            )}
+          </button>
+          <button
+            onClick={onReject}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-md border border-red-200 px-3 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50"
+          >
+            {loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <>
+                <XCircle className="h-3.5 w-3.5" /> Reject
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

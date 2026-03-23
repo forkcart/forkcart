@@ -1,7 +1,7 @@
 import { Sidebar } from '@/components/layout/sidebar';
 import { AuthGuard } from '@/components/layout/auth-guard';
 
-export default function PluginsLayout({ children }: { children: React.ReactNode }) {
+export default function StoreLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
       <div className="flex h-screen">

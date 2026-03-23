@@ -67,17 +67,11 @@ const NAV_ITEMS: NavItem[] = [
     roles: ['admin', 'superadmin'],
   },
   {
-    href: '/store',
-    label: 'Plugin Store',
-    icon: Store,
-    roles: ['admin', 'superadmin'],
-    group: 'System',
-  },
-  {
     href: '/plugins',
     label: 'Plugins',
     icon: Puzzle,
     roles: ['admin', 'superadmin'],
+    group: 'System',
   },
   { href: '/settings', label: 'Settings', icon: Settings, roles: ['admin', 'superadmin'] },
   { href: '/users', label: 'Users', icon: UserCog, roles: ['superadmin'] },
