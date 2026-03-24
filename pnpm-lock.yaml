@@ -497,15 +497,6 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
-  packages/plugins/social-proof:
-    devDependencies:
-      '@forkcart/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../plugin-sdk
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-
   packages/plugins/stripe:
     dependencies:
       '@forkcart/core':
