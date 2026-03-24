@@ -58,7 +58,7 @@ const SlugParamSchema = z.object({
 });
 
 /** Plugin Store routes */
-export function createPluginStoreRoutes(pluginStoreService: PluginStoreService, db?: unknown) {
+export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) {
   const router = new Hono();
 
   // ─── Registry proxy helper ──────────────────────────────────────────────
@@ -200,7 +200,7 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService, 
         // 3. Extract ZIP to plugins directory
         const AdmZip = (await import('adm-zip')).default;
         const zip = new AdmZip(zipBuffer);
-        const { resolve, join } = await import('node:path');
+        const { resolve } = await import('node:path');
         const { mkdirSync } = await import('node:fs');
         const targetDir = resolve(process.cwd(), '../../packages/plugins', slug);
         mkdirSync(targetDir, { recursive: true });

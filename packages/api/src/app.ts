@@ -581,7 +581,7 @@ export async function createApp(db: Database) {
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
-  v1.route('/store', createPluginStoreRoutes(pluginStoreService, db));
+  v1.route('/store', createPluginStoreRoutes(pluginStoreService));
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
@@ -622,7 +622,7 @@ export async function createApp(db: Database) {
   app.route('/api/v1/public/plugins', createPublicPluginRoutes(pluginLoader));
 
   // Public plugin store routes (no auth — browsing the store)
-  app.route('/api/v1/public/store', createPluginStoreRoutes(pluginStoreService, db));
+  app.route('/api/v1/public/store', createPluginStoreRoutes(pluginStoreService));
 
   // Public cookie consent routes (no auth — storefront banner config + logging)
   app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));
