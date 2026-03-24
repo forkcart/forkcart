@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import type { PluginLoader, PluginScheduler } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
+import { sql } from 'drizzle-orm';
+import { rm } from 'node:fs/promises';
 import type { Context } from 'hono';
 
 const UpdateSettingsSchema = z.record(z.string(), z.unknown());
@@ -103,7 +105,32 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     if (!plugin) {
       return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
     }
-    await pluginLoader.uninstallPlugin(plugin.name);
+
+    // Check if this is a registry-installed plugin by querying raw DB metadata
+    const dbResult = await (
+      pluginLoader as unknown as { db: { execute: (q: unknown) => Promise<unknown> } }
+    ).db.execute(sql`SELECT metadata FROM plugins WHERE id = ${id}`);
+    const rows =
+      (dbResult as { rows?: Array<{ metadata: Record<string, unknown> | null }> }).rows ??
+      (dbResult as Array<{ metadata: Record<string, unknown> | null }>);
+    const metadata = Array.isArray(rows) ? rows[0]?.metadata : null;
+
+    if (metadata && metadata.source === 'registry') {
+      // Registry plugins: deactivate, delete from DB, remove extracted files
+      if (plugin.isActive) {
+        await pluginLoader.setPluginActive(id, false);
+      }
+      await (
+        pluginLoader as unknown as { db: { execute: (q: unknown) => Promise<unknown> } }
+      ).db.execute(sql`DELETE FROM plugins WHERE id = ${id}`);
+      const targetDir = metadata.installedTo as string;
+      if (targetDir) {
+        await rm(targetDir, { recursive: true, force: true }).catch(() => {});
+      }
+    } else {
+      await pluginLoader.uninstallPlugin(plugin.name);
+    }
+
     // Refresh scheduler after uninstall
     if (scheduler) {
       await scheduler.refresh();

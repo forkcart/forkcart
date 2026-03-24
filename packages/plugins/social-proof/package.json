@@ -1,0 +1,29 @@
+{
+  "name": "@forkcart/plugin-social-proof",
+  "version": "1.0.0",
+  "description": "Social proof notifications for ForkCart — recent purchases, visitor counts, trending badges",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": [
+    "forkcart",
+    "plugin",
+    "social-proof",
+    "conversion",
+    "notifications",
+    "fomo",
+    "ecommerce"
+  ],
+  "author": "ForkCart",
+  "license": "MIT",
+  "peerDependencies": {
+    "@forkcart/plugin-sdk": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -185,7 +185,10 @@ function InstalledTab() {
 
   const toggleMutation = useMutation({
     mutationFn: ({ id, activate }: { id: string; activate: boolean }) =>
-      apiClient(`/plugins/${id}/${activate ? 'activate' : 'deactivate'}`, { method: 'POST' }),
+      apiClient(`/plugins/${id}/toggle`, {
+        method: 'PUT',
+        body: JSON.stringify({ isActive: activate }),
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
     },
@@ -389,9 +392,11 @@ function StoreTab() {
     },
   });
 
+  const [installedSlugs, setInstalledSlugs] = useState<Set<string>>(new Set());
   const installMutation = useMutation({
     mutationFn: (slug: string) => apiClient(`/store/${slug}/install`, { method: 'POST' }),
-    onSuccess: () => {
+    onSuccess: (_data, slug) => {
+      setInstalledSlugs((prev) => new Set(prev).add(slug));
       queryClient.invalidateQueries({ queryKey: ['store-plugins'] });
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
     },
@@ -448,7 +453,8 @@ function StoreTab() {
                 key={plugin.id}
                 plugin={plugin}
                 onInstall={() => installMutation.mutate(plugin.slug)}
-                installing={installMutation.isPending}
+                installing={installMutation.isPending && installMutation.variables === plugin.slug}
+                installed={installedSlugs.has(plugin.slug)}
               />
             ))}
           </div>
@@ -462,10 +468,12 @@ function StorePluginCard({
   plugin,
   onInstall,
   installing,
+  installed,
 }: {
   plugin: StoreListing;
   onInstall: () => void;
   installing: boolean;
+  installed?: boolean;
 }) {
   const type = plugin.type ?? 'other';
   const typeColor = TYPE_COLORS[type] ?? TYPE_COLORS.other;
@@ -515,11 +523,19 @@ function StorePluginCard({
 
         <button
           onClick={onInstall}
-          disabled={installing}
-          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          disabled={installing || installed}
+          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+            installed
+              ? 'bg-green-500/10 text-green-600 border border-green-500/20'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          }`}
         >
           {installing ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : installed ? (
+            <>
+              <Check className="h-3.5 w-3.5" /> Installed
+            </>
           ) : (
             <>
               <Download className="h-3.5 w-3.5" /> Install

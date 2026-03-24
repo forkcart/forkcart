@@ -58,13 +58,61 @@ const SlugParamSchema = z.object({
 });
 
 /** Plugin Store routes */
-export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) {
+export function createPluginStoreRoutes(pluginStoreService: PluginStoreService, db?: unknown) {
   const router = new Hono();
+
+  // ─── Registry proxy helper ──────────────────────────────────────────────
+
+  const REGISTRY_URL = process.env['PLUGIN_REGISTRY_URL'];
+
+  async function fetchRegistry(path: string, query?: string): Promise<Response | null> {
+    if (!REGISTRY_URL) return null;
+    try {
+      const url = `${REGISTRY_URL}${path}${query ? `?${query}` : ''}`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) return res;
+    } catch {
+      // Registry unavailable, fall through to local DB
+    }
+    return null;
+  }
 
   // ─── Public Routes ────────────────────────────────────────────────────────
 
-  /** List plugins with filters */
+  /** List plugins with filters — proxies to central registry if configured */
   router.get('/', async (c) => {
+    // Try central registry first
+    const registryRes = await fetchRegistry('/store', c.req.url.split('?')[1] ?? '');
+    if (registryRes) {
+      const registryData = (await registryRes.json()) as { plugins?: Record<string, unknown>[] };
+      const rawPlugins = registryData.plugins ?? [];
+
+      // Enrich each plugin with developer name from the registry detail endpoint
+      const plugins = await Promise.all(
+        (Array.isArray(rawPlugins) ? rawPlugins : []).map(async (p) => {
+          let developerName = 'Community Developer';
+          try {
+            const detailRes = await fetch(`${REGISTRY_URL}/store/${p.slug}`, {
+              signal: AbortSignal.timeout(3000),
+            });
+            if (detailRes.ok) {
+              const detail = (await detailRes.json()) as { developer?: { displayName?: string } };
+              developerName = detail.developer?.displayName || developerName;
+            }
+          } catch {
+            // ignore
+          }
+          return {
+            ...p,
+            author: p.author || developerName,
+            description: p.description || p.shortDescription || '',
+          };
+        }),
+      );
+      return c.json({ data: plugins });
+    }
+
+    // Fallback to local DB
     const query = ListPluginsQuerySchema.parse({
       search: c.req.query('search'),
       category: c.req.query('category'),
@@ -123,6 +171,73 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
   /** Install a plugin from store (admin) */
   router.post('/:slug/install', requireRole('admin', 'superadmin'), async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+
+    // Try installing from central registry
+    if (REGISTRY_URL) {
+      try {
+        // 1. Get plugin details + latest version from registry
+        const detailRes = await fetch(`${REGISTRY_URL}/store/${slug}`, {
+          signal: AbortSignal.timeout(5000),
+        });
+        if (!detailRes.ok) throw new Error('Plugin not found in registry');
+
+        const detail = (await detailRes.json()) as {
+          plugin: Record<string, unknown>;
+          versions: Array<{ version: string; zipPath?: string }>;
+        };
+        const latestVersion = detail.versions?.[0];
+        if (!latestVersion?.version) throw new Error('No version available');
+
+        // 2. Download the ZIP from registry
+        const zipRes = await fetch(
+          `${REGISTRY_URL}/store/${slug}/download/${latestVersion.version}`,
+          { signal: AbortSignal.timeout(30000) },
+        );
+        if (!zipRes.ok) throw new Error('ZIP download failed');
+
+        const zipBuffer = Buffer.from(await zipRes.arrayBuffer());
+
+        // 3. Extract ZIP to plugins directory
+        const AdmZip = (await import('adm-zip')).default;
+        const zip = new AdmZip(zipBuffer);
+        const { resolve, join } = await import('node:path');
+        const { mkdirSync } = await import('node:fs');
+        const targetDir = resolve(process.cwd(), '../../packages/plugins', slug);
+        mkdirSync(targetDir, { recursive: true });
+        zip.extractAllTo(targetDir, true);
+
+        // 4. Register in local plugin system DB via psql
+        const plugin = detail.plugin;
+        const { execSync } = await import('node:child_process');
+        const dbUrl =
+          process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
+        const escapeSql = (s: string) => s.replace(/'/g, "''");
+        const insertSql = `INSERT INTO plugins (id, name, version, description, author, is_active, entry_point, metadata, installed_at, updated_at) VALUES (gen_random_uuid(), '${escapeSql(String(plugin.name))}', '${escapeSql(String(latestVersion.version))}', '${escapeSql(String(plugin.shortDescription || plugin.description || ''))}', '${escapeSql(String(plugin.author || 'Community'))}', true, '${escapeSql(String(plugin.packageName || ''))}', '${escapeSql(JSON.stringify({ source: 'registry', slug: String(plugin.slug) }))}', NOW(), NOW()) ON CONFLICT DO NOTHING;`;
+        try {
+          execSync(`psql "${dbUrl}" -c "${insertSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+        } catch {
+          console.error('Failed to register plugin in DB via psql');
+        }
+
+        return c.json(
+          {
+            data: {
+              name: plugin.name,
+              slug: plugin.slug,
+              version: latestVersion.version,
+              installedTo: targetDir,
+              source: 'registry',
+            },
+          },
+          201,
+        );
+      } catch (err) {
+        // Fall through to local DB install
+        const errMsg = err instanceof Error ? err.message : 'Unknown error';
+        console.error(`Registry install failed for ${slug}: ${errMsg}`);
+      }
+    }
+
     const result = await pluginStoreService.installFromStore(slug);
     return c.json({ data: result }, 201);
   });
