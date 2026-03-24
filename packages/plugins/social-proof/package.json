@@ -20,10 +20,10 @@
   "author": "ForkCart",
   "license": "MIT",
   "peerDependencies": {
-    "@forkcart/plugin-sdk": ">=0.1.0"
+    "@forkcart/plugin-sdk": "*"
   },
   "devDependencies": {
-    "@forkcart/plugin-sdk": "^0.1.0",
+    "@forkcart/plugin-sdk": "workspace:*",
     "typescript": "^5.4.0"
   }
 }
