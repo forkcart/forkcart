@@ -402,7 +402,8 @@ function StoreTab() {
   const installedNames = useMemo(() => {
     const names = new Set<string>();
     for (const p of installedData?.data ?? []) {
-      names.add(p.name);
+      names.add(p.name); // e.g. "smtp", "stripe"
+      names.add(p.name.toLowerCase());
     }
     return names;
   }, [installedData]);
@@ -467,7 +468,8 @@ function StoreTab() {
               const isInstalled =
                 justInstalledSlugs.has(plugin.slug) ||
                 installedNames.has(plugin.packageName ?? '') ||
-                installedNames.has(plugin.name);
+                installedNames.has(plugin.name) ||
+                installedNames.has(plugin.slug);
               return (
                 <StorePluginCard
                   key={plugin.id}
