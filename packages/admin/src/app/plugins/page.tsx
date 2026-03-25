@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Search,
@@ -44,6 +44,7 @@ interface StoreListing {
   id: string;
   name: string;
   slug: string;
+  packageName: string | null;
   shortDescription: string | null;
   description: string | null;
   author: string | null;
@@ -392,11 +393,25 @@ function StoreTab() {
     },
   });
 
-  const [installedSlugs, setInstalledSlugs] = useState<Set<string>>(new Set());
+  // Fetch installed plugins to cross-reference
+  const { data: installedData } = useQuery({
+    queryKey: ['plugins'],
+    queryFn: () => apiClient<{ data: Plugin[] }>('/plugins'),
+  });
+
+  const installedNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const p of installedData?.data ?? []) {
+      names.add(p.name);
+    }
+    return names;
+  }, [installedData]);
+
+  const [justInstalledSlugs, setJustInstalledSlugs] = useState<Set<string>>(new Set());
   const installMutation = useMutation({
     mutationFn: (slug: string) => apiClient(`/store/${slug}/install`, { method: 'POST' }),
     onSuccess: (_data, slug) => {
-      setInstalledSlugs((prev) => new Set(prev).add(slug));
+      setJustInstalledSlugs((prev) => new Set(prev).add(slug));
       queryClient.invalidateQueries({ queryKey: ['store-plugins'] });
       queryClient.invalidateQueries({ queryKey: ['plugins'] });
     },
@@ -448,15 +463,23 @@ function StoreTab() {
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {plugins.map((plugin) => (
-              <StorePluginCard
-                key={plugin.id}
-                plugin={plugin}
-                onInstall={() => installMutation.mutate(plugin.slug)}
-                installing={installMutation.isPending && installMutation.variables === plugin.slug}
-                installed={installedSlugs.has(plugin.slug)}
-              />
-            ))}
+            {plugins.map((plugin) => {
+              const isInstalled =
+                justInstalledSlugs.has(plugin.slug) ||
+                installedNames.has(plugin.packageName ?? '') ||
+                installedNames.has(plugin.name);
+              return (
+                <StorePluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  onInstall={() => installMutation.mutate(plugin.slug)}
+                  installing={
+                    installMutation.isPending && installMutation.variables === plugin.slug
+                  }
+                  installed={isInstalled}
+                />
+              );
+            })}
           </div>
         )}
       </div>
