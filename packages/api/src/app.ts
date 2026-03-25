@@ -76,13 +76,7 @@ import {
   MobileAppService,
 } from '@forkcart/core';
 import { LogEmailProvider } from '@forkcart/core';
-import stripePlugin from '@forkcart/plugin-stripe';
-import mailgunPlugin from '@forkcart/plugin-mailgun';
-import smtpPlugin from '@forkcart/plugin-smtp';
-import amazonMarketplacePlugin from '@forkcart/plugin-marketplace-amazon';
-import ebayMarketplacePlugin from '@forkcart/plugin-marketplace-ebay';
-import ottoMarketplacePlugin from '@forkcart/plugin-marketplace-otto';
-import kauflandMarketplacePlugin from '@forkcart/plugin-marketplace-kaufland';
+
 import { errorHandler } from './middleware/error-handler';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
@@ -407,18 +401,8 @@ export async function createApp(db: Database) {
     marketplaceProviderRegistry,
     eventBus,
   );
-  // Register SDK plugins (cast needed: typed PluginContext<T> → untyped SdkPluginDefinition)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const register = (def: any) => pluginLoader.registerSdkPlugin(def);
-  register(stripePlugin);
-  register(mailgunPlugin);
-  register(smtpPlugin);
-
-  // Marketplace plugins
-  register(amazonMarketplacePlugin);
-  register(ebayMarketplacePlugin);
-  register(ottoMarketplacePlugin);
-  register(kauflandMarketplacePlugin);
+  // Discover plugins from node_modules (no hardcoded imports)
+  await pluginLoader.discoverPlugins();
 
   // Initialize plugin store service with plugin loader
   pluginStoreService = new PluginStoreService({ db, pluginLoader });
