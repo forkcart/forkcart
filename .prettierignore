@@ -5,3 +5,4 @@ dist
 coverage
 pnpm-lock.yaml
 packages/i18n/src/_locales.generated.ts
+next-env.d.ts
