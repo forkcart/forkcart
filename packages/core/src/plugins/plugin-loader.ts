@@ -429,11 +429,15 @@ export class PluginLoader {
 
     try {
       await execFileAsync('pnpm', ['remove', packageName], { cwd: process.cwd() });
-      this.sdkPlugins.delete(packageName);
-    } catch (error) {
-      logger.error({ packageName, error }, 'Failed to uninstall plugin');
-      throw new Error(`Failed to uninstall plugin: ${packageName}`);
+    } catch {
+      // Plugin may not be an npm dependency (e.g. registered via store/registry)
+      logger.info({ packageName }, 'Plugin not found as npm dependency — removing from DB only');
     }
+
+    this.sdkPlugins.delete(packageName);
+
+    // Remove from DB
+    await this.db.delete(plugins).where(eq(plugins.name, packageName));
   }
 
   // ─── DB sync ──────────────────────────────────────────────────────────────
