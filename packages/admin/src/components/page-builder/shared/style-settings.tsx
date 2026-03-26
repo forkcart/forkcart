@@ -123,7 +123,7 @@ function NumberGrid({
           <label className="mb-0.5 block text-center text-[10px] text-gray-400">{labels[i]}</label>
           <input
             type="number"
-            className="w-full rounded border border-gray-200 bg-gray-50 px-1.5 py-1 text-center text-xs focus:border-blue-400 focus:bg-white focus:outline-none"
+            className="w-full rounded border border-gray-200 bg-gray-50 px-1.5 py-1 text-center text-xs focus:border-emerald-400 focus:bg-white focus:outline-none"
             value={(styles[k] as number) ?? 0}
             step={4}
             onChange={(e) => {
@@ -232,7 +232,7 @@ export function StyleSettings() {
         <div>
           <label className="text-xs text-gray-500">Style</label>
           <select
-            className="mt-0.5 w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs focus:border-blue-400 focus:bg-white focus:outline-none"
+            className="mt-0.5 w-full rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs focus:border-emerald-400 focus:bg-white focus:outline-none"
             value={styles.borderStyle ?? 'none'}
             onChange={(e) => set('borderStyle', e.target.value)}
           >

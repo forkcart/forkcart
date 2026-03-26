@@ -121,7 +121,7 @@ export function ImageUpload({ value, onChange, label = 'Image' }: ImageUploadPro
       <div
         className={cn(
           'flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed p-6 transition-colors',
-          dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-400',
+          dragOver ? 'border-emerald-400 bg-emerald-50' : 'border-gray-200 hover:border-gray-400',
           uploading && 'pointer-events-none opacity-50',
         )}
         onClick={() => fileRef.current?.click()}
@@ -134,7 +134,7 @@ export function ImageUpload({ value, onChange, label = 'Image' }: ImageUploadPro
       >
         {uploading ? (
           <div className="flex items-center gap-2 text-sm text-gray-500">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
             Uploading...
           </div>
         ) : (

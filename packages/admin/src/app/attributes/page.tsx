@@ -217,7 +217,7 @@ export default function AttributesPage() {
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                       {attr.slug}
                     </span>
-                    <span className="inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-700">
+                    <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-600">
                       {attr.type}
                     </span>
                   </div>

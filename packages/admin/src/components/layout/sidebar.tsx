@@ -11,7 +11,6 @@ import {
   Puzzle,
   Settings,
   LogOut,
-  Store,
   Tag,
   UserCog,
   Star,
@@ -97,8 +96,7 @@ export function Sidebar() {
   return (
     <aside className="flex w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <Store className="h-6 w-6 text-primary" />
-        <span className="text-lg font-bold tracking-tight">ForkCart</span>
+        <img src="/logo.png" alt="ForkCart" className="h-7 w-auto" />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

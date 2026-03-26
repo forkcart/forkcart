@@ -14,7 +14,7 @@ export interface ButtonBlockProps {
 }
 
 const variantClasses: Record<string, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600',
+  primary: 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500',
   secondary: 'bg-gray-800 text-white hover:bg-gray-900 border-gray-800',
   outline: 'bg-transparent text-gray-800 hover:bg-gray-50 border-gray-300',
 };

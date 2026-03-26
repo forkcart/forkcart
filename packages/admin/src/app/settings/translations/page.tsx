@@ -220,7 +220,7 @@ function LanguageCard({
               e.stopPropagation();
               onSetDefault();
             }}
-            className="rounded px-2 py-0.5 text-xs text-muted-foreground opacity-0 transition hover:bg-blue-50 hover:text-blue-600 group-hover:opacity-100"
+            className="rounded px-2 py-0.5 text-xs text-muted-foreground opacity-0 transition hover:bg-emerald-50 hover:text-emerald-500 group-hover:opacity-100"
             title="Set as default language"
           >
             Set Default
@@ -246,7 +246,7 @@ function LanguageCard({
           <div className="flex items-center gap-2">
             <p className="font-semibold">{lang.nativeName || lang.name}</p>
             {lang.isDefault && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
                 Default
               </span>
             )}
@@ -268,7 +268,7 @@ function LanguageCard({
         <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
           <div
             className={`h-full rounded-full transition-all ${
-              isComplete ? 'bg-green-500' : pct > 50 ? 'bg-blue-500' : 'bg-amber-500'
+              isComplete ? 'bg-emerald-500' : pct > 50 ? 'bg-emerald-300' : 'bg-amber-500'
             }`}
             style={{ width: `${Math.min(pct, 100)}%` }}
           />
@@ -677,7 +677,7 @@ function TranslationEditor({
                   <tr
                     key={k.key}
                     className={`border-b transition ${
-                      isMissing ? 'bg-red-50/50' : isChanged ? 'bg-blue-50/50' : ''
+                      isMissing ? 'bg-red-50/50' : isChanged ? 'bg-emerald-50/50' : ''
                     }`}
                   >
                     <td className="px-4 py-2">
@@ -705,7 +705,7 @@ function TranslationEditor({
                           Missing
                         </span>
                       ) : isChanged ? (
-                        <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">
+                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-600">
                           Changed
                         </span>
                       ) : k.source === 'db' ? (

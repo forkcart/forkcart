@@ -34,7 +34,7 @@ interface Page {
 
 const pageTypeBadge: Record<PageType, { label: string; className: string }> = {
   custom: { label: '', className: '' },
-  homepage: { label: 'Homepage', className: 'bg-blue-100 text-blue-800' },
+  homepage: { label: 'Homepage', className: 'bg-emerald-100 text-emerald-700' },
   product: { label: 'Product', className: 'bg-purple-100 text-purple-800' },
   cart: { label: 'Cart', className: 'bg-orange-100 text-orange-800' },
   checkout: { label: 'Checkout', className: 'bg-indigo-100 text-indigo-800' },
@@ -122,7 +122,7 @@ export default function PagesListPage() {
         </div>
         <button
           onClick={() => setShowTemplateModal(true)}
-          className="flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          className="flex items-center gap-2 rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
         >
           <Plus className="h-4 w-4" />
           New Page
@@ -138,7 +138,7 @@ export default function PagesListPage() {
           </p>
           <button
             onClick={() => setShowTemplateModal(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600"
           >
             <Plus className="h-4 w-4" />
             Create Page
@@ -171,7 +171,7 @@ export default function PagesListPage() {
                 <tr key={page.id} className="hover:bg-gray-50">
                   <td className="whitespace-nowrap px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {page.isHomepage && <Home className="h-4 w-4 text-blue-500" />}
+                      {page.isHomepage && <Home className="h-4 w-4 text-emerald-500" />}
                       {isSystemPage(page) && <Lock className="h-3.5 w-3.5 text-gray-400" />}
                       <span className="text-sm font-medium text-gray-900">{page.title}</span>
                       {page.pageType !== 'custom' && pageTypeBadge[page.pageType]?.label && (
@@ -208,7 +208,7 @@ export default function PagesListPage() {
                     <div className="flex items-center justify-end gap-2">
                       <Link
                         href={`/pages/${page.id}`}
-                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                        className="rounded p-1.5 text-gray-400 transition-colors hover:bg-emerald-50 hover:text-emerald-500"
                         title="Edit"
                       >
                         <Edit className="h-4 w-4" />

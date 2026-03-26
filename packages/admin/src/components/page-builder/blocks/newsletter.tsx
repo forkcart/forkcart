@@ -38,7 +38,7 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
           <h2
             className={cn(
               'text-2xl font-bold outline-none md:text-3xl',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             style={{ color: textColor }}
             contentEditable={selected}
@@ -53,7 +53,7 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
             <p
               className={cn(
                 'mt-3 text-base outline-none',
-                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
               )}
               style={{ color: textColor, opacity: 0.8 }}
               contentEditable={selected}
@@ -79,7 +79,7 @@ export const Newsletter: UserComponent<NewsletterProps> = ({
               className="w-full rounded-lg border-0 px-4 py-3 text-sm text-gray-900 placeholder-gray-500 sm:max-w-xs"
               onClick={(e) => e.preventDefault()}
             />
-            <button className="whitespace-nowrap rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700">
+            <button className="whitespace-nowrap rounded-lg bg-emerald-500 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-emerald-600">
               {buttonText}
             </button>
           </div>
@@ -132,7 +132,7 @@ function NewsletterSettings() {
               key={l}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.layout === l && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.layout === l && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: NewsletterProps) => (p.layout = l))}
             >

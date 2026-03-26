@@ -16,7 +16,7 @@ export interface ButtonBlockProps {
 }
 
 const variantClasses: Record<string, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600',
+  primary: 'bg-emerald-500 text-white hover:bg-emerald-600 border-emerald-500',
   secondary: 'bg-gray-800 text-white hover:bg-gray-900 border-gray-800',
   outline: 'bg-transparent text-gray-800 hover:bg-gray-50 border-gray-300',
 };
@@ -57,7 +57,7 @@ export const ButtonBlock: UserComponent<ButtonBlockProps> = ({
           <span
             className={cn(
               'outline-none',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             contentEditable={selected}
             suppressContentEditableWarning
@@ -107,7 +107,7 @@ function ButtonBlockSettings() {
               key={v}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.variant === v && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.variant === v && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: ButtonBlockProps) => (p.variant = v))}
             >
@@ -124,7 +124,7 @@ function ButtonBlockSettings() {
               key={s}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm uppercase',
-                props.size === s && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.size === s && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: ButtonBlockProps) => (p.size = s))}
             >
@@ -141,7 +141,7 @@ function ButtonBlockSettings() {
               key={a}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.alignment === a && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.alignment === a && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: ButtonBlockProps) => (p.alignment = a))}
             >

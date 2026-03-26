@@ -150,7 +150,7 @@ export function ProductTranslations({ productId, product }: ProductTranslationsP
             type="button"
             onClick={() => autoTranslateMutation.mutate()}
             disabled={autoTranslateMutation.isPending || !activeLocale}
-            className="rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            className="rounded-md bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
           >
             {autoTranslateMutation.isPending ? 'Translating...' : '🤖 AI Translate'}
           </button>

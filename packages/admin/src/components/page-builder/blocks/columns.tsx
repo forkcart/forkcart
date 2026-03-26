@@ -54,7 +54,7 @@ function ColumnsSettings() {
               key={n}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm',
-                props.columns === n && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.columns === n && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: ColumnsProps) => (p.columns = n))}
             >

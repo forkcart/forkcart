@@ -38,7 +38,7 @@ export const CategoryGrid: UserComponent<CategoryGridProps> = ({
         <h2
           className={cn(
             'mb-6 text-2xl font-bold text-gray-900 outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
           )}
           contentEditable={selected}
           suppressContentEditableWarning
@@ -99,7 +99,7 @@ function CategoryGridSettings() {
               key={s}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.style === s && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.style === s && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: CategoryGridProps) => (p.style = s))}
             >
@@ -116,7 +116,7 @@ function CategoryGridSettings() {
               key={n}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm',
-                props.columns === n && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.columns === n && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: CategoryGridProps) => (p.columns = n))}
             >

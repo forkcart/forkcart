@@ -35,14 +35,14 @@
   }
 
   .fc-btn-primary {
-    background-color: var(--fc-primary, #1f2937);
+    background-color: var(--fc-primary, #31363c);
     color: #fff;
     border-radius: var(--fc-button-radius, 8px);
     padding: var(--fc-button-padding-y, 12px) var(--fc-button-padding-x, 24px);
   }
 
   .fc-btn-secondary {
-    background-color: var(--fc-secondary, #3b82f6);
+    background-color: var(--fc-secondary, #10b981);
     color: #fff;
     border-radius: var(--fc-button-radius, 8px);
     padding: var(--fc-button-padding-y, 12px) var(--fc-button-padding-x, 24px);
@@ -57,6 +57,6 @@
   }
 
   .fc-accent {
-    background-color: var(--fc-accent, #f59e0b);
+    background-color: var(--fc-accent, #10b981);
   }
 }

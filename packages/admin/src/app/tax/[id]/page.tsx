@@ -337,7 +337,7 @@ export default function TaxClassDetailPage() {
         <button
           onClick={handleImportEU}
           disabled={importing}
-          className="inline-flex items-center gap-2 rounded-md border border-blue-300 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-md border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-600 hover:bg-emerald-100 disabled:opacity-50"
         >
           {importing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -474,7 +474,7 @@ export default function TaxClassDetailPage() {
                       <Globe className="h-3.5 w-3.5 text-muted-foreground" />
                       {getCountryName(rule.country)}
                       {rule.country && (
-                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800">
+                        <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
                           {rule.country}
                         </span>
                       )}
@@ -482,7 +482,7 @@ export default function TaxClassDetailPage() {
                   </td>
                   <td className="p-4 text-sm text-muted-foreground">{rule.state || '—'}</td>
                   <td className="p-4">
-                    <span className="inline-flex rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                    <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
                       {formatRate(rule.rate)}
                     </span>
                   </td>

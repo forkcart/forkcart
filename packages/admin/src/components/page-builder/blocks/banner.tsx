@@ -36,7 +36,7 @@ export const Banner: UserComponent<BannerProps> = ({
           <p
             className={cn(
               'text-sm font-medium outline-none',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             contentEditable={selected}
             suppressContentEditableWarning

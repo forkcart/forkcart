@@ -73,7 +73,7 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 
 const TYPE_COLORS: Record<string, string> = {
   payment: 'bg-emerald-100 text-emerald-700',
-  marketplace: 'bg-blue-100 text-blue-700',
+  marketplace: 'bg-emerald-100 text-emerald-600',
   notification: 'bg-amber-100 text-amber-700',
   email: 'bg-amber-100 text-amber-700',
   shipping: 'bg-violet-100 text-violet-700',
@@ -435,8 +435,8 @@ function StoreTab() {
       </div>
 
       {/* Info Banner */}
-      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
-        <p className="text-sm text-blue-800">
+      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+        <p className="text-sm text-emerald-700">
           Browse plugins from the{' '}
           <a
             href="https://forkcart.com/developers"

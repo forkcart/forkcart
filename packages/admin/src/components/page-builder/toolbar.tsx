@@ -76,7 +76,7 @@ export function Toolbar({
               <select
                 value={currentLocale ?? defaultLocale ?? 'en'}
                 onChange={(e) => onLocaleChange(e.target.value)}
-                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
               >
                 {availableLocales.map((loc) => (
                   <option key={loc.locale} value={loc.locale}>
@@ -120,7 +120,9 @@ export function Toolbar({
             key={view}
             className={cn(
               'rounded p-2 transition-colors',
-              deviceView === view ? 'bg-blue-50 text-blue-600' : 'text-gray-500 hover:bg-gray-100',
+              deviceView === view
+                ? 'bg-emerald-50 text-emerald-500'
+                : 'text-gray-500 hover:bg-gray-100',
             )}
             onClick={() => onDeviceChange(view)}
             title={label}
@@ -151,7 +153,7 @@ export function Toolbar({
         </button>
         {onPublish && (
           <button
-            className="flex items-center gap-1.5 rounded-md bg-blue-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-md bg-emerald-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-600 disabled:opacity-50"
             onClick={handlePublish}
             disabled={publishing || saving}
           >

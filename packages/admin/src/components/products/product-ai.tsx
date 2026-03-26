@@ -137,7 +137,7 @@ export function ProductAIButtons({
           onClick={() => seoMutation.mutate()}
           disabled={!isConfigured || isLoading}
           title={disabledTitle}
-          className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-600 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {seoMutation.isPending ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

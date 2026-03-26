@@ -221,7 +221,7 @@ export default function EmailsPage() {
                     <td className="px-4 py-3 text-sm">{entry.to}</td>
                     <td className="px-4 py-3 text-sm font-medium">{entry.subject}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-600">
                         {templateLabel(entry.template)}
                       </span>
                     </td>

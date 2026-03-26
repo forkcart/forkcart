@@ -88,7 +88,7 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
                 <p
                   className={cn(
                     'mt-4 text-gray-600 outline-none',
-                    selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                    selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
                   )}
                   contentEditable={selected}
                   suppressContentEditableWarning
@@ -110,7 +110,7 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
                       className="h-10 w-10 rounded-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-sm font-semibold text-blue-600">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-500">
                       {item.name.charAt(0)}
                     </div>
                   )}
@@ -118,7 +118,7 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
                     <p
                       className={cn(
                         'text-sm font-semibold text-gray-900 outline-none',
-                        selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                        selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
                       )}
                       contentEditable={selected}
                       suppressContentEditableWarning
@@ -135,7 +135,7 @@ export const Testimonials: UserComponent<TestimonialsProps> = ({
                     <p
                       className={cn(
                         'text-xs text-gray-500 outline-none',
-                        selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                        selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
                       )}
                       contentEditable={selected}
                       suppressContentEditableWarning
@@ -178,7 +178,7 @@ function TestimonialsSettings() {
               key={n}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm',
-                (props.columns ?? 3) === n && 'border-blue-500 bg-blue-50 text-blue-700',
+                (props.columns ?? 3) === n && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: TestimonialsProps) => (p.columns = n))}
             >

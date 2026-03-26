@@ -152,7 +152,7 @@ export default function TaxRulesPage() {
                       return (
                         <td key={cls.id} className="p-2 text-center">
                           {matchingRule ? (
-                            <span className="inline-flex rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+                            <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
                               {formatRate(matchingRule.rate)}
                             </span>
                           ) : (
@@ -290,7 +290,7 @@ export default function TaxRulesPage() {
                 <td className="p-4 text-sm">{rule.taxClass?.name ?? '—'}</td>
                 <td className="p-4 text-sm">{rule.taxZone?.name ?? '—'}</td>
                 <td className="p-4">
-                  <span className="inline-flex rounded bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-800">
+                  <span className="inline-flex rounded bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">
                     {formatRate(rule.rate)}
                   </span>
                 </td>

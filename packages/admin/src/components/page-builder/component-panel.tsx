@@ -328,7 +328,7 @@ export function ComponentPanel() {
                 }}
                 className={cn(
                   'flex cursor-grab flex-col items-center gap-1 rounded-lg border border-gray-200 p-3',
-                  'transition-colors hover:border-blue-300 hover:bg-blue-50',
+                  'transition-colors hover:border-emerald-300 hover:bg-emerald-50',
                   'active:cursor-grabbing',
                 )}
               >

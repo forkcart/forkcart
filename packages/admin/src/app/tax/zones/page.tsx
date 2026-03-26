@@ -150,7 +150,7 @@ export default function TaxZonesPage() {
                     {zone.countries.map((c) => (
                       <span
                         key={c}
-                        className="inline-flex rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-800"
+                        className="inline-flex rounded bg-emerald-100 px-1.5 py-0.5 text-xs font-medium text-emerald-700"
                       >
                         {c}
                       </span>

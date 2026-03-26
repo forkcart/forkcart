@@ -89,7 +89,7 @@ function TextBlockSettings() {
               key={a}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.alignment === a && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.alignment === a && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: TextBlockProps) => (p.alignment = a))}
             >

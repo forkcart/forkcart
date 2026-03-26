@@ -44,7 +44,7 @@ export const FeaturedProduct: UserComponent<FeaturedProductProps> = ({
 
           {/* Content */}
           <div className="flex-1 space-y-4">
-            <span className="text-sm font-medium uppercase tracking-wider text-blue-600">
+            <span className="text-sm font-medium uppercase tracking-wider text-emerald-500">
               Featured
             </span>
             <div className="h-8 w-3/4 rounded bg-gray-300" />
@@ -61,7 +61,7 @@ export const FeaturedProduct: UserComponent<FeaturedProductProps> = ({
                 <span
                   className={cn(
                     'outline-none',
-                    selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                    selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
                   )}
                   contentEditable={selected}
                   suppressContentEditableWarning
@@ -114,7 +114,7 @@ function FeaturedProductSettings() {
               key={l}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.layout === l && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.layout === l && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: FeaturedProductProps) => (p.layout = l))}
             >

@@ -130,7 +130,7 @@ function SessionRow({
           </span>
         </td>
         <td className="p-4">
-          <span className="inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+          <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
             {session.messageCount}
           </span>
         </td>

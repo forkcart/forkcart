@@ -17,7 +17,7 @@ export const Spacer: UserComponent<SpacerProps> = ({ height = 40, className }) =
     <StyledBlock
       className={cn(
         'w-full',
-        selected && 'border border-dashed border-blue-300 bg-blue-50/30',
+        selected && 'border border-dashed border-emerald-300 bg-emerald-50/30',
         className,
       )}
     >

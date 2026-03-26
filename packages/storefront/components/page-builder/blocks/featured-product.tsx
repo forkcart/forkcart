@@ -61,7 +61,7 @@ export async function RenderFeaturedProduct({
           )}
         </div>
         <div className="flex-1 space-y-4">
-          <span className="text-sm font-medium uppercase tracking-wider text-blue-600">
+          <span className="text-sm font-medium uppercase tracking-wider text-emerald-600">
             Featured
           </span>
           <h2 className="text-3xl font-bold text-gray-900">{product.name}</h2>

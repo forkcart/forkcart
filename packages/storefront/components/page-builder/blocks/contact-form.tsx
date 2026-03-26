@@ -41,7 +41,7 @@ export function RenderContactForm({
             <input
               type="text"
               required
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Your name"
             />
           </div>
@@ -50,7 +50,7 @@ export function RenderContactForm({
             <input
               type="email"
               required
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="you@example.com"
             />
           </div>
@@ -60,7 +60,7 @@ export function RenderContactForm({
             <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
             <input
               type="tel"
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="+1 (555) 000-0000"
             />
           </div>
@@ -70,7 +70,7 @@ export function RenderContactForm({
             <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
             <input
               type="text"
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="How can we help?"
             />
           </div>
@@ -80,13 +80,13 @@ export function RenderContactForm({
           <textarea
             rows={5}
             required
-            className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
             placeholder="Your message..."
           />
         </div>
         <button
           type="submit"
-          className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+          className="w-full rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
         >
           {buttonText}
         </button>

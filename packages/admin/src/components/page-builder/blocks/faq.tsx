@@ -62,7 +62,7 @@ function AccordionItem({
         <span
           className={cn(
             'outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
           )}
           contentEditable={selected}
           suppressContentEditableWarning
@@ -85,7 +85,7 @@ function AccordionItem({
         <p
           className={cn(
             'pb-4 text-sm text-gray-600 outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
           )}
           contentEditable={selected}
           suppressContentEditableWarning
@@ -135,7 +135,7 @@ export const Faq: UserComponent<FaqProps> = ({
         <h2
           className={cn(
             'mb-8 text-center text-2xl font-bold text-gray-900 outline-none',
-            selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+            selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
           )}
           contentEditable={selected}
           suppressContentEditableWarning

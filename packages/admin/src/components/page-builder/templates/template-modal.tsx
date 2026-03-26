@@ -70,7 +70,7 @@ export function TemplateModal({ open, onClose, onSelect }: TemplateModalProps) {
                   type="text"
                   required
                   autoFocus
-                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                   placeholder="e.g. About Us"
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value)}
@@ -78,7 +78,7 @@ export function TemplateModal({ open, onClose, onSelect }: TemplateModalProps) {
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">URL Slug</label>
-                <div className="flex items-center rounded-lg border text-sm focus-within:ring-2 focus-within:ring-blue-500">
+                <div className="flex items-center rounded-lg border text-sm focus-within:ring-2 focus-within:ring-emerald-500">
                   <span className="border-r bg-gray-50 px-3 py-2 text-gray-400">/p/</span>
                   <input
                     type="text"
@@ -102,9 +102,9 @@ export function TemplateModal({ open, onClose, onSelect }: TemplateModalProps) {
                   key={template.id}
                   type="button"
                   className={cn(
-                    'rounded-lg border-2 p-4 text-left transition-all hover:border-blue-300',
+                    'rounded-lg border-2 p-4 text-left transition-all hover:border-emerald-300',
                     selected.id === template.id
-                      ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                      ? 'border-emerald-500 bg-emerald-50 ring-1 ring-emerald-500'
                       : 'border-gray-200',
                   )}
                   onClick={() => setSelected(template)}
@@ -128,7 +128,7 @@ export function TemplateModal({ open, onClose, onSelect }: TemplateModalProps) {
             <button
               type="submit"
               disabled={!title.trim() || !slug.trim()}
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="rounded-md bg-emerald-500 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
             >
               Create Page
             </button>

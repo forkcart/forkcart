@@ -36,7 +36,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
           <h2
             className={cn(
               'mb-2 text-center text-2xl font-bold text-gray-900 outline-none',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             contentEditable={selected}
             suppressContentEditableWarning
@@ -51,7 +51,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
           <p
             className={cn(
               'mb-8 text-center text-gray-500 outline-none',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             contentEditable={selected}
             suppressContentEditableWarning
@@ -74,7 +74,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
               <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
               <input
                 type="text"
-                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="Your name"
               />
             </div>
@@ -82,7 +82,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
               <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
               <input
                 type="email"
-                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="you@example.com"
               />
             </div>
@@ -92,7 +92,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
               <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
               <input
                 type="tel"
-                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="+1 (555) 000-0000"
               />
             </div>
@@ -102,7 +102,7 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
               <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
               <input
                 type="text"
-                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
                 placeholder="How can we help?"
               />
             </div>
@@ -111,13 +111,13 @@ export const ContactForm: UserComponent<ContactFormProps> = ({
             <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
             <textarea
               rows={5}
-              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-lg border px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
               placeholder="Your message..."
             />
           </div>
           <button
             type="submit"
-            className="w-full rounded-lg bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+            className="w-full rounded-lg bg-emerald-500 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-600"
           >
             {buttonText}
           </button>

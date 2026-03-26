@@ -222,7 +222,7 @@ export default function PageEditorPage() {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4">
         <p className="text-lg text-gray-500">{error ?? 'Page not found'}</p>
-        <Link href="/pages" className="text-blue-600 hover:underline">
+        <Link href="/pages" className="text-emerald-500 hover:underline">
           ← Back to Pages
         </Link>
       </div>
@@ -249,7 +249,7 @@ export default function PageEditorPage() {
           </span>
         )}
         {currentLocale !== defaultLocale && (
-          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">
+          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
             {currentLocale.toUpperCase()}
           </span>
         )}

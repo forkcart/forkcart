@@ -285,7 +285,7 @@ export default function SearchAnalyticsPage() {
           {/* Query Click-Through Rates */}
           <div className="rounded-lg border">
             <div className="flex items-center gap-2 border-b px-6 py-4">
-              <MousePointerClick className="h-4 w-4 text-blue-500" />
+              <MousePointerClick className="h-4 w-4 text-emerald-500" />
               <h2 className="font-semibold">Query Click-Through Rates</h2>
             </div>
             <div className="overflow-x-auto">

@@ -27,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.png" />
         {themeCSS && <style dangerouslySetInnerHTML={{ __html: themeCSS }} />}
         {/* Plugin slot: head (for custom CSS, meta tags, etc.) */}
         <StorefrontSlot slotName="head" />

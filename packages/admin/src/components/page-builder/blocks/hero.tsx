@@ -81,7 +81,7 @@ export const Hero: UserComponent<HeroProps> = ({
           <h1
             className={cn(
               'mb-4 text-4xl font-bold outline-none md:text-5xl lg:text-6xl',
-              selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+              selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
             )}
             style={{ color: textColor }}
             contentEditable={selected}
@@ -94,7 +94,7 @@ export const Hero: UserComponent<HeroProps> = ({
             <p
               className={cn(
                 'mb-8 text-lg outline-none md:text-xl',
-                selected && 'cursor-text rounded ring-1 ring-blue-300 ring-offset-1',
+                selected && 'cursor-text rounded ring-1 ring-emerald-300 ring-offset-1',
               )}
               style={{ color: textColor, opacity: 0.9 }}
               contentEditable={selected}
@@ -228,7 +228,7 @@ function HeroSettings() {
               key={a}
               className={cn(
                 'flex-1 rounded border px-3 py-1.5 text-sm capitalize',
-                props.alignment === a && 'border-blue-500 bg-blue-50 text-blue-700',
+                props.alignment === a && 'border-emerald-500 bg-emerald-50 text-emerald-600',
               )}
               onClick={() => setProp((p: HeroProps) => (p.alignment = a))}
             >

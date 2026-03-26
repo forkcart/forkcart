@@ -470,7 +470,7 @@ export default function CookieConsentSettingsPage() {
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-xs text-muted-foreground">{cat.key}</span>
                         {cat.required && (
-                          <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-500">
                             {l('required')}
                           </span>
                         )}
