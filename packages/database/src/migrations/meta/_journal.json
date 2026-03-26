@@ -197,6 +197,27 @@
       "when": 1742365800000,
       "tag": "0027_cookie-consent-i18n",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1742375800000,
+      "tag": "0028_plugin-store",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1742385800000,
+      "tag": "0029_plugin-developers",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1742900700000,
+      "tag": "0030_plugin-purchases",
+      "breakpoints": true
     }
   ]
 }

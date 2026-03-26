@@ -379,15 +379,27 @@ function InstalledPluginRow({
 
 // ─── Store Tab ──────────────────────────────────────────────────────────────
 
+const STORE_CATEGORIES = [
+  { key: 'all', label: 'All', icon: <Boxes className="h-3.5 w-3.5" /> },
+  { key: 'payment', label: 'Payment', icon: <CreditCard className="h-3.5 w-3.5" /> },
+  { key: 'shipping', label: 'Shipping', icon: <Truck className="h-3.5 w-3.5" /> },
+  { key: 'email', label: 'Email', icon: <Mail className="h-3.5 w-3.5" /> },
+  { key: 'analytics', label: 'Analytics', icon: <BarChart3 className="h-3.5 w-3.5" /> },
+  { key: 'seo', label: 'SEO', icon: <Globe className="h-3.5 w-3.5" /> },
+  { key: 'theme', label: 'Theme', icon: <Palette className="h-3.5 w-3.5" /> },
+  { key: 'marketplace', label: 'Marketplace', icon: <ShoppingBag className="h-3.5 w-3.5" /> },
+  { key: 'other', label: 'Other', icon: <Package className="h-3.5 w-3.5" /> },
+] as const;
+
 function StoreTab() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState('all');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['store-plugins', search],
+    queryKey: ['store-plugins'],
     queryFn: () => {
       const params = new URLSearchParams();
-      if (search) params.set('search', search);
       params.set('limit', '50');
       return apiClient<{ data: StoreListing[] }>(`/store?${params}`);
     },
@@ -402,7 +414,7 @@ function StoreTab() {
   const installedNames = useMemo(() => {
     const names = new Set<string>();
     for (const p of installedData?.data ?? []) {
-      names.add(p.name); // e.g. "smtp", "stripe"
+      names.add(p.name);
       names.add(p.name.toLowerCase());
     }
     return names;
@@ -418,53 +430,157 @@ function StoreTab() {
     },
   });
 
-  const plugins = data?.data ?? [];
+  const allPlugins = data?.data ?? [];
+
+  // Client-side filtering by search + category
+  const filteredPlugins = useMemo(() => {
+    return allPlugins.filter((p) => {
+      const matchesSearch =
+        !search ||
+        p.name.toLowerCase().includes(search.toLowerCase()) ||
+        (p.shortDescription ?? p.description ?? '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.author ?? '').toLowerCase().includes(search.toLowerCase());
+      const matchesCategory = activeCategory === 'all' || p.type === activeCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [allPlugins, search, activeCategory]);
+
+  // Featured = top-rated or most downloaded (first 3 with rating or high downloads)
+  const featuredPlugins = useMemo(() => {
+    return [...allPlugins]
+      .sort((a, b) => {
+        const rA = a.rating ? parseFloat(a.rating) : 0;
+        const rB = b.rating ? parseFloat(b.rating) : 0;
+        if (rB !== rA) return rB - rA;
+        return b.downloads - a.downloads;
+      })
+      .slice(0, 3);
+  }, [allPlugins]);
+
+  const showFeatured = !search && activeCategory === 'all' && featuredPlugins.length > 0;
 
   return (
     <div>
-      {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          type="text"
-          placeholder="Search the plugin store..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="h-10 w-full rounded-lg border bg-card pl-10 pr-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-        />
-      </div>
-
-      {/* Info Banner */}
-      <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-        <p className="text-sm text-emerald-700">
-          Browse plugins from the{' '}
-          <a
-            href="https://forkcart.com/developers"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-medium underline"
+      {/* Developer Commission Banner */}
+      <div className="rounded-xl border border-[#10b981]/30 bg-[#d1fae5] p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-[#065f46]">
+              10% Commission — Build plugins, keep 90%
+            </h3>
+            <p className="mt-1 text-sm text-[#065f46]/80">
+              Create plugins for ForkCart and earn money with every install. Our developer-friendly
+              revenue share means you keep the lion&apos;s share.
+            </p>
+          </div>
+          <Link
+            href="/developers"
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-[#10b981] px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#065f46]"
           >
-            ForkCart Plugin Store
-          </a>
-          . All plugins are reviewed and approved by the ForkCart team before being listed here.
-        </p>
+            Developer Portal →
+          </Link>
+        </div>
       </div>
 
-      {/* Plugin Grid */}
-      <div className="mt-4">
+      {/* Search + Category Filters */}
+      <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search plugins by name, author, or description..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-10 w-full rounded-lg border border-[#e5e7eb] bg-white pl-10 pr-4 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-[#10b981]/20"
+          />
+        </div>
+        <Link
+          href="/developers"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#10b981] transition-colors hover:text-[#065f46]"
+        >
+          <Package className="h-4 w-4" />
+          Developer Docs
+        </Link>
+      </div>
+
+      {/* Category Chips */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {STORE_CATEGORIES.map((cat) => (
+          <button
+            key={cat.key}
+            onClick={() => setActiveCategory(cat.key)}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              activeCategory === cat.key
+                ? 'bg-[#10b981] text-white'
+                : 'border border-[#e5e7eb] bg-white text-[#31363c] hover:border-[#10b981] hover:text-[#10b981]'
+            }`}
+          >
+            {cat.icon}
+            {cat.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Featured Section */}
+      {showFeatured && (
+        <div className="mt-6">
+          <div className="mb-3 flex items-center gap-2">
+            <Star className="h-4 w-4 text-[#10b981]" />
+            <h2 className="text-sm font-semibold text-[#31363c]">Featured Plugins</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {featuredPlugins.map((plugin) => {
+              const isInstalled =
+                justInstalledSlugs.has(plugin.slug) ||
+                installedNames.has(plugin.packageName ?? '') ||
+                installedNames.has(plugin.name) ||
+                installedNames.has(plugin.slug);
+              return (
+                <StorePluginCard
+                  key={`featured-${plugin.id}`}
+                  plugin={plugin}
+                  onInstall={() => installMutation.mutate(plugin.slug)}
+                  installing={
+                    installMutation.isPending && installMutation.variables === plugin.slug
+                  }
+                  installed={isInstalled}
+                  featured
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* All Plugins Grid */}
+      <div className="mt-6">
+        {showFeatured && (
+          <div className="mb-3 flex items-center gap-2">
+            <Store className="h-4 w-4 text-[#31363c]" />
+            <h2 className="text-sm font-semibold text-[#31363c]">All Plugins</h2>
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           </div>
-        ) : plugins.length === 0 ? (
+        ) : filteredPlugins.length === 0 ? (
           <EmptyState
             icon={<Store className="h-12 w-12" />}
-            title="No plugins available yet"
-            description="The ForkCart Plugin Store is coming soon. Check back later!"
+            title={
+              search || activeCategory !== 'all'
+                ? 'No plugins match your filters'
+                : 'No plugins available yet'
+            }
+            description={
+              search || activeCategory !== 'all'
+                ? 'Try a different search term or category'
+                : 'The ForkCart Plugin Store is growing. Check back soon!'
+            }
           />
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {plugins.map((plugin) => {
+            {filteredPlugins.map((plugin) => {
               const isInstalled =
                 justInstalledSlugs.has(plugin.slug) ||
                 installedNames.has(plugin.packageName ?? '') ||
@@ -489,58 +605,113 @@ function StoreTab() {
   );
 }
 
+function RatingStars({ rating }: { rating: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`h-3 w-3 ${
+            star <= Math.round(rating)
+              ? 'fill-yellow-400 text-yellow-400'
+              : 'fill-gray-200 text-gray-200'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
 function StorePluginCard({
   plugin,
   onInstall,
   installing,
   installed,
+  featured,
 }: {
   plugin: StoreListing;
   onInstall: () => void;
   installing: boolean;
   installed?: boolean;
+  featured?: boolean;
 }) {
   const type = plugin.type ?? 'other';
   const typeColor = TYPE_COLORS[type] ?? TYPE_COLORS.other;
   const rating = plugin.rating ? parseFloat(plugin.rating) : 0;
+  const isFree = plugin.pricing === 'free' || plugin.pricing === '0' || !plugin.pricing;
 
   return (
-    <div className="rounded-lg border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted">
-          <span className="text-muted-foreground">
-            {TYPE_ICONS[type] ?? <Package className="h-5 w-5" />}
-          </span>
+    <div
+      className={`rounded-xl border bg-white p-5 shadow-sm transition-shadow hover:shadow-md ${
+        featured ? 'border-[#10b981]/30 ring-1 ring-[#10b981]/10' : 'border-[#e5e7eb]'
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Icon */}
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#f9fafb]">
+          {plugin.icon ? (
+            <img src={plugin.icon} alt="" className="h-7 w-7 rounded" />
+          ) : (
+            <span className="text-[#31363c]/50">
+              {TYPE_ICONS[type] ?? <Package className="h-5 w-5" />}
+            </span>
+          )}
         </div>
+
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold">{plugin.name}</h3>
-            <span
-              className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${typeColor}`}
-            >
-              {type}
-            </span>
+            <h3 className="truncate text-sm font-semibold text-[#31363c]">{plugin.name}</h3>
+            {featured && (
+              <span className="shrink-0 rounded bg-[#d1fae5] px-1.5 py-0.5 text-[10px] font-medium text-[#065f46]">
+                Featured
+              </span>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-[#31363c]/60">
             by {plugin.author ?? 'Unknown'} · v{plugin.version}
           </p>
         </div>
+
+        {/* Price Badge */}
+        <span
+          className={`shrink-0 rounded-lg px-2 py-1 text-xs font-semibold ${
+            isFree ? 'bg-[#d1fae5] text-[#065f46]' : 'bg-[#f9fafb] text-[#31363c]'
+          }`}
+        >
+          {isFree ? 'Free' : plugin.pricing}
+        </span>
       </div>
 
-      <p className="mt-3 line-clamp-2 text-sm text-muted-foreground">
+      {/* Type Badge */}
+      <div className="mt-2">
+        <span
+          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium capitalize ${typeColor}`}
+        >
+          {TYPE_ICONS[type] ? (
+            <span className="[&>svg]:h-3 [&>svg]:w-3">{TYPE_ICONS[type]}</span>
+          ) : null}
+          {type}
+        </span>
+      </div>
+
+      {/* Description */}
+      <p className="mt-2.5 line-clamp-2 text-sm text-[#31363c]/70">
         {plugin.shortDescription ?? plugin.description ?? 'No description available.'}
       </p>
 
-      <div className="mt-4 flex items-center justify-between">
+      {/* Rating + Downloads + Install */}
+      <div className="mt-4 flex items-center justify-between border-t border-[#e5e7eb] pt-3">
         <div className="flex items-center gap-3">
-          {plugin.ratingCount > 0 && (
-            <div className="flex items-center gap-1">
-              <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-              <span className="text-xs font-medium">{rating.toFixed(1)}</span>
-              <span className="text-xs text-muted-foreground">({plugin.ratingCount})</span>
+          {plugin.ratingCount > 0 ? (
+            <div className="flex items-center gap-1.5">
+              <RatingStars rating={rating} />
+              <span className="text-xs font-medium text-[#31363c]">{rating.toFixed(1)}</span>
+              <span className="text-[10px] text-[#31363c]/50">({plugin.ratingCount})</span>
             </div>
+          ) : (
+            <span className="text-[10px] text-[#31363c]/40">No ratings yet</span>
           )}
-          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1 text-xs text-[#31363c]/50">
             <Download className="h-3 w-3" />
             {plugin.downloads.toLocaleString()}
           </span>
@@ -549,10 +720,8 @@ function StorePluginCard({
         <button
           onClick={onInstall}
           disabled={installing || installed}
-          className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-            installed
-              ? 'bg-green-500/10 text-green-600 border border-green-500/20'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+            installed ? 'bg-[#d1fae5] text-[#065f46]' : 'bg-[#10b981] text-white hover:bg-[#065f46]'
           }`}
         >
           {installing ? (

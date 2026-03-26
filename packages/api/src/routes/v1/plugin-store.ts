@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { PluginStoreService } from '@forkcart/core';
+import type { PluginStoreService, CommissionService } from '@forkcart/core';
 import { requireRole } from '../../middleware/permissions';
 
 const ListPluginsQuerySchema = z.object({
@@ -57,8 +57,22 @@ const SlugParamSchema = z.object({
   slug: z.string().min(1),
 });
 
+const PurchaseSchema = z.object({
+  buyerId: z.string().uuid().nullable().optional(),
+  price: z.string().min(1),
+  paymentExternalId: z.string().min(1),
+  paymentProvider: z.string().optional(),
+});
+
+const PayoutRequestSchema = z.object({
+  amount: z.string().min(1),
+});
+
 /** Plugin Store routes */
-export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) {
+export function createPluginStoreRoutes(
+  pluginStoreService: PluginStoreService,
+  commissionService?: CommissionService,
+) {
   const router = new Hono();
 
   // ─── Registry proxy helper ──────────────────────────────────────────────
@@ -288,6 +302,63 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
     const version = await pluginStoreService.publishVersion(plugin.id, input);
     return c.json({ data: version });
   });
+
+  // ─── Commission & Payment Routes ────────────────────────────────────────
+
+  if (commissionService) {
+    /** Record a plugin purchase */
+    router.post('/:slug/purchase', requireRole('admin', 'superadmin'), async (c) => {
+      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+      const body = await c.req.json();
+      const input = PurchaseSchema.parse(body);
+
+      const plugin = await pluginStoreService.getPlugin(slug);
+      if (!plugin) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+      }
+
+      const purchase = await commissionService.recordPurchase(
+        plugin.id,
+        input.buyerId ?? null,
+        input.price,
+        input.paymentExternalId,
+        input.paymentProvider,
+      );
+      return c.json({ data: purchase }, 201);
+    });
+
+    /** Get developer earnings */
+    router.get('/developer/earnings', requireRole('admin', 'superadmin'), async (c) => {
+      const developerId = c.req.query('developerId');
+      if (!developerId) {
+        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
+      }
+      const earnings = await commissionService.getDevEarnings(developerId);
+      return c.json({ data: earnings });
+    });
+
+    /** Get developer purchase history */
+    router.get('/developer/purchases', requireRole('admin', 'superadmin'), async (c) => {
+      const developerId = c.req.query('developerId');
+      if (!developerId) {
+        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
+      }
+      const purchases = await commissionService.getDevPurchaseHistory(developerId);
+      return c.json({ data: purchases });
+    });
+
+    /** Request a payout */
+    router.post('/developer/payout', requireRole('admin', 'superadmin'), async (c) => {
+      const body = await c.req.json();
+      const { amount } = PayoutRequestSchema.parse(body);
+      const developerId = c.req.query('developerId');
+      if (!developerId) {
+        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
+      }
+      const payout = await commissionService.requestPayout(developerId, amount);
+      return c.json({ data: payout }, 201);
+    });
+  }
 
   return router;
 }
