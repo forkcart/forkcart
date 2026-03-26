@@ -66,6 +66,8 @@ import {
   MarketplaceService,
   MarketplaceProviderRegistry,
   PluginStoreService,
+  CommissionService,
+  StripeCheckoutService,
 } from '@forkcart/core';
 import {
   AISettingsRepository,
@@ -407,6 +409,13 @@ export async function createApp(db: Database) {
   // Initialize plugin store service with plugin loader
   pluginStoreService = new PluginStoreService({ db, pluginLoader });
 
+  // Initialize commission and Stripe checkout services for plugin store payments
+  const commissionService = new CommissionService({ db });
+  let stripeCheckoutService: StripeCheckoutService | undefined;
+  if (process.env['STRIPE_SECRET_KEY']) {
+    stripeCheckoutService = new StripeCheckoutService({ db, commissionService });
+  }
+
   // Load active plugins from DB
   await pluginLoader.loadActivePlugins();
 
@@ -565,7 +574,10 @@ export async function createApp(db: Database) {
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
-  v1.route('/store', createPluginStoreRoutes(pluginStoreService));
+  v1.route(
+    '/store',
+    createPluginStoreRoutes(pluginStoreService, commissionService, stripeCheckoutService),
+  );
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
@@ -606,7 +618,10 @@ export async function createApp(db: Database) {
   app.route('/api/v1/public/plugins', createPublicPluginRoutes(pluginLoader));
 
   // Public plugin store routes (no auth — browsing the store)
-  app.route('/api/v1/public/store', createPluginStoreRoutes(pluginStoreService));
+  app.route(
+    '/api/v1/public/store',
+    createPluginStoreRoutes(pluginStoreService, commissionService, stripeCheckoutService),
+  );
 
   // Public cookie consent routes (no auth — storefront banner config + logging)
   app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));

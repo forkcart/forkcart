@@ -31,7 +31,8 @@
     "drizzle-orm": "^0.38.0",
     "jsonwebtoken": "^9.0.3",
     "node-cron": "^4.2.1",
-    "pino": "^9.5.0"
+    "pino": "^9.5.0",
+    "stripe": "^21.0.0"
   },
   "devDependencies": {
     "@types/adm-zip": "^0.5.8",

@@ -31,3 +31,4 @@ export * from './cookie-consent';
 export * from './plugin-store';
 export * from './plugin-developers';
 export * from './plugin-purchases';
+export * from './plugin-licenses';

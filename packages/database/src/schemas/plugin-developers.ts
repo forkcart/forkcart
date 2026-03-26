@@ -13,6 +13,8 @@ export const pluginDevelopers = pgTable(
     logo: text('logo'),
     verified: boolean('verified').notNull().default(false),
     apiKey: varchar('api_key', { length: 64 }).notNull().unique(),
+    stripeConnectId: varchar('stripe_connect_id', { length: 255 }),
+    stripeOnboardingComplete: boolean('stripe_onboarding_complete').notNull().default(false),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },

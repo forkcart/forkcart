@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { PluginStoreService, CommissionService } from '@forkcart/core';
+import type { PluginStoreService, CommissionService, StripeCheckoutService } from '@forkcart/core';
 import { requireRole } from '../../middleware/permissions';
 
 const ListPluginsQuerySchema = z.object({
@@ -68,10 +68,16 @@ const PayoutRequestSchema = z.object({
   amount: z.string().min(1),
 });
 
+const CheckoutSchema = z.object({
+  successUrl: z.string().url(),
+  cancelUrl: z.string().url(),
+});
+
 /** Plugin Store routes */
 export function createPluginStoreRoutes(
   pluginStoreService: PluginStoreService,
   commissionService?: CommissionService,
+  stripeCheckoutService?: StripeCheckoutService,
 ) {
   const router = new Hono();
 
@@ -175,11 +181,25 @@ export function createPluginStoreRoutes(
   /** Get plugin details by slug */
   router.get('/:slug', async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+
+    // Try central registry first
+    const registryDetail = await fetchRegistry(`/store/${slug}`);
+    if (registryDetail) {
+      const data = (await registryDetail.json()) as Record<string, unknown>;
+      const plugin = data.plugin || data;
+      const pricing = String((plugin as Record<string, unknown>).pricing || 'free');
+      return c.json({ data: { ...plugin, requiresPurchase: pricing !== 'free' } });
+    }
+
+    // Fallback to local DB
     const plugin = await pluginStoreService.getPlugin(slug);
     if (!plugin) {
       return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
     }
-    return c.json({ data: plugin });
+
+    const requiresPurchase = plugin.pricing !== 'free';
+
+    return c.json({ data: { ...plugin, requiresPurchase } });
   });
 
   /** Install a plugin from store (admin) */
@@ -357,6 +377,82 @@ export function createPluginStoreRoutes(
       }
       const payout = await commissionService.requestPayout(developerId, amount);
       return c.json({ data: payout }, 201);
+    });
+  }
+
+  // ─── Stripe Checkout Routes ──────────────────────────────────────────────
+
+  if (stripeCheckoutService) {
+    /** Create Stripe Checkout Session for a plugin */
+    router.post('/:slug/checkout', requireRole('admin', 'superadmin'), async (c) => {
+      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+      const body = await c.req.json();
+      const { successUrl, cancelUrl } = CheckoutSchema.parse(body);
+
+      const plugin = await pluginStoreService.getPlugin(slug);
+      if (!plugin) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+      }
+
+      const userId = (c.get('user') as { id: string })?.id ?? null;
+      const session = await stripeCheckoutService.createCheckoutSession(
+        plugin.id,
+        userId,
+        successUrl,
+        cancelUrl,
+      );
+      return c.json({ data: session });
+    });
+
+    /** Stripe webhook handler (NO auth — Stripe sends directly) */
+    router.post('/webhook', async (c) => {
+      const signature = c.req.header('stripe-signature');
+      if (!signature) {
+        return c.json({ error: 'Missing stripe-signature header' }, 400);
+      }
+      const rawBody = await c.req.text();
+
+      try {
+        const event = stripeCheckoutService.constructWebhookEvent(rawBody, signature);
+        const result = await stripeCheckoutService.handleWebhook(event);
+        return c.json({ received: true, data: result });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Webhook verification failed';
+        return c.json({ error: message }, 400);
+      }
+    });
+
+    /** List user's purchased plugins (admin auth) */
+    router.get('/purchases', requireRole('admin', 'superadmin'), async (c) => {
+      const userId = (c.get('user') as { id: string })?.id;
+      if (!userId) {
+        return c.json({ error: { code: 'UNAUTHORIZED', message: 'User not found' } }, 401);
+      }
+      const purchases = await stripeCheckoutService.getUserPurchases(userId);
+      return c.json({ data: purchases });
+    });
+
+    /** Get license key for a purchased plugin (admin auth) */
+    router.get('/:slug/license', requireRole('admin', 'superadmin'), async (c) => {
+      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+      const userId = (c.get('user') as { id: string })?.id;
+      if (!userId) {
+        return c.json({ error: { code: 'UNAUTHORIZED', message: 'User not found' } }, 401);
+      }
+
+      const plugin = await pluginStoreService.getPlugin(slug);
+      if (!plugin) {
+        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+      }
+
+      const license = await stripeCheckoutService.getUserLicense(userId, plugin.id);
+      if (!license) {
+        return c.json(
+          { error: { code: 'NOT_FOUND', message: 'No license found for this plugin' } },
+          404,
+        );
+      }
+      return c.json({ data: license });
     });
   }
 
