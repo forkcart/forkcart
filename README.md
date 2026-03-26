@@ -24,15 +24,15 @@ No vendor lock-in. No monthly fees. ~65,000 lines of TypeScript.
 
 Every existing open-source e-commerce platform in TypeScript is headless-only — they give you an API and tell you to build your own frontend. ForkCart ships the entire stack:
 
-|                   | ForkCart           | Medusa.js          | Vendure            | Saleor             | Shopware              |
-| ----------------- | ------------------ | ------------------ | ------------------ | ------------------ | --------------------- |
-| **Language**      | TypeScript         | TypeScript         | TypeScript         | Python / GraphQL   | PHP                   |
-| **Storefront**    | ✅ Included        | ❌ Headless only   | ❌ Headless only   | ❌ Headless only   | ✅ Twig               |
-| **Page Builder**  | ✅ Drag & Drop     | —                  | —                  | —                  | ✅ Shopping Experiences |
-| **AI Built-in**   | ✅ Native          | —                  | —                  | —                  | Via plugins           |
-| **Plugin System** | Interface-based    | Modules            | Plugins            | Apps               | Plugins               |
-| **Self-hosted**   | ✅                 | ✅                 | ✅                 | ✅                 | ✅                    |
-| **License**       | MIT                | MIT                | MIT                | BSD                | MIT                   |
+|                   | ForkCart        | Medusa.js        | Vendure          | Saleor           | Shopware                |
+| ----------------- | --------------- | ---------------- | ---------------- | ---------------- | ----------------------- |
+| **Language**      | TypeScript      | TypeScript       | TypeScript       | Python / GraphQL | PHP                     |
+| **Storefront**    | ✅ Included     | ❌ Headless only | ❌ Headless only | ❌ Headless only | ✅ Twig                 |
+| **Page Builder**  | ✅ Drag & Drop  | —                | —                | —                | ✅ Shopping Experiences |
+| **AI Built-in**   | ✅ Native       | —                | —                | —                | Via plugins             |
+| **Plugin System** | Interface-based | Modules          | Plugins          | Apps             | Plugins                 |
+| **Self-hosted**   | ✅              | ✅               | ✅               | ✅               | ✅                      |
+| **License**       | MIT             | MIT              | MIT              | BSD              | MIT                     |
 
 ## Features
 

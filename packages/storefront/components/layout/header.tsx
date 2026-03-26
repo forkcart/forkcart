@@ -39,7 +39,7 @@ export function Header() {
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <LocaleLink href="/" className="flex items-center">
-              <img src="/logo.png" alt="ForkCart" className="h-8 w-auto" />
+              <img src="/logo.png" alt="ForkCart" className="h-12 w-auto" />
             </LocaleLink>
 
             {/* Desktop Nav */}

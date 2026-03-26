@@ -96,7 +96,7 @@ export function Sidebar() {
   return (
     <aside className="flex w-64 flex-col border-r bg-card">
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <img src="/logo.png" alt="ForkCart" className="h-7 w-auto" />
+        <img src="/logo.png" alt="ForkCart" className="h-12 w-auto" />
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
