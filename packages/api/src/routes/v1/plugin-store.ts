@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { PluginStoreService, CommissionService, StripeCheckoutService } from '@forkcart/core';
+import type { PluginStoreService } from '@forkcart/core';
 import { requireRole } from '../../middleware/permissions';
 
 const ListPluginsQuerySchema = z.object({
@@ -57,28 +57,8 @@ const SlugParamSchema = z.object({
   slug: z.string().min(1),
 });
 
-const PurchaseSchema = z.object({
-  buyerId: z.string().uuid().nullable().optional(),
-  price: z.string().min(1),
-  paymentExternalId: z.string().min(1),
-  paymentProvider: z.string().optional(),
-});
-
-const PayoutRequestSchema = z.object({
-  amount: z.string().min(1),
-});
-
-const CheckoutSchema = z.object({
-  successUrl: z.string().url(),
-  cancelUrl: z.string().url(),
-});
-
-/** Plugin Store routes */
-export function createPluginStoreRoutes(
-  pluginStoreService: PluginStoreService,
-  commissionService?: CommissionService,
-  stripeCheckoutService?: StripeCheckoutService,
-) {
+/** Plugin Store routes — browsing, local install, reviews, versions */
+export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) {
   const router = new Hono();
 
   // ─── Registry proxy helper ──────────────────────────────────────────────
@@ -202,7 +182,7 @@ export function createPluginStoreRoutes(
     return c.json({ data: { ...plugin, requiresPurchase } });
   });
 
-  /** Install a plugin from store (admin) */
+  /** Install a plugin from store (admin) — free install, no license checking */
   router.post('/:slug/install', requireRole('admin', 'superadmin'), async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
 
@@ -322,139 +302,6 @@ export function createPluginStoreRoutes(
     const version = await pluginStoreService.publishVersion(plugin.id, input);
     return c.json({ data: version });
   });
-
-  // ─── Commission & Payment Routes ────────────────────────────────────────
-
-  if (commissionService) {
-    /** Record a plugin purchase */
-    router.post('/:slug/purchase', requireRole('admin', 'superadmin'), async (c) => {
-      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
-      const body = await c.req.json();
-      const input = PurchaseSchema.parse(body);
-
-      const plugin = await pluginStoreService.getPlugin(slug);
-      if (!plugin) {
-        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
-      }
-
-      const purchase = await commissionService.recordPurchase(
-        plugin.id,
-        input.buyerId ?? null,
-        input.price,
-        input.paymentExternalId,
-        input.paymentProvider,
-      );
-      return c.json({ data: purchase }, 201);
-    });
-
-    /** Get developer earnings */
-    router.get('/developer/earnings', requireRole('admin', 'superadmin'), async (c) => {
-      const developerId = c.req.query('developerId');
-      if (!developerId) {
-        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
-      }
-      const earnings = await commissionService.getDevEarnings(developerId);
-      return c.json({ data: earnings });
-    });
-
-    /** Get developer purchase history */
-    router.get('/developer/purchases', requireRole('admin', 'superadmin'), async (c) => {
-      const developerId = c.req.query('developerId');
-      if (!developerId) {
-        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
-      }
-      const purchases = await commissionService.getDevPurchaseHistory(developerId);
-      return c.json({ data: purchases });
-    });
-
-    /** Request a payout */
-    router.post('/developer/payout', requireRole('admin', 'superadmin'), async (c) => {
-      const body = await c.req.json();
-      const { amount } = PayoutRequestSchema.parse(body);
-      const developerId = c.req.query('developerId');
-      if (!developerId) {
-        return c.json({ error: { code: 'BAD_REQUEST', message: 'developerId required' } }, 400);
-      }
-      const payout = await commissionService.requestPayout(developerId, amount);
-      return c.json({ data: payout }, 201);
-    });
-  }
-
-  // ─── Stripe Checkout Routes ──────────────────────────────────────────────
-
-  if (stripeCheckoutService) {
-    /** Create Stripe Checkout Session for a plugin */
-    router.post('/:slug/checkout', requireRole('admin', 'superadmin'), async (c) => {
-      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
-      const body = await c.req.json();
-      const { successUrl, cancelUrl } = CheckoutSchema.parse(body);
-
-      const plugin = await pluginStoreService.getPlugin(slug);
-      if (!plugin) {
-        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
-      }
-
-      const userId = (c.get('user') as { id: string })?.id ?? null;
-      const session = await stripeCheckoutService.createCheckoutSession(
-        plugin.id,
-        userId,
-        successUrl,
-        cancelUrl,
-      );
-      return c.json({ data: session });
-    });
-
-    /** Stripe webhook handler (NO auth — Stripe sends directly) */
-    router.post('/webhook', async (c) => {
-      const signature = c.req.header('stripe-signature');
-      if (!signature) {
-        return c.json({ error: 'Missing stripe-signature header' }, 400);
-      }
-      const rawBody = await c.req.text();
-
-      try {
-        const event = stripeCheckoutService.constructWebhookEvent(rawBody, signature);
-        const result = await stripeCheckoutService.handleWebhook(event);
-        return c.json({ received: true, data: result });
-      } catch (err) {
-        const message = err instanceof Error ? err.message : 'Webhook verification failed';
-        return c.json({ error: message }, 400);
-      }
-    });
-
-    /** List user's purchased plugins (admin auth) */
-    router.get('/purchases', requireRole('admin', 'superadmin'), async (c) => {
-      const userId = (c.get('user') as { id: string })?.id;
-      if (!userId) {
-        return c.json({ error: { code: 'UNAUTHORIZED', message: 'User not found' } }, 401);
-      }
-      const purchases = await stripeCheckoutService.getUserPurchases(userId);
-      return c.json({ data: purchases });
-    });
-
-    /** Get license key for a purchased plugin (admin auth) */
-    router.get('/:slug/license', requireRole('admin', 'superadmin'), async (c) => {
-      const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
-      const userId = (c.get('user') as { id: string })?.id;
-      if (!userId) {
-        return c.json({ error: { code: 'UNAUTHORIZED', message: 'User not found' } }, 401);
-      }
-
-      const plugin = await pluginStoreService.getPlugin(slug);
-      if (!plugin) {
-        return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
-      }
-
-      const license = await stripeCheckoutService.getUserLicense(userId, plugin.id);
-      if (!license) {
-        return c.json(
-          { error: { code: 'NOT_FOUND', message: 'No license found for this plugin' } },
-          404,
-        );
-      }
-      return c.json({ data: license });
-    });
-  }
 
   return router;
 }

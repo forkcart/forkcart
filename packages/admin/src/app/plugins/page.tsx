@@ -717,25 +717,38 @@ function StorePluginCard({
           </span>
         </div>
 
-        <button
-          onClick={onInstall}
-          disabled={installing || installed}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-            installed ? 'bg-[#d1fae5] text-[#065f46]' : 'bg-[#10b981] text-white hover:bg-[#065f46]'
-          }`}
-        >
-          {installing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : installed ? (
-            <>
-              <Check className="h-3.5 w-3.5" /> Installed
-            </>
-          ) : (
-            <>
-              <Download className="h-3.5 w-3.5" /> Install
-            </>
-          )}
-        </button>
+        {!isFree && !installed ? (
+          <a
+            href={`https://forkcart.com/store/${plugin.slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#10b981] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#065f46]"
+          >
+            <ShoppingBag className="h-3.5 w-3.5" /> Buy on forkcart.com
+          </a>
+        ) : (
+          <button
+            onClick={onInstall}
+            disabled={installing || installed}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+              installed
+                ? 'bg-[#d1fae5] text-[#065f46]'
+                : 'bg-[#10b981] text-white hover:bg-[#065f46]'
+            }`}
+          >
+            {installing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : installed ? (
+              <>
+                <Check className="h-3.5 w-3.5" /> Installed
+              </>
+            ) : (
+              <>
+                <Download className="h-3.5 w-3.5" /> Install
+              </>
+            )}
+          </button>
+        )}
       </div>
     </div>
   );
