@@ -389,7 +389,10 @@ export function registerPluginCommands(program: Command): void {
 
         if (plugin.versions && (plugin.versions as unknown[]).length > 0) {
           console.log(chalk.bold('\n  Versions:'));
-          for (const v of (plugin.versions as Array<{ version: string; changelog?: string }>).slice(0, 5)) {
+          for (const v of (plugin.versions as Array<{ version: string; changelog?: string }>).slice(
+            0,
+            5,
+          )) {
             console.log(`    ${chalk.dim('•')} v${v.version} ${chalk.dim(v.changelog ?? '')}`);
           }
         }

@@ -89,11 +89,20 @@ export class PluginStoreService {
 
   // ─── Detail (registry proxy) ────────────────────────────────────────────
 
-  async getPlugin(slug: string): Promise<(PluginStoreListing & { versions?: unknown[]; reviews?: unknown[]; activeInstalls?: number }) | null> {
+  async getPlugin(
+    slug: string,
+  ): Promise<
+    | (PluginStoreListing & { versions?: unknown[]; reviews?: unknown[]; activeInstalls?: number })
+    | null
+  > {
     const res = await fetchRegistry(`/store/${slug}`);
     if (res) {
       const body = (await res.json()) as Record<string, unknown>;
-      return (body.plugin || body) as PluginStoreListing & { versions?: unknown[]; reviews?: unknown[]; activeInstalls?: number };
+      return (body.plugin || body) as PluginStoreListing & {
+        versions?: unknown[];
+        reviews?: unknown[];
+        activeInstalls?: number;
+      };
     }
     return null;
   }
