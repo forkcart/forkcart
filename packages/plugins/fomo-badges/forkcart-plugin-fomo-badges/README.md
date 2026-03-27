@@ -25,16 +25,16 @@ forkcart plugin activate social-proof
 
 ## Configuration
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| `enabled` | Enable/disable the widget | `true` |
-| `showViewers` | Show viewer count | `true` |
-| `showSoldToday` | Show sold today count | `true` |
-| `showInCarts` | Show "in cart" count | `true` |
-| `minViewers` | Minimum viewers to display | `2` |
-| `viewerTimeout` | Seconds until viewer is "gone" | `120` |
-| `style` | Display style (badge/text/toast) | `badge` |
-| `position` | Widget position | `below-price` |
+| Setting         | Description                      | Default       |
+| --------------- | -------------------------------- | ------------- |
+| `enabled`       | Enable/disable the widget        | `true`        |
+| `showViewers`   | Show viewer count                | `true`        |
+| `showSoldToday` | Show sold today count            | `true`        |
+| `showInCarts`   | Show "in cart" count             | `true`        |
+| `minViewers`    | Minimum viewers to display       | `2`           |
+| `viewerTimeout` | Seconds until viewer is "gone"   | `120`         |
+| `style`         | Display style (badge/text/toast) | `badge`       |
+| `position`      | Widget position                  | `below-price` |
 
 ## CLI Commands
 
@@ -76,9 +76,15 @@ Override styles in your storefront:
   border-radius: 12px;
 }
 
-.social-proof-item.viewing { color: blue; }
-.social-proof-item.sold { color: red; }
-.social-proof-item.carts { color: green; }
+.social-proof-item.viewing {
+  color: blue;
+}
+.social-proof-item.sold {
+  color: red;
+}
+.social-proof-item.carts {
+  color: green;
+}
 ```
 
 ## License
@@ -87,4 +93,4 @@ MIT — Built with 🦉 by Tyto
 
 ---
 
-*"FOMO is a feature, not a bug."*
+_"FOMO is a feature, not a bug."_
