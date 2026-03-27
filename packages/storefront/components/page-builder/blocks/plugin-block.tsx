@@ -7,8 +7,8 @@
  * StorefrontSlot.
  */
 
-import sanitizeHtmlLib from 'sanitize-html';
 import { API_URL } from '@/lib/config';
+import { sanitizePluginHtml } from '@/components/plugins/sanitize-plugin-html';
 
 interface PluginBlockProps {
   pluginName: string;
@@ -45,18 +45,6 @@ async function fetchBlockContent(pluginName: string, blockName: string): Promise
   }
 }
 
-/**
- * Sanitize HTML — same rules as StorefrontSlot (plugins need script/style).
- * Kept as a thin wrapper; the full allowlist lives in StorefrontSlot.
- */
-function sanitizeHtml(html: string): string {
-  return sanitizeHtmlLib(html, {
-    allowedTags: false as unknown as string[], // allow all tags (same trust model as StorefrontSlot)
-    allowedAttributes: false, // allow all attributes
-    allowVulnerableTags: true, // permit script/style
-  });
-}
-
 export async function PluginBlockRenderer({ pluginName, blockName }: PluginBlockProps) {
   const content = await fetchBlockContent(pluginName, blockName);
 
@@ -75,7 +63,7 @@ export async function PluginBlockRenderer({ pluginName, blockName }: PluginBlock
 
   return (
     <div data-plugin-block={`${pluginName}:${blockName}`} data-plugin={pluginName}>
-      <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlWithoutScripts) }} />
+      <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
       {inlineScripts.map((scriptContent, i) => (
         <script
           key={`${pluginName}-${blockName}-script-${i}`}

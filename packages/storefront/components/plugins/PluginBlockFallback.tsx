@@ -9,8 +9,8 @@
  * the Craft.js JSON of the current page template.
  */
 
-import sanitizeHtmlLib from 'sanitize-html';
 import { API_URL } from '@/lib/config';
+import { sanitizePluginHtml } from './sanitize-plugin-html';
 
 export interface PluginBlockFallbackProps {
   /** The slot to render fallbacks for (e.g., 'product-page-bottom') */
@@ -60,14 +60,6 @@ async function fetchFallbackBlocks(
   }
 }
 
-function sanitizeHtml(html: string): string {
-  return sanitizeHtmlLib(html, {
-    allowedTags: false as unknown as string[],
-    allowedAttributes: false,
-    allowVulnerableTags: true,
-  });
-}
-
 /**
  * Renders all fallback blocks for a specific slot.
  * Place this next to (or inside) the corresponding <StorefrontSlot>.
@@ -105,7 +97,7 @@ export async function PluginBlockFallback({
             data-plugin={block.pluginName}
             data-fallback
           >
-            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlWithoutScripts) }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
             {inlineScripts.map((scriptContent, i) => (
               <script
                 key={`${block.pluginName}-${block.name}-fallback-script-${i}`}
