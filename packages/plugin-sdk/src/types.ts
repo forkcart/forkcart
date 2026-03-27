@@ -209,6 +209,32 @@ export interface StorefrontSlotContent {
   pages?: string[];
 }
 
+// ─── PageBuilder blocks ─────────────────────────────────────────────────────
+
+/** A custom block that plugins can register for the PageBuilder (Craft.js) */
+export interface PageBuilderBlock {
+  /** Unique block ID within the plugin (e.g., 'fomo-widget') */
+  name: string;
+  /** Display name shown in the PageBuilder block picker */
+  label: string;
+  /** Emoji or icon name for the block picker */
+  icon?: string;
+  /** Category in the PageBuilder sidebar (default: 'Plugins') */
+  category?: string;
+  /** Tooltip / description shown on hover */
+  description?: string;
+  /** HTML content to render */
+  content: string;
+  /** Fallback slot if admin hasn't placed this block in PageBuilder (e.g., 'product-page-bottom') */
+  defaultSlot?: StorefrontSlot | string;
+  /** Sort order within the fallback slot (lower = earlier, default: 10) */
+  defaultOrder?: number;
+  /** Only show on pages matching these patterns (e.g., ['/product/*']) */
+  pages?: string[];
+  /** Block-specific settings schema */
+  settings?: Record<string, unknown>;
+}
+
 // ─── Database migrations ────────────────────────────────────────────────────
 
 /** Database migration for plugins that need custom tables */
@@ -336,6 +362,11 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
 
   /** Storefront slots for injecting custom frontend content */
   storefrontSlots?: StorefrontSlotContent[];
+
+  /** PageBuilder blocks — custom blocks that appear in the Craft.js PageBuilder.
+   *  Blocks with a `defaultSlot` will automatically fall back to that slot
+   *  if the admin hasn't placed them in the page template. */
+  pageBuilderBlocks?: PageBuilderBlock[];
 
   /** Database migrations for custom tables */
   migrations?: PluginMigration[];

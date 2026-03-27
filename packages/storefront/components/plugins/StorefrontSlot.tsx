@@ -317,10 +317,7 @@ export async function StorefrontSlot({ slotName, currentPage, className }: Store
           .filter((s) => s.length > 0);
 
         // Remove scripts from HTML content (they'll be executed separately)
-        const htmlWithoutScripts = item.content.replace(
-          /<script[^>]*>[\s\S]*?<\/script>/gi,
-          '',
-        );
+        const htmlWithoutScripts = item.content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
 
         return (
           <div key={`${item.pluginName}-${index}`} data-plugin={item.pluginName}>

@@ -87,6 +87,18 @@ interface SdkPluginDefinition {
   }>;
   routes?: (router: unknown) => void;
   storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
+  pageBuilderBlocks?: Array<{
+    name: string;
+    label: string;
+    icon?: string;
+    category?: string;
+    description?: string;
+    content: string;
+    defaultSlot?: string;
+    defaultOrder?: number;
+    pages?: string[];
+    settings?: Record<string, unknown>;
+  }>;
   migrations?: Array<{
     version: string;
     description: string;
@@ -204,6 +216,24 @@ export class PluginLoader {
 
   // ─── Plugin Routes Registry ────────────────────────────────────────────────
   private pluginRouteRegistrars = new Map<string, (router: unknown) => void>();
+
+  // ─── PageBuilder Blocks Registry ───────────────────────────────────────────
+  private pageBuilderBlocks = new Map<
+    string,
+    Array<{
+      pluginName: string;
+      name: string;
+      label: string;
+      icon?: string;
+      category: string;
+      description?: string;
+      content: string;
+      defaultSlot?: string;
+      defaultOrder: number;
+      pages?: string[];
+      settings?: Record<string, unknown>;
+    }>
+  >();
 
   // ─── Migration Runner ──────────────────────────────────────────────────────
   private migrationRunner: MigrationRunner;
@@ -770,6 +800,13 @@ export class PluginLoader {
       }
     }
 
+    // Unregister pageBuilderBlocks
+    for (const [key] of this.pageBuilderBlocks) {
+      if (key.startsWith(`${plugin.name}:`)) {
+        this.pageBuilderBlocks.delete(key);
+      }
+    }
+
     // Unregister CLI commands
     for (const [key, entry] of this.cliCommands) {
       if (entry.pluginName === plugin.name) {
@@ -863,6 +900,28 @@ export class PluginLoader {
         });
         existing.sort((a, b) => a.order - b.order);
         this.storefrontSlots.set(slot.slot, existing);
+      }
+    }
+
+    // Register pageBuilderBlocks
+    if (def.pageBuilderBlocks) {
+      for (const block of def.pageBuilderBlocks) {
+        const key = `${pluginName}:${block.name}`;
+        const entry = {
+          pluginName,
+          name: block.name,
+          label: block.label,
+          icon: block.icon,
+          category: block.category ?? 'Plugins',
+          description: block.description,
+          content: block.content,
+          defaultSlot: block.defaultSlot,
+          defaultOrder: block.defaultOrder ?? 10,
+          pages: block.pages,
+          settings: block.settings,
+        };
+        this.pageBuilderBlocks.set(key, [...(this.pageBuilderBlocks.get(key) ?? []), entry]);
+        logger.debug({ pluginName, block: block.name }, 'PageBuilder block registered');
       }
     }
 
@@ -1315,6 +1374,105 @@ export class PluginLoader {
     Array<{ pluginName: string; content: string; order: number }>
   > {
     return this.storefrontSlots;
+  }
+
+  // ─── PageBuilder Blocks API ─────────────────────────────────────────────────
+
+  /** Get all registered pageBuilderBlocks (for the admin PageBuilder UI block picker) */
+  getAllPageBuilderBlocks(): Array<{
+    pluginName: string;
+    name: string;
+    label: string;
+    icon?: string;
+    category: string;
+    description?: string;
+    content: string;
+    defaultSlot?: string;
+    defaultOrder: number;
+    pages?: string[];
+    settings?: Record<string, unknown>;
+  }> {
+    const result: Array<{
+      pluginName: string;
+      name: string;
+      label: string;
+      icon?: string;
+      category: string;
+      description?: string;
+      content: string;
+      defaultSlot?: string;
+      defaultOrder: number;
+      pages?: string[];
+      settings?: Record<string, unknown>;
+    }> = [];
+    for (const entries of this.pageBuilderBlocks.values()) {
+      result.push(...entries);
+    }
+    return result;
+  }
+
+  /**
+   * Get pageBuilderBlocks that should render as fallbacks.
+   * Returns blocks NOT placed in the current page's PageBuilder template,
+   * filtered by page pattern and sorted by defaultOrder.
+   *
+   * @param placedBlockKeys - Array of "pluginName:blockName" keys already placed in the template
+   * @param currentPage - Current page path for page filtering (e.g., '/product/xyz')
+   */
+  getPageBuilderBlockFallbacks(
+    placedBlockKeys: string[],
+    currentPage?: string,
+  ): Array<{
+    pluginName: string;
+    name: string;
+    label: string;
+    content: string;
+    defaultSlot: string;
+    defaultOrder: number;
+  }> {
+    const placedSet = new Set(placedBlockKeys);
+    const result: Array<{
+      pluginName: string;
+      name: string;
+      label: string;
+      content: string;
+      defaultSlot: string;
+      defaultOrder: number;
+    }> = [];
+
+    for (const entries of this.pageBuilderBlocks.values()) {
+      for (const block of entries) {
+        // Must have a defaultSlot to be a fallback candidate
+        if (!block.defaultSlot) continue;
+
+        // Skip blocks already placed in the template
+        const key = `${block.pluginName}:${block.name}`;
+        if (placedSet.has(key)) continue;
+
+        // Check page filter
+        if (block.pages && block.pages.length > 0 && currentPage) {
+          const matches = block.pages.some((pattern) => {
+            if (pattern.endsWith('/*')) {
+              const prefix = pattern.slice(0, -1); // '/product/' from '/product/*'
+              return currentPage.startsWith(prefix);
+            }
+            return currentPage === pattern;
+          });
+          if (!matches) continue;
+        }
+
+        result.push({
+          pluginName: block.pluginName,
+          name: block.name,
+          label: block.label,
+          content: block.content,
+          defaultSlot: block.defaultSlot,
+          defaultOrder: block.defaultOrder,
+        });
+      }
+    }
+
+    return result.sort((a, b) => a.defaultOrder - b.defaultOrder);
   }
 
   // ─── CLI Commands API ─────────────────────────────────────────────────────

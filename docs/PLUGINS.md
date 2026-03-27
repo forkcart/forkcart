@@ -13,6 +13,7 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
 - [Filters (Data Transformation)](#filters-data-transformation)
 - [Storefront Slots](#storefront-slots)
 - [Storefront Integration](#storefront-integration)
+- [PageBuilder Blocks](#pagebuilder-blocks)
 - [Custom API Routes](#custom-api-routes)
 - [Admin Pages](#admin-pages)
 - [CLI Commands](#cli-commands)
@@ -546,6 +547,142 @@ GET /api/v1/public/plugins/slots/:slotName?page=<currentPage>
 ```
 
 This is a **public** endpoint (no auth required) so the storefront can fetch it server-side. The `page` query parameter filters slots that have `pages` restrictions.
+
+---
+
+## PageBuilder Blocks
+
+Plugins can register custom blocks that appear in the admin's Craft.js PageBuilder. The killer feature: blocks have a **fallback mechanism** — if the admin hasn't placed your block in the page template, it automatically renders at a default slot position. Plugins work out of the box, but admins get full control.
+
+### Registering Blocks
+
+```typescript
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'fomo-badges',
+  version: '1.0.0',
+  type: 'general',
+  description: 'Social proof badges for products',
+  author: 'Acme Corp',
+
+  pageBuilderBlocks: [
+    {
+      name: 'fomo-widget',
+      label: 'FOMO Widget',
+      icon: '🔥',
+      category: 'Social Proof',
+      description: 'Shows recent purchases and visitor count',
+      content: `
+        <div class="fomo-widget" id="fomo-widget-root">
+          <p>Loading social proof...</p>
+        </div>
+        <script>
+          // Your widget JS runs here
+          document.getElementById('fomo-widget-root').innerHTML =
+            '<p>🔥 12 people bought this in the last hour</p>';
+        </script>
+      `,
+      defaultSlot: 'product-page-bottom', // Fallback if not placed by admin
+      defaultOrder: 5,
+      pages: ['/product/*'], // Only on product pages
+    },
+  ],
+});
+```
+
+### Block Definition
+
+| Field          | Type       | Required | Description                                                                |
+| -------------- | ---------- | -------- | -------------------------------------------------------------------------- |
+| `name`         | `string`   | ✅       | Unique block ID within the plugin                                          |
+| `label`        | `string`   | ✅       | Display name in the PageBuilder                                            |
+| `icon`         | `string`   | —        | Emoji or icon name                                                         |
+| `category`     | `string`   | —        | Category in the block picker (default: `'Plugins'`)                        |
+| `description`  | `string`   | —        | Tooltip / hover description                                                |
+| `content`      | `string`   | ✅       | HTML content (scripts and styles allowed — same trust model as slots)      |
+| `defaultSlot`  | `string`   | —        | Fallback slot if not placed in the template (e.g. `'product-page-bottom'`) |
+| `defaultOrder` | `number`   | —        | Order within the fallback slot (lower = earlier, default: `10`)            |
+| `pages`        | `string[]` | —        | Page filter (supports `*` wildcards, e.g. `['/product/*']`)                |
+| `settings`     | `object`   | —        | Block-specific settings schema                                             |
+
+### The Fallback Mechanism
+
+This is the key innovation. Here's how it works:
+
+1. **Plugin registers a block** with `defaultSlot: 'product-page-bottom'`
+2. **Admin opens the PageBuilder** — the block appears in the block picker under its category
+3. **Two scenarios:**
+   - **Admin places the block** → It renders where they put it. No fallback.
+   - **Admin doesn't place it** → It automatically renders at `product-page-bottom` via the fallback system.
+
+This means plugins work immediately after installation with no admin setup, but admins can customize placement whenever they want.
+
+### API Endpoints
+
+```
+GET /api/v1/public/plugins/blocks
+```
+
+Returns all registered PageBuilder blocks (used by the admin block picker).
+
+```
+GET /api/v1/public/plugins/blocks/fallbacks?page=/product/xyz&placed=fomo-badges:fomo-widget
+```
+
+Returns blocks that need fallback rendering. Parameters:
+
+- `page` — Current page path (for page filtering)
+- `placed` — Comma-separated `pluginName:blockName` keys already in the template
+
+### Storefront Usage
+
+In your page layouts, use `PluginBlockFallback` alongside existing `StorefrontSlot`:
+
+```tsx
+import { StorefrontSlot } from '@/components/plugins/StorefrontSlot';
+import { PluginBlockFallback } from '@/components/plugins/PluginBlockFallback';
+import { extractPlacedPluginBlocks } from '@/components/plugins/extract-placed-blocks';
+
+export default async function ProductPage({ pageContent }) {
+  // Extract which plugin blocks the admin already placed in the template
+  const placedBlocks = extractPlacedPluginBlocks(pageContent);
+
+  return (
+    <div>
+      {/* ... product content ... */}
+
+      {/* Existing slot-based plugin content */}
+      <StorefrontSlot slotName="product-page-bottom" />
+
+      {/* Plugin blocks that weren't placed in PageBuilder → render at default slot */}
+      <PluginBlockFallback
+        slotName="product-page-bottom"
+        currentPage="/product/my-product"
+        placedBlocks={placedBlocks}
+      />
+    </div>
+  );
+}
+```
+
+### How PluginBlock Works in Craft.js
+
+When an admin drags a plugin block into the page template, the Craft.js JSON stores:
+
+```json
+{
+  "node-abc": {
+    "type": { "resolvedName": "PluginBlock" },
+    "props": {
+      "pluginName": "fomo-badges",
+      "blockName": "fomo-widget"
+    }
+  }
+}
+```
+
+The `PageRenderer` detects `PluginBlock` nodes and renders them via `PluginBlockRenderer`, which fetches the block's HTML content from the API.
 
 ---
 

@@ -22,6 +22,7 @@ import { RenderContactForm } from './blocks/contact-form';
 import { RenderMapEmbed } from './blocks/map-embed';
 import { RenderSocialLinks } from './blocks/social-links';
 import { RenderBanner } from './blocks/banner';
+import { PluginBlockRenderer } from './blocks/plugin-block';
 
 /**
  * Craft.js serialized node shape
@@ -186,6 +187,17 @@ function RenderNode({
 
       case 'Banner':
         return <RenderBanner {...(props as Record<string, unknown>)} locale={locale} />;
+
+      // Plugin blocks — rendered from plugin pageBuilderBlocks
+      case 'PluginBlock':
+        return (
+          <Suspense fallback={null}>
+            <PluginBlockRenderer
+              pluginName={props.pluginName as string}
+              blockName={props.blockName as string}
+            />
+          </Suspense>
+        );
 
       // Dynamic shop blocks — render a slot marker that routes pick up
       case 'DynamicProductDetail':

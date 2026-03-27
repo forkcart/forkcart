@@ -32,6 +32,8 @@ export type {
   // Storefront slots
   StorefrontSlot,
   StorefrontSlotContent,
+  // PageBuilder blocks
+  PageBuilderBlock,
   // Database migrations
   PluginMigration,
   // CLI commands

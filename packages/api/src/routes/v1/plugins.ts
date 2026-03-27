@@ -34,6 +34,27 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
     return c.json({ data: contents });
   });
 
+  /** Get all registered PageBuilder blocks (for admin block picker) */
+  router.get('/blocks', async (c) => {
+    const blocks = pluginLoader.getAllPageBuilderBlocks();
+    return c.json({ data: blocks });
+  });
+
+  /**
+   * Get fallback blocks NOT placed in the current page's PageBuilder template.
+   * Query params:
+   *   - page: current page path (e.g., '/product/xyz')
+   *   - placed: comma-separated list of "pluginName:blockName" keys already in the template
+   */
+  router.get('/blocks/fallbacks', async (c) => {
+    const currentPage = c.req.query('page');
+    const placedParam = c.req.query('placed') ?? '';
+    const placedKeys = placedParam ? placedParam.split(',').map((k) => k.trim()) : [];
+
+    const fallbacks = pluginLoader.getPageBuilderBlockFallbacks(placedKeys, currentPage);
+    return c.json({ data: fallbacks });
+  });
+
   /** List all available slots (for debugging/admin preview) */
   router.get('/slots', async (c) => {
     const allSlots = pluginLoader.getAllStorefrontSlots();
@@ -258,7 +279,11 @@ export function mountPluginRoutes(
       .replace(/^-|-$/g, '');
 
     // Get the plugin context (settings, db, etc.) from the loader
-    const pluginContext = pluginLoader.getPluginContext(pluginName);
+    const pluginContext = pluginLoader.getPluginContext(pluginName) as {
+      settings?: Record<string, unknown>;
+      db?: unknown;
+      logger?: unknown;
+    } | null;
 
     // Create a wrapper that injects plugin context into Hono context
     const wrap = (handler: (c: unknown) => unknown) => (c: Context) => {
