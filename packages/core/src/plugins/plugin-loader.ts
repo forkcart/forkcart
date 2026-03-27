@@ -314,11 +314,64 @@ export class PluginLoader {
 
   // ─── Discovery ─────────────────────────────────────────────────────────────
 
-  /** Scan node_modules for forkcart-plugin-* packages and return their definitions */
+  /**
+   * Try to load a plugin from the installed plugins directory.
+   * Plugins installed via the registry are stored in data/plugins/<plugin-name>/
+   */
+  private async tryLoadInstalledPlugin(pluginName: string): Promise<SdkPluginDefinition | null> {
+    // Normalize plugin name to directory format (e.g., "FOMO Badges" -> "fomo-badges")
+    const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
+    const possiblePaths = [
+      // Monorepo: packages/plugins/<slug>/<package-name>/ (nested from ZIP extract)
+      join(process.cwd(), '..', '..', 'packages', 'plugins', dirName, `forkcart-plugin-${dirName}`),
+      join(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
+      join(process.cwd(), '..', '..', 'packages', 'plugins', pluginName),
+      // Standalone: data/plugins/<slug>
+      join(process.cwd(), 'data', 'plugins', dirName),
+      join(process.cwd(), 'data', 'plugins', pluginName),
+      // Standalone: plugins/<slug>
+      join(process.cwd(), 'plugins', dirName),
+      join(process.cwd(), 'plugins', pluginName),
+    ];
+
+    for (const pluginPath of possiblePaths) {
+      try {
+        const def = await this.tryLoadPluginFromPath(pluginPath);
+        if (def) {
+          // Already registered in tryLoadPluginFromPath → loadPluginFromPath
+          return def;
+        }
+      } catch {
+        // Try next path
+      }
+    }
+
+    // Also try loading as npm package (might be installed but not discovered yet)
+    try {
+      const def = await this.loadPlugin(pluginName);
+      if (def) return def;
+    } catch {
+      // Not an npm package
+    }
+
+    // Try the forkcart-plugin- prefixed package name
+    try {
+      const packageName = `forkcart-plugin-${dirName}`;
+      const def = await this.loadPlugin(packageName);
+      if (def) return def;
+    } catch {
+      // Not found
+    }
+
+    return null;
+  }
+
+  /** Scan node_modules AND local plugin directories for plugins */
   async discoverPlugins(): Promise<SdkPluginDefinition[]> {
     const discovered: SdkPluginDefinition[] = [];
-    const nodeModulesPath = resolve(process.cwd(), 'node_modules');
 
+    // 1. Scan node_modules for npm-installed plugins
+    const nodeModulesPath = resolve(process.cwd(), 'node_modules');
     try {
       const entries = await readdir(nodeModulesPath, { withFileTypes: true });
 
@@ -342,6 +395,56 @@ export class PluginLoader {
       }
     } catch {
       logger.warn('Could not scan node_modules for plugins');
+    }
+
+    // 2. Scan local plugin directories (for registry-installed plugins)
+    const localPluginDirs = [
+      resolve(process.cwd(), '..', '..', 'packages', 'plugins'), // Monorepo
+      resolve(process.cwd(), 'data', 'plugins'), // Standalone
+      resolve(process.cwd(), 'plugins'), // Standalone alt
+    ];
+
+    for (const pluginsDir of localPluginDirs) {
+      try {
+        const entries = await readdir(pluginsDir, { withFileTypes: true });
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+
+          // Check direct path: plugins/<slug>/
+          let def = await this.tryLoadPluginFromPath(join(pluginsDir, entry.name));
+          if (def) {
+            discovered.push(def);
+            continue;
+          }
+
+          // Check nested path: plugins/<slug>/forkcart-plugin-<slug>/
+          // (common when ZIP contains a folder)
+          const nestedPath = join(pluginsDir, entry.name, `forkcart-plugin-${entry.name}`);
+          def = await this.tryLoadPluginFromPath(nestedPath);
+          if (def) {
+            discovered.push(def);
+            continue;
+          }
+
+          // Check for any forkcart-plugin-* subfolder
+          try {
+            const subEntries = await readdir(join(pluginsDir, entry.name), { withFileTypes: true });
+            for (const sub of subEntries) {
+              if (sub.isDirectory() && sub.name.startsWith('forkcart-plugin-')) {
+                def = await this.tryLoadPluginFromPath(join(pluginsDir, entry.name, sub.name));
+                if (def) {
+                  discovered.push(def);
+                  break;
+                }
+              }
+            }
+          } catch {
+            // Subfolder doesn't exist or not readable
+          }
+        }
+      } catch {
+        // Directory doesn't exist, skip
+      }
     }
 
     logger.info({ count: discovered.length }, 'Plugin discovery complete');
@@ -370,8 +473,54 @@ export class PluginLoader {
         return null;
       }
 
-      return await this.loadPlugin(name);
+      // Try loading from file path directly (for local plugins)
+      return await this.loadPluginFromPath(pkgPath, name);
     } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Load a plugin from a local file path (not npm).
+   * This is used for plugins installed via the registry that are extracted to disk.
+   */
+  private async loadPluginFromPath(
+    pkgPath: string,
+    packageName: string,
+  ): Promise<SdkPluginDefinition | null> {
+    try {
+      // Read package.json to find entry point
+      const pkgJsonPath = join(pkgPath, 'package.json');
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8')) as Record<string, unknown>;
+      const main = (pkgJson['main'] as string) || 'dist/index.js';
+      const entryPath = resolve(pkgPath, main);
+
+      // Check if entry file exists
+      try {
+        readFileSync(entryPath);
+      } catch {
+        logger.warn({ packageName, entryPath }, 'Plugin entry point not found');
+        return null;
+      }
+
+      // Import using file:// URL (works for local ES modules)
+      const fileUrl = `file://${entryPath}`;
+      const mod = (await import(fileUrl)) as Record<string, unknown>;
+      const def = (mod['default'] ?? mod) as SdkPluginDefinition;
+
+      if (!def.name || !def.version || !def.type) {
+        logger.warn(
+          { packageName, path: pkgPath },
+          'Invalid plugin definition — missing name/version/type',
+        );
+        return null;
+      }
+
+      this.registerSdkPlugin(def);
+      logger.info({ pluginName: def.name, path: pkgPath }, 'Plugin loaded from local path');
+      return def;
+    } catch (error) {
+      logger.error({ packageName, path: pkgPath, error }, 'Failed to load plugin from path');
       return null;
     }
   }
@@ -751,8 +900,11 @@ export class PluginLoader {
     });
 
     // Run pending migrations before activation
+    // Note: Pass ctx.db (the ScopedDatabase), not the full ctx
+    // because migration.up(db) expects a database handle, not the full context
     if (def.migrations && def.migrations.length > 0) {
-      await this.migrationRunner.runPendingMigrations(pluginName, def.migrations, ctx);
+      const ctxWithDb = ctx as { db: unknown };
+      await this.migrationRunner.runPendingMigrations(pluginName, def.migrations, ctxWithDb.db);
     }
 
     // Call onActivate
@@ -1058,6 +1210,14 @@ export class PluginLoader {
         continue;
       }
 
+      // Try to load from installed plugins directory (for plugins installed via registry)
+      const loadedDef = await this.tryLoadInstalledPlugin(plugin.name);
+      if (loadedDef) {
+        await this.activateSdkPlugin(plugin.name, loadedDef, settings);
+        logger.info({ pluginName: plugin.name }, 'Plugin loaded from installed directory');
+        continue;
+      }
+
       logger.warn({ pluginName: plugin.name }, 'Active plugin has no registered definition');
     }
 
@@ -1344,8 +1504,10 @@ export class PluginLoader {
     const ctx = this.buildPluginContext(pluginName, settings);
 
     // Run any new migrations
+    // Note: Pass ctx.db (the ScopedDatabase), not the full ctx
     if (sdkDef.migrations && sdkDef.migrations.length > 0) {
-      await this.migrationRunner.runPendingMigrations(pluginName, sdkDef.migrations, ctx);
+      const ctxWithDb = ctx as { db: unknown };
+      await this.migrationRunner.runPendingMigrations(pluginName, sdkDef.migrations, ctxWithDb.db);
     }
 
     // Call onUpdate lifecycle hook

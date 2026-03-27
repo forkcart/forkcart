@@ -94,14 +94,49 @@ export class ScopedDatabase {
   /**
    * Execute a raw SQL query with permission checks.
    * Plugins should prefer this for custom table operations.
+   *
+   * Supports both:
+   * - Drizzle sql template tags: db.execute(sql`SELECT * FROM ...`)
+   * - Raw SQL strings with params: db.execute('SELECT * FROM ... WHERE id = $1', [id])
    */
   async execute<T = Record<string, unknown>>(
-    query: Parameters<Database['execute']>[0],
-  ): Promise<T[]> {
-    // For raw SQL execution, we trust the Drizzle sql template tag
-    // and log the operation for audit purposes
+    query: Parameters<Database['execute']>[0] | string,
+    params?: unknown[],
+  ): Promise<{ rows: T[] }> {
     logger.debug({ pluginName: this.pluginName }, 'Scoped DB execute');
-    return this.db.execute(query) as unknown as T[];
+
+    // If it's a raw string, convert to parameterized query
+    if (typeof query === 'string') {
+      // Use the raw pg client through Drizzle's execute with sql tag
+      const { sql: drizzleSql } = await import('drizzle-orm');
+
+      if (params && params.length > 0) {
+        // For parameterized queries, use raw SQL with embedded values
+        // Replace $1, $2, etc. with actual values (escaped)
+        let processedQuery = query;
+        params.forEach((param, i) => {
+          const placeholder = `$${i + 1}`;
+          // Escape strings, leave numbers/booleans as-is
+          const value =
+            param === null
+              ? 'NULL'
+              : typeof param === 'string'
+                ? `'${param.replace(/'/g, "''")}'`
+                : String(param);
+          processedQuery = processedQuery.replace(placeholder, value);
+        });
+        const result = await this.db.execute(drizzleSql.raw(processedQuery));
+        return { rows: result as unknown as T[] };
+      }
+
+      // No params, just execute the raw SQL
+      const result = await this.db.execute(drizzleSql.raw(query));
+      return { rows: result as unknown as T[] };
+    }
+
+    // It's already a Drizzle sql template tag
+    const result = await this.db.execute(query);
+    return { rows: result as unknown as T[] };
   }
 
   /**
