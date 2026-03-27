@@ -724,24 +724,76 @@ The plugin slug is auto-generated from the plugin name: `"FOMO Badges"` → `fom
 
 ## Admin Pages
 
-Add custom pages to the admin panel:
+Add custom pages to the admin panel with rendered content. Plugins can provide either **static HTML** via `content` or **dynamic HTML** via `apiRoute`.
+
+### Static Content
+
+Provide an HTML string directly. Scripts are extracted and executed after render (same trust model as storefront slots):
 
 ```typescript
 adminPages: [
   {
-    path: '/analytics',
-    label: 'Analytics Dashboard',
+    path: '/dashboard',
+    label: 'My Dashboard',
     icon: 'chart-bar',
     order: 10,
-  },
-  {
-    path: '/analytics/reports',
-    label: 'Reports',
-    parent: '/analytics',
-    order: 20,
+    content: `
+      <div id="my-dashboard">
+        <h2>Plugin Dashboard</h2>
+        <div id="stats">Loading...</div>
+        <script>
+          fetch('/api/v1/public/plugins/my-plugin/stats')
+            .then(r => r.json())
+            .then(data => {
+              document.getElementById('stats').innerHTML =
+                '<p>Total items: ' + data.total + '</p>';
+            });
+        </script>
+      </div>
+    `,
   },
 ];
 ```
+
+### Dynamic Content via API Route
+
+Point to a route within your plugin's custom routes that returns `{ html: string }`:
+
+```typescript
+adminPages: [
+  {
+    path: '/reports',
+    label: 'Reports',
+    icon: 'file-text',
+    order: 20,
+    // This calls GET /api/v1/public/plugins/<your-plugin>/admin/reports
+    apiRoute: '/admin/reports',
+  },
+],
+
+// In your plugin routes:
+routes: (router) => {
+  router.get('/admin/reports', (c) => {
+    return c.json({
+      html: '<div><h2>Reports</h2><p>Generated at ' + new Date().toISOString() + '</p></div>'
+    });
+  });
+},
+```
+
+### Admin Page Properties
+
+| Property   | Type     | Required | Description                                                           |
+| ---------- | -------- | -------- | --------------------------------------------------------------------- |
+| `path`     | `string` | ✅       | URL path (e.g., `/dashboard`)                                         |
+| `label`    | `string` | ✅       | Display name in sidebar and page header                               |
+| `icon`     | `string` | ❌       | Icon name (for future use)                                            |
+| `order`    | `number` | ❌       | Sort order in navigation (default: 10)                                |
+| `parent`   | `string` | ❌       | Parent page path for nesting                                          |
+| `content`  | `string` | ❌       | Static HTML content to render                                         |
+| `apiRoute` | `string` | ❌       | Plugin route path that returns `{ html: string }` for dynamic content |
+
+Admin pages automatically appear in the admin sidebar under a **Plugins** section when the plugin is active.
 
 ---
 

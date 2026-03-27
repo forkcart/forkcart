@@ -174,19 +174,6 @@ function ContainerSettings() {
           />
         </div>
       </div>
-      <div>
-        <label className="mb-1 block text-sm font-medium">Background Color</label>
-        <input
-          type="color"
-          className="h-10 w-full rounded border"
-          value={
-            props.backgroundColor === 'transparent'
-              ? '#ffffff'
-              : (props.backgroundColor ?? '#ffffff')
-          }
-          onChange={(e) => setProp((p: ContainerProps) => (p.backgroundColor = e.target.value))}
-        />
-      </div>
       <hr className="my-2" />
       <StyleSettings />
     </div>

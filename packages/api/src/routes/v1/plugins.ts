@@ -249,6 +249,66 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     return c.json({ data: pages });
   });
 
+  /** Get admin page content for a specific plugin page */
+  router.get('/admin-pages/:pluginId/content', async (c) => {
+    const pluginId = c.req.param('pluginId');
+    const pagePath = c.req.query('path') ?? '/';
+
+    // Find the plugin by ID to get its name
+    const allPlugins = await pluginLoader.getAllPlugins();
+    const plugin = allPlugins.find((p) => p.id === pluginId);
+
+    if (!plugin) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+    }
+
+    if (!plugin.isActive) {
+      return c.json({ error: { code: 'INACTIVE', message: 'Plugin is not active' } }, 400);
+    }
+
+    // 1. Check for static content
+    const staticContent = pluginLoader.getPluginAdminPageContent(plugin.name, pagePath);
+    if (staticContent) {
+      return c.json({ data: { html: staticContent, source: 'static' } });
+    }
+
+    // 2. Check for apiRoute — call the plugin's route internally
+    const apiRoute = pluginLoader.getPluginAdminPageApiRoute(plugin.name, pagePath);
+    if (apiRoute) {
+      try {
+        // Build the internal plugin route URL
+        const pluginSlug = plugin.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const routePath = apiRoute.startsWith('/') ? apiRoute : `/${apiRoute}`;
+        const internalUrl = `${c.req.url.split('/api/')[0]}/api/v1/public/plugins/${pluginSlug}${routePath}`;
+
+        const response = await fetch(internalUrl, {
+          headers: { Accept: 'application/json' },
+        });
+
+        if (response.ok) {
+          const result = (await response.json()) as { html?: string };
+          return c.json({ data: { html: result.html ?? '', source: 'api' } });
+        }
+      } catch (error) {
+        console.error(
+          `[plugins] Failed to fetch admin page content via apiRoute for ${plugin.name}:`,
+          error,
+        );
+      }
+    }
+
+    // 3. No content configured
+    return c.json({
+      data: {
+        html: `<div style="text-align:center;padding:2rem;color:#888"><p>No content configured for this page.</p><p style="font-size:0.85em;margin-top:0.5rem">Add <code>content</code> or <code>apiRoute</code> to your plugin's admin page definition.</p></div>`,
+        source: 'default',
+      },
+    });
+  });
+
   // ─── Health Check Route ───────────────────────────────────────────────────
 
   /** Get health status of all active plugins */

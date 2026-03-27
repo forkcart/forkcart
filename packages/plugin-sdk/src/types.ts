@@ -147,6 +147,10 @@ export interface PluginAdminPage {
   parent?: string;
   /** Sort order in menu */
   order?: number;
+  /** Static HTML content to render in the admin page */
+  content?: string;
+  /** API route path (relative to plugin routes) that returns { html: string } for dynamic content */
+  apiRoute?: string;
 }
 
 // ─── Filters (data transformation) ──────────────────────────────────────────

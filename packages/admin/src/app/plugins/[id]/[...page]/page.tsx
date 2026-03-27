@@ -2,22 +2,25 @@
 
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { useEffect, useRef, useCallback } from 'react';
 import { ArrowLeft, Loader2, Puzzle, AlertCircle } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface PluginAdminPage {
+interface PluginAdminPageDef {
   path: string;
   label: string;
   icon?: string;
   parent?: string;
   order?: number;
+  hasContent: boolean;
+  hasApiRoute: boolean;
 }
 
 interface PluginAdminPagesResponse {
   pluginName: string;
-  pages: PluginAdminPage[];
+  pages: PluginAdminPageDef[];
 }
 
 interface Plugin {
@@ -32,28 +35,39 @@ interface Plugin {
   settings: Array<{ key: string; value: unknown }>;
   settingsSchema: Array<{ key: string; type: string; label?: string }>;
   requiredSettings: unknown[];
-  adminPages: PluginAdminPage[];
+  adminPages: PluginAdminPageDef[];
   installedAt: string;
+}
+
+interface AdminPageContentResponse {
+  html: string;
+  source: 'static' | 'api' | 'default';
+}
+
+// ─── Script executor (same trust model as storefront slots) ─────────────────
+
+function executeScripts(container: HTMLElement) {
+  const scripts = container.querySelectorAll('script');
+  scripts.forEach((oldScript) => {
+    const newScript = document.createElement('script');
+    // Copy attributes
+    Array.from(oldScript.attributes).forEach((attr) => {
+      newScript.setAttribute(attr.name, attr.value);
+    });
+    // Copy inline content
+    newScript.textContent = oldScript.textContent;
+    oldScript.parentNode?.replaceChild(newScript, oldScript);
+  });
 }
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-/**
- * Dynamic plugin admin page.
- * Route: /plugins/[id]/[...page]
- *
- * This renders admin pages defined by plugins via `adminPages` in their definition.
- * Since plugins provide admin pages as metadata (label, path, icon), this page
- * renders a navigation sidebar and the content area for the selected page.
- *
- * In a full implementation, plugins would provide React components or iframe URLs.
- * For now, this renders the page metadata and provides a framework for plugin UIs.
- */
 export default function PluginAdminPage() {
   const params = useParams();
   const router = useRouter();
   const pluginId = params.id as string;
   const pagePath = (params.page as string[])?.join('/') ?? '';
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Fetch plugin details
   const { data: pluginsData, isLoading: pluginsLoading } = useQuery({
@@ -68,11 +82,33 @@ export default function PluginAdminPage() {
   });
 
   const plugin = pluginsData?.data?.find((p) => p.id === pluginId);
+
+  // Fetch the actual page content
+  const { data: contentData, isLoading: contentLoading } = useQuery({
+    queryKey: ['plugin-admin-page-content', pluginId, pagePath],
+    queryFn: () =>
+      apiClient<{ data: AdminPageContentResponse }>(
+        `/plugins/admin-pages/${pluginId}/content?path=/${pagePath}`,
+      ),
+    enabled: !!plugin?.isActive,
+  });
+
   const isLoading = pluginsLoading || pagesLoading;
 
   // Find the admin pages for this plugin
   const pluginPages = adminPagesData?.data?.find((p) => p.pluginName === plugin?.name)?.pages ?? [];
   const currentPage = pluginPages.find((p) => p.path === `/${pagePath}` || p.path === pagePath);
+
+  // Execute scripts after content is rendered
+  const handleContentRender = useCallback(() => {
+    if (contentRef.current && contentData?.data?.html) {
+      executeScripts(contentRef.current);
+    }
+  }, [contentData?.data?.html]);
+
+  useEffect(() => {
+    handleContentRender();
+  }, [handleContentRender]);
 
   if (isLoading) {
     return (
@@ -164,20 +200,28 @@ export default function PluginAdminPage() {
         <div className="flex-1">
           <div className="rounded-lg border bg-card p-6 shadow-sm">
             <h1 className="text-2xl font-bold">{currentPage?.label ?? `${plugin.name} Admin`}</h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Plugin admin page: {pagePath || 'index'}
-            </p>
 
-            {/* Placeholder for plugin-rendered content */}
-            <div className="mt-6 rounded-lg border-2 border-dashed border-muted-foreground/20 p-8 text-center">
-              <Puzzle className="mx-auto h-10 w-10 text-muted-foreground/30" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                Plugin admin page content will be rendered here.
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground/60">
-                The plugin &quot;{plugin.name}&quot; defines this page at path &quot;
-                {currentPage?.path ?? pagePath}&quot;.
-              </p>
+            {/* Plugin-rendered content */}
+            <div className="mt-6">
+              {contentLoading ? (
+                <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Loading content...
+                </div>
+              ) : contentData?.data?.html ? (
+                <div
+                  ref={contentRef}
+                  className="plugin-admin-content"
+                  dangerouslySetInnerHTML={{ __html: contentData.data.html }}
+                />
+              ) : (
+                <div className="rounded-lg border-2 border-dashed border-muted-foreground/20 p-8 text-center">
+                  <Puzzle className="mx-auto h-10 w-10 text-muted-foreground/30" />
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No content available for this page.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>

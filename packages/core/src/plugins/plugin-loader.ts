@@ -84,6 +84,8 @@ interface SdkPluginDefinition {
     icon?: string;
     parent?: string;
     order?: number;
+    content?: string;
+    apiRoute?: string;
   }>;
   routes?: (router: unknown) => void;
   storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
@@ -1718,7 +1720,15 @@ export class PluginLoader {
   /** Get admin pages for all active plugins */
   getAllAdminPages(): Array<{
     pluginName: string;
-    pages: Array<{ path: string; label: string; icon?: string; parent?: string; order?: number }>;
+    pages: Array<{
+      path: string;
+      label: string;
+      icon?: string;
+      parent?: string;
+      order?: number;
+      hasContent: boolean;
+      hasApiRoute: boolean;
+    }>;
   }> {
     const result: Array<{
       pluginName: string;
@@ -1728,17 +1738,53 @@ export class PluginLoader {
         icon?: string;
         parent?: string;
         order?: number;
+        hasContent: boolean;
+        hasApiRoute: boolean;
       }>;
     }> = [];
 
     for (const [pluginName] of this.activeStates) {
       const sdkDef = this.sdkPlugins.get(pluginName);
       if (sdkDef?.adminPages && sdkDef.adminPages.length > 0) {
-        result.push({ pluginName, pages: sdkDef.adminPages });
+        result.push({
+          pluginName,
+          pages: sdkDef.adminPages.map((p) => ({
+            path: p.path,
+            label: p.label,
+            icon: p.icon,
+            parent: p.parent,
+            order: p.order,
+            hasContent: !!p.content,
+            hasApiRoute: !!p.apiRoute,
+          })),
+        });
       }
     }
 
     return result;
+  }
+
+  /** Get the HTML content for a specific plugin admin page */
+  getPluginAdminPageContent(pluginName: string, pagePath: string): string | null {
+    const sdkDef = this.sdkPlugins.get(pluginName);
+    if (!sdkDef?.adminPages) return null;
+
+    // Normalize path for comparison
+    const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    const page = sdkDef.adminPages.find((p) => p.path === normalizedPath || p.path === pagePath);
+
+    return page?.content ?? null;
+  }
+
+  /** Get the API route for a specific plugin admin page (if configured) */
+  getPluginAdminPageApiRoute(pluginName: string, pagePath: string): string | null {
+    const sdkDef = this.sdkPlugins.get(pluginName);
+    if (!sdkDef?.adminPages) return null;
+
+    const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
+    const page = sdkDef.adminPages.find((p) => p.path === normalizedPath || p.path === pagePath);
+
+    return page?.apiRoute ?? null;
   }
 
   /** Update plugin settings */

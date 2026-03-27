@@ -1,0 +1,12 @@
+{
+  "name": "Product Recommendations",
+  "slug": "product-recs",
+  "packageName": "forkcart-plugin-product-recs",
+  "version": "1.0.0",
+  "type": "general",
+  "description": "Show product recommendations on product pages — manual picks or auto-detected from orders",
+  "author": "Tyto 🦉",
+  "license": "MIT",
+  "minForkcartVersion": "0.5.0",
+  "entryPoint": "dist/index.js"
+}
