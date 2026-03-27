@@ -137,7 +137,7 @@ export default definePlugin({
 
 Plugins can also register custom API routes, admin pages, CLI commands, and database migrations.
 
-📖 **[Full Plugin Docs →](docs/PLUGINS.md)**
+📖 **[Full Plugin Docs →](docs/PLUGINS.md)** · **[Architecture →](docs/ARCHITECTURE.md)**
 
 ---
 
