@@ -12,6 +12,7 @@ import type { EmailProvider } from '../email/provider';
 import type { EmailProviderRegistry } from '../email/registry';
 import type { MarketplaceProvider } from '../marketplace/types';
 import type { MarketplaceProviderRegistry } from '../marketplace/registry';
+import type { ShippingProvider, ShippingProviderRegistry } from '../shipping/registry';
 import type { EventBus } from './event-bus';
 import type { EventHandler } from './types';
 import { createLogger } from '../lib/logger';
@@ -212,6 +213,7 @@ export class PluginLoader {
     private readonly paymentRegistry: PaymentProviderRegistry,
     private readonly emailRegistry?: EmailProviderRegistry,
     private readonly marketplaceRegistry?: MarketplaceProviderRegistry,
+    private readonly shippingRegistry?: ShippingProviderRegistry,
     private readonly eventBus?: EventBus,
   ) {
     this.migrationRunner = new MigrationRunner(db);
@@ -846,6 +848,17 @@ export class PluginLoader {
       const marketplaceBridge = this.createMarketplaceProviderBridge(def.name, provider, settings);
       this.marketplaceRegistry.register(marketplaceBridge);
     }
+
+    // Shipping provider bridge
+    if (
+      def.type === 'shipping' &&
+      'getRates' in provider &&
+      typeof provider['getRates'] === 'function' &&
+      this.shippingRegistry
+    ) {
+      const shippingBridge = this.createShippingProviderBridge(def.name, provider, settings);
+      this.shippingRegistry.register(shippingBridge);
+    }
   }
 
   private createPaymentProviderBridge(
@@ -940,6 +953,30 @@ export class PluginLoader {
           ? p['getMarketplaceCategories']()
           : Promise.resolve([])) as ReturnType<MarketplaceProvider['getMarketplaceCategories']>,
     } satisfies MarketplaceProvider;
+  }
+
+  private createShippingProviderBridge(
+    name: string,
+    provider: Record<string, unknown>,
+    _settings: Record<string, unknown>,
+  ): ShippingProvider {
+    const p = provider as Record<string, (...args: unknown[]) => unknown>;
+    return {
+      id: name,
+      displayName: name,
+      async initialize(s: Record<string, unknown>) {
+        if (typeof p['initialize'] === 'function') await p['initialize'](s);
+      },
+      isConfigured: () => true,
+      getRates: (from: unknown, to: unknown, parcels: unknown) =>
+        p['getRates']!(from, to, parcels) as ReturnType<ShippingProvider['getRates']>,
+      createShipment: (from: unknown, to: unknown, parcels: unknown, rateId: string) =>
+        p['createShipment']!(from, to, parcels, rateId) as ReturnType<
+          ShippingProvider['createShipment']
+        >,
+      getTracking: (trackingNumber: string) =>
+        p['getTracking']!(trackingNumber) as ReturnType<ShippingProvider['getTracking']>,
+    } satisfies ShippingProvider;
   }
 
   // ─── Plugin context builder ───────────────────────────────────────────────

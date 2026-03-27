@@ -27,6 +27,7 @@ import {
   AuthService,
   ShippingRepository,
   ShippingService,
+  ShippingProviderRegistry,
   ChatSessionRepository,
   ChatbotSettingsRepository,
   ChatbotService,
@@ -247,6 +248,9 @@ export async function createApp(db: Database) {
   // Initialize marketplace provider registry
   const marketplaceProviderRegistry = new MarketplaceProviderRegistry();
 
+  // Initialize shipping provider registry
+  const shippingProviderRegistry = new ShippingProviderRegistry();
+
   // Initialize services with dependency injection
   // Note: pluginLoader injected below after initialization
   const productService = new ProductService({ productRepository, eventBus, pluginLoader: null });
@@ -399,6 +403,7 @@ export async function createApp(db: Database) {
     paymentProviderRegistry,
     emailProviderRegistry,
     marketplaceProviderRegistry,
+    shippingProviderRegistry,
     eventBus,
   );
   // Discover plugins from node_modules (no hardcoded imports)

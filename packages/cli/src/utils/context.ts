@@ -25,7 +25,14 @@ export async function createCliContext(): Promise<CliContext> {
   const paymentRegistry = new PaymentProviderRegistry();
   const eventBus = new EventBus();
 
-  const pluginLoader = new PluginLoader(db, paymentRegistry, undefined, undefined, eventBus);
+  const pluginLoader = new PluginLoader(
+    db,
+    paymentRegistry,
+    undefined,
+    undefined,
+    undefined,
+    eventBus,
+  );
 
   // Discover and load plugins from node_modules
   await pluginLoader.discoverPlugins();
