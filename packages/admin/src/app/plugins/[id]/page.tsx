@@ -118,6 +118,21 @@ export default function PluginDetailPage() {
 
   const plugin = pluginsData?.data?.find((p) => p.id === pluginId);
 
+  // Check for available updates
+  const { data: updatesData } = useQuery({
+    queryKey: ['plugin-updates'],
+    queryFn: () =>
+      apiClient<{
+        data: Array<{ slug: string; installedVersion: string; latestVersion: string }>;
+      }>('/store/updates'),
+    staleTime: 60_000, // Cache for 1 min
+  });
+
+  const pluginSlug =
+    (plugin?.metadata as Record<string, unknown>)?.slug ??
+    plugin?.name?.toLowerCase().replace(/\s+/g, '-');
+  const availableUpdate = updatesData?.data?.find((u) => u.slug === pluginSlug);
+
   // Initialize form values from current settings
   useEffect(() => {
     if (!plugin) return;
@@ -338,28 +353,30 @@ export default function PluginDetailPage() {
               </button>
             </div>
 
-            <button
-              onClick={async () => {
-                const slug =
-                  (plugin.metadata as Record<string, unknown>)?.slug ??
-                  plugin.name.toLowerCase().replace(/\s+/g, '-');
-                setUpdating(true);
-                try {
-                  await apiClient(`/store/${slug}/update`, { method: 'POST' });
-                  showToast('success', 'Plugin updated! Restart the API to load the new version.');
-                  queryClient.invalidateQueries({ queryKey: ['plugins'] });
-                } catch (err) {
-                  showToast('error', err instanceof Error ? err.message : 'Update failed');
-                } finally {
-                  setUpdating(false);
-                }
-              }}
-              disabled={updating}
-              className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
-            >
-              <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
-              {updating ? 'Updating...' : 'Update'}
-            </button>
+            {availableUpdate && (
+              <button
+                onClick={async () => {
+                  setUpdating(true);
+                  try {
+                    await apiClient(`/store/${availableUpdate.slug}/update`, {
+                      method: 'POST',
+                    });
+                    showToast('success', `Updated to v${availableUpdate.latestVersion}!`);
+                    queryClient.invalidateQueries({ queryKey: ['plugins'] });
+                    queryClient.invalidateQueries({ queryKey: ['plugin-updates'] });
+                  } catch (err) {
+                    showToast('error', err instanceof Error ? err.message : 'Update failed');
+                  } finally {
+                    setUpdating(false);
+                  }
+                }}
+                disabled={updating}
+                className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
+                {updating ? 'Updating...' : `Update to v${availableUpdate.latestVersion}`}
+              </button>
+            )}
             <button
               onClick={() => setConfirmUninstall(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
