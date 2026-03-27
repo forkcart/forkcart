@@ -35,3 +35,4 @@ uploads/
 # Uploads
 packages/api/uploads/
 packages/admin/public/downloads/*.apk
+packages/plugins/
