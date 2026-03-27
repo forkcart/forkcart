@@ -46,7 +46,7 @@ Every TypeScript e-commerce is headless-only — API without frontend. ForkCart 
 | **Page Builder**  | ✅ Drag & Drop  | —                | —                | —                | ✅ Shopping Exp. |
 | **AI Built-in**   | ✅ Native       | —                | —                | —                | Via plugins      |
 | **Mobile App**    | ✅ Expo         | —                | —                | —                | —                |
-| **Plugin System** | Interface-based | Modules          | Plugins          | Apps             | Plugins          |
+| **Plugin System** | SDK-based       | Modules          | Plugins          | Apps             | Plugins          |
 | **Self-hosted**   | ✅              | ✅               | ✅               | ✅               | ✅               |
 | **License**       | MIT             | MIT              | MIT              | BSD              | MIT              |
 

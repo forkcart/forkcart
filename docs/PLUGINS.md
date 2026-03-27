@@ -1,317 +1,216 @@
 # ForkCart Plugin Development Guide
 
-Build plugins that extend ForkCart's functionality — payment providers, marketplaces, email services, and custom features.
+Build plugins that extend ForkCart — payment providers, marketplaces, email services, shipping, analytics, and custom features.
 
 ## Quick Start
 
-### 1. Create Your Plugin
-
-```bash
-mkdir packages/plugins/my-awesome-plugin
-cd packages/plugins/my-awesome-plugin
-npm init -y
-```
-
-### 2. Define Your Plugin
-
 ```typescript
-// src/index.ts
+// packages/plugins/my-plugin/src/index.ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
   name: 'my-awesome-plugin',
   version: '1.0.0',
-  displayName: 'My Awesome Plugin',
+  type: 'general',
   description: 'Does awesome things',
   author: 'Your Name',
-  type: 'feature', // 'payment' | 'marketplace' | 'email' | 'shipping' | 'feature'
 
-  // Settings schema (auto-generates admin UI)
   settings: {
-    apiKey: { type: 'string', required: true, secret: true },
-    enabled: { type: 'boolean', default: true },
+    apiKey: { type: 'string', label: 'API Key', required: true, secret: true },
+    enabled: { type: 'boolean', label: 'Enabled', default: true },
   },
 
-  // React to events
-  events: {
-    'order:created': async (order, ctx) => {
-      console.log('New order!', order.id);
+  hooks: {
+    'order:created': async (event, ctx) => {
+      ctx.logger.info('New order!', { orderId: event.payload.orderId });
     },
   },
 });
-```
-
-### 3. Register Your Plugin
-
-Add to `packages/api/src/app.ts`:
-
-```typescript
-import myPlugin from '@forkcart/plugin-my-awesome-plugin';
-
-// In the startup section:
-await pluginLoader.registerSdkPlugin(myPlugin);
 ```
 
 ---
 
 ## Plugin Types
 
-### Payment Provider
-
-```typescript
-import { definePlugin, PaymentProvider } from '@forkcart/plugin-sdk';
-
-const stripeProvider: PaymentProvider = {
-  id: 'stripe',
-  name: 'Stripe',
-
-  async createPaymentIntent(amount, currency, metadata) {
-    const intent = await stripe.paymentIntents.create({
-      amount: Math.round(amount * 100),
-      currency,
-      metadata,
-    });
-    return {
-      clientSecret: intent.client_secret!,
-      paymentIntentId: intent.id,
-    };
-  },
-
-  async capturePayment(paymentIntentId) {
-    const intent = await stripe.paymentIntents.capture(paymentIntentId);
-    return { success: intent.status === 'succeeded' };
-  },
-
-  async refundPayment(paymentIntentId, amount) {
-    await stripe.refunds.create({
-      payment_intent: paymentIntentId,
-      amount: amount ? Math.round(amount * 100) : undefined,
-    });
-    return { success: true };
-  },
-
-  getClientConfig() {
-    return { publishableKey: process.env.STRIPE_PUBLISHABLE_KEY! };
-  },
-};
-
-export default definePlugin({
-  name: 'stripe',
-  type: 'payment',
-  settings: {
-    secretKey: { type: 'string', required: true, secret: true },
-    publishableKey: { type: 'string', required: true },
-    webhookSecret: { type: 'string', secret: true },
-  },
-  paymentProvider: stripeProvider,
-});
-```
-
-### Marketplace Provider
-
-```typescript
-import { definePlugin, MarketplaceProvider } from '@forkcart/plugin-sdk';
-
-const amazonProvider: MarketplaceProvider = {
-  id: 'amazon',
-  name: 'Amazon',
-
-  async connect(credentials) {
-    // Validate credentials, return connection info
-    return { success: true, sellerId: '...' };
-  },
-
-  async listProduct(product, connection) {
-    // Push product to Amazon
-    return { externalId: 'ASIN123', url: 'https://amazon.com/...' };
-  },
-
-  async fetchOrders(connection, since) {
-    // Pull orders from Amazon
-    return [{ externalId: '...', items: [...], total: 99.99 }];
-  },
-
-  async updateInventory(sku, quantity, connection) {
-    // Sync inventory
-    return { success: true };
-  },
-};
-
-export default definePlugin({
-  name: 'amazon',
-  type: 'marketplace',
-  settings: {
-    sellerId: { type: 'string', required: true },
-    mwsAccessKey: { type: 'string', required: true, secret: true },
-    mwsSecretKey: { type: 'string', required: true, secret: true },
-    region: {
-      type: 'select',
-      options: ['NA', 'EU', 'FE'],
-      default: 'EU',
-    },
-  },
-  marketplaceProvider: amazonProvider,
-});
-```
-
-### Email Provider
-
-```typescript
-import { definePlugin, EmailProvider } from '@forkcart/plugin-sdk';
-
-const mailgunProvider: EmailProvider = {
-  id: 'mailgun',
-  name: 'Mailgun',
-
-  async sendEmail(to, subject, html, options) {
-    await mailgun.messages.create(domain, {
-      from: options?.from || 'noreply@example.com',
-      to,
-      subject,
-      html,
-    });
-    return { success: true, messageId: '...' };
-  },
-
-  getRequiredSettings() {
-    return [
-      { key: 'apiKey', label: 'API Key', type: 'string', secret: true },
-      { key: 'domain', label: 'Domain', type: 'string' },
-    ];
-  },
-};
-
-export default definePlugin({
-  name: 'mailgun',
-  type: 'email',
-  settings: {
-    apiKey: { type: 'string', required: true, secret: true },
-    domain: { type: 'string', required: true },
-    region: { type: 'select', options: ['US', 'EU'], default: 'US' },
-  },
-  emailProvider: mailgunProvider,
-});
-```
+| Type | Purpose |
+|------|---------|
+| `payment` | Payment gateways (Stripe, PayPal, Klarna) |
+| `marketplace` | External marketplaces (Amazon, eBay, Otto) |
+| `email` | Email providers (Mailgun, SendGrid, SMTP) |
+| `shipping` | Shipping & carriers (DHL, FedEx, UPS) |
+| `analytics` | Tracking & analytics (GA4, Plausible) |
+| `general` | Everything else |
 
 ---
 
-## Plugin Features
-
-### Settings Schema
+## Settings Schema
 
 Define settings that auto-generate admin UI forms:
 
 ```typescript
 settings: {
   // Text input
-  apiKey: { type: 'string', required: true },
-
-  // Password/secret field (masked in UI)
-  secretKey: { type: 'string', required: true, secret: true },
-
-  // Checkbox
-  sandboxMode: { type: 'boolean', default: false },
+  apiKey: {
+    type: 'string',
+    label: 'API Key',
+    required: true,
+    secret: true,        // Masked in UI
+    placeholder: 'sk_...',
+    description: 'Your secret API key',
+  },
 
   // Number input
-  timeout: { type: 'number', default: 30 },
+  timeout: {
+    type: 'number',
+    label: 'Timeout (seconds)',
+    default: 30,
+    min: 1,
+    max: 300,
+  },
+
+  // Checkbox
+  sandboxMode: {
+    type: 'boolean',
+    label: 'Sandbox Mode',
+    default: false,
+  },
 
   // Dropdown
   region: {
     type: 'select',
+    label: 'Region',
     options: ['US', 'EU', 'APAC'],
     default: 'US',
   },
 }
 ```
 
-### Event Hooks
+---
 
-React to system events:
+## Event Hooks
+
+React to domain events:
 
 ```typescript
-events: {
+hooks: {
   // Order lifecycle
-  'order:created': async (order, ctx) => { },
-  'order:paid': async (order, ctx) => { },
-  'order:shipped': async (order, ctx) => { },
-  'order:completed': async (order, ctx) => { },
-  'order:cancelled': async (order, ctx) => { },
-  'order:refunded': async (order, ctx) => { },
+  'order:created': async (event, ctx) => { },
+  'order:paid': async (event, ctx) => { },
+  'order:shipped': async (event, ctx) => { },
+  'order:cancelled': async (event, ctx) => { },
+  'order:refunded': async (event, ctx) => { },
 
   // Product events
-  'product:created': async (product, ctx) => { },
-  'product:updated': async (product, ctx) => { },
-  'product:deleted': async (product, ctx) => { },
+  'product:created': async (event, ctx) => { },
+  'product:updated': async (event, ctx) => { },
+  'product:deleted': async (event, ctx) => { },
 
   // Cart events
-  'cart:item-added': async (cartItem, ctx) => { },
-  'cart:item-removed': async (cartItem, ctx) => { },
-  'cart:cleared': async (cart, ctx) => { },
+  'cart:created': async (event, ctx) => { },
+  'cart:updated': async (event, ctx) => { },
+  'cart:item-added': async (event, ctx) => { },
+  'cart:item-removed': async (event, ctx) => { },
 
   // Customer events
-  'customer:registered': async (customer, ctx) => { },
-  'customer:updated': async (customer, ctx) => { },
+  'customer:registered': async (event, ctx) => { },
+  'customer:updated': async (event, ctx) => { },
 
   // Checkout events
-  'checkout:started': async (checkout, ctx) => { },
-  'checkout:completed': async (checkout, ctx) => { },
+  'checkout:started': async (event, ctx) => { },
+  'checkout:completed': async (event, ctx) => { },
 
   // Inventory events
-  'inventory:low-stock': async (product, ctx) => { },
-  'inventory:out-of-stock': async (product, ctx) => { },
+  'inventory:updated': async (event, ctx) => { },
+  'inventory:low': async (event, ctx) => { },
 
   // Plugin events
-  'plugin:activated': async (pluginName, ctx) => { },
-  'plugin:deactivated': async (pluginName, ctx) => { },
+  'plugin:activated': async (event, ctx) => { },
+  'plugin:deactivated': async (event, ctx) => { },
 }
 ```
 
-### Filters (Data Transformation)
+### Event Payloads
 
-Transform data as it flows through the system (like WordPress `apply_filters`):
+```typescript
+// order:created
+interface OrderCreatedPayload {
+  orderId: string;
+  customerId: string;
+  totalAmount: number;
+  currency: string;
+  items: Array<{
+    productId: string;
+    variantId?: string;
+    sku?: string;
+    quantity: number;
+    price: number;
+  }>;
+}
+
+// order:paid
+interface OrderPaidPayload {
+  orderId: string;
+  paymentId: string;
+  amount: number;
+  currency: string;
+  provider: string;
+}
+
+// inventory:low
+interface InventoryLowPayload {
+  productId: string;
+  variantId?: string;
+  sku?: string;
+  currentQuantity: number;
+  threshold: number;
+}
+```
+
+---
+
+## Filters (Data Transformation)
+
+Transform data as it flows through the system:
 
 ```typescript
 filters: {
-  // Modify product price (e.g., for discounts)
-  'product:price': (price, { product }) => {
-    if (product.tags?.includes('sale')) {
-      return price * 0.9; // 10% off
-    }
-    return price;
+  // Modify product price
+  'product:price': (price, ctx) => {
+    return price * 0.9; // 10% off everything
   },
 
   // Filter search results
-  'search:results': (results, { query }) => {
+  'search:results': (results, ctx) => {
     return results.filter(p => p.isAvailable);
   },
 
   // Modify cart totals
-  'cart:totals': (totals, { cart }) => {
-    if (cart.items.length >= 5) {
-      totals.discount += 10; // Bulk discount
-    }
-    return totals;
-  },
+  'cart:total': (total, ctx) => total,
+  'cart:shipping': (shipping, ctx) => shipping,
+  'cart:tax': (tax, ctx) => tax,
 
-  // Adjust shipping rates
-  'shipping:rates': (rates, { address, cart }) => {
-    if (cart.total >= 100) {
-      return rates.map(r => ({ ...r, price: 0 })); // Free shipping
-    }
-    return rates;
-  },
+  // Checkout customization
+  'checkout:payment-methods': (methods, ctx) => methods,
+  'checkout:shipping-methods': (methods, ctx) => methods,
 
-  // Modify tax calculation
-  'tax:amount': (tax, { address, subtotal }) => {
-    if (address.country === 'US' && address.state === 'OR') {
-      return 0; // Oregon has no sales tax
-    }
-    return tax;
-  },
+  // Order confirmation
+  'order:confirmation-email': (email, ctx) => email,
+
+  // Search
+  'search:query': (query, ctx) => query,
+
+  // Admin menu customization
+  'admin:menu': (menu, ctx) => menu,
+
+  // Storefront injection
+  'storefront:head': (html, ctx) => html,
+  'storefront:footer': (html, ctx) => html,
 }
 ```
 
-### Storefront Slots
+---
+
+## Storefront Slots
 
 Inject HTML into the storefront:
 
@@ -319,29 +218,85 @@ Inject HTML into the storefront:
 storefrontSlots: [
   {
     slot: 'header-after',
-    content: '<div class="announcement-bar">Free shipping on orders over $50!</div>',
+    content: '<div class="announcement">Free shipping over $50!</div>',
+    order: 10,
   },
   {
     slot: 'product-page-bottom',
-    content: '<img src="https://example.com/trust-badge.png" alt="Trusted Shop" />',
-    pages: ['/product/*'], // Only on product pages
+    content: '<img src="/trust-badge.png" alt="Trusted" />',
+    pages: ['/product/*'],
   },
-  {
-    slot: 'footer-before',
-    content: '<script src="https://example.com/chat-widget.js"></script>',
-  },
-];
+]
 ```
 
 **Available slots:**
 
-- `header-before`, `header-after`
-- `footer-before`, `footer-after`
-- `product-page-top`, `product-page-bottom`
-- `cart-page-top`, `cart-page-bottom`
-- `checkout-before`, `checkout-after`
+| Slot | Location |
+|------|----------|
+| `head` | Inside `<head>` |
+| `body-start` | Start of `<body>` |
+| `body-end` | End of `<body>` |
+| `header-before` | Before header |
+| `header-after` | After header |
+| `footer-before` | Before footer |
+| `footer-after` | After footer |
+| `product-page-top` | Top of product page |
+| `product-page-bottom` | Bottom of product page |
+| `product-page-sidebar` | Product page sidebar |
+| `cart-page-top` | Top of cart page |
+| `cart-page-bottom` | Bottom of cart page |
+| `checkout-before-payment` | Before payment form |
+| `checkout-after-payment` | After payment form |
+| `category-page-top` | Top of category page |
+| `category-page-bottom` | Bottom of category page |
 
-### CLI Commands
+---
+
+## Custom API Routes
+
+Add custom HTTP endpoints:
+
+```typescript
+routes: (router) => {
+  router.get('/status', (c) => {
+    return c.json({ status: 'ok' });
+  });
+
+  router.post('/webhook', async (c) => {
+    const body = await c.req.json();
+    // Handle webhook
+    return c.json({ received: true });
+  });
+}
+// Routes are mounted at: /api/v1/plugins/<plugin-name>/
+```
+
+---
+
+## Admin Pages
+
+Add custom pages to the admin panel:
+
+```typescript
+adminPages: [
+  {
+    path: '/analytics',
+    label: 'Analytics Dashboard',
+    icon: 'chart-bar',
+    order: 10,
+  },
+  {
+    path: '/analytics/reports',
+    label: 'Reports',
+    parent: '/analytics',
+    order: 20,
+  },
+]
+```
+
+---
+
+## CLI Commands
 
 Add custom CLI commands:
 
@@ -350,25 +305,23 @@ cli: [
   {
     name: 'sync',
     description: 'Sync products to marketplace',
+    args: [
+      { name: 'sku', description: 'Product SKU', required: false },
+    ],
+    options: [
+      { name: 'force', alias: 'f', description: 'Force sync', type: 'boolean', default: false },
+    ],
     handler: async (args, ctx) => {
-      console.log('Syncing...');
-      // Your sync logic
+      ctx.logger.info('Syncing...', args);
     },
   },
-  {
-    name: 'report',
-    description: 'Generate sales report',
-    handler: async (args, ctx) => {
-      const { from, to } = args;
-      // Generate report
-    },
-  },
-];
+]
+// Run with: forkcart plugin run <plugin-name>:sync
 ```
 
-Run with: `forkcart plugin run my-plugin:sync`
+---
 
-### Scheduled Tasks (Cron)
+## Scheduled Tasks
 
 Run tasks on a schedule:
 
@@ -377,33 +330,54 @@ scheduledTasks: [
   {
     name: 'daily-sync',
     schedule: '0 3 * * *', // 3 AM daily
+    enabled: true,
     handler: async (ctx) => {
-      await syncInventory();
+      await syncInventory(ctx);
     },
   },
-  {
-    name: 'hourly-check',
-    schedule: '0 * * * *', // Every hour
-    handler: async (ctx) => {
-      await checkOrderStatus();
-    },
-  },
-];
+]
 ```
 
-### Lifecycle Hooks
+---
 
-Run code when plugin is installed/uninstalled:
+## Database Migrations
+
+Add custom tables:
+
+```typescript
+migrations: [
+  {
+    version: '1.0.0',
+    description: 'Create analytics table',
+    up: async (db) => {
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS plugin_analytics_events (
+          id SERIAL PRIMARY KEY,
+          event_type TEXT NOT NULL,
+          data JSONB,
+          created_at TIMESTAMP DEFAULT NOW()
+        );
+      `);
+    },
+    down: async (db) => {
+      await db.execute('DROP TABLE IF EXISTS plugin_analytics_events;');
+    },
+  },
+]
+```
+
+---
+
+## Lifecycle Hooks
 
 ```typescript
 onInstall: async (ctx) => {
-  // Run migrations, create default settings
-  console.log('Plugin installed!');
+  // First-time setup
+  ctx.logger.info('Plugin installed!');
 },
 
 onUninstall: async (ctx) => {
-  // Cleanup data
-  console.log('Plugin uninstalled!');
+  // Cleanup
 },
 
 onActivate: async (ctx) => {
@@ -413,32 +387,279 @@ onActivate: async (ctx) => {
 onDeactivate: async (ctx) => {
   // Stop background tasks
 },
-```
 
-### Database Migrations
-
-Add custom tables:
-
-```typescript
-migrations: [
-  {
-    version: 1,
-    up: `
-      CREATE TABLE IF NOT EXISTS my_plugin_data (
-        id SERIAL PRIMARY KEY,
-        key TEXT NOT NULL,
-        value JSONB,
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `,
-    down: `DROP TABLE IF EXISTS my_plugin_data;`,
-  },
-];
+onUpdate: async (ctx, fromVersion) => {
+  // Handle version migrations
+  if (fromVersion < '2.0.0') {
+    // Migrate old data
+  }
+},
 ```
 
 ---
 
-## Full Example: Discount Code Plugin
+## Plugin Context
+
+Every handler receives a context object:
+
+```typescript
+interface PluginContext {
+  settings: Record<string, unknown>;  // Resolved settings values
+  db: unknown;                        // Database connection (Drizzle)
+  logger: PluginLogger;               // Scoped logger
+  eventBus: PluginEventBus;           // Emit/subscribe to events
+}
+```
+
+---
+
+## Permissions
+
+Declare what your plugin needs access to:
+
+```typescript
+permissions: [
+  'orders:read',
+  'orders:write',
+  'products:read',
+  'products:write',
+  'customers:read',
+  'customers:write',
+  'settings:read',
+  'settings:write',
+  'email:send',
+  'payments:process',
+  'inventory:read',
+  'inventory:write',
+  'analytics:read',
+  'files:read',
+  'files:write',
+  'webhooks:manage',
+  'admin:full',
+]
+```
+
+---
+
+## Plugin Dependencies
+
+Require other plugins to be installed:
+
+```typescript
+dependencies: ['stripe', 'mailgun'],
+minVersion: '0.5.0', // Minimum ForkCart version
+```
+
+---
+
+## Provider Implementations
+
+### Payment Provider
+
+```typescript
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'stripe',
+  version: '1.0.0',
+  type: 'payment',
+  description: 'Accept payments via Stripe',
+  author: 'ForkCart',
+
+  settings: {
+    secretKey: { type: 'string', label: 'Secret Key', required: true, secret: true },
+    publishableKey: { type: 'string', label: 'Publishable Key', required: true },
+    webhookSecret: { type: 'string', label: 'Webhook Secret', secret: true },
+  },
+
+  provider: {
+    async initialize(settings) {
+      // Initialize Stripe client
+    },
+
+    isConfigured() {
+      return Boolean(this.secretKey && this.publishableKey);
+    },
+
+    getClientConfig() {
+      return {
+        provider: 'stripe',
+        displayName: 'Credit Card',
+        componentType: 'stripe-elements',
+        clientConfig: { publishableKey: this.publishableKey },
+      };
+    },
+
+    async createPaymentIntent(input) {
+      // Create Stripe PaymentIntent
+      return {
+        clientSecret: 'pi_xxx_secret_xxx',
+        externalId: 'pi_xxx',
+        amount: input.amount,
+        currency: input.currency,
+      };
+    },
+
+    async verifyWebhook(rawBody, headers) {
+      // Verify Stripe signature
+      return {
+        type: 'payment.succeeded',
+        externalId: 'pi_xxx',
+        amount: 2999,
+        currency: 'usd',
+        metadata: {},
+        rawEvent: {},
+      };
+    },
+
+    async getPaymentStatus(externalId) {
+      return {
+        status: 'succeeded',
+        externalId,
+        amount: 2999,
+        currency: 'usd',
+      };
+    },
+  },
+});
+```
+
+### Marketplace Provider
+
+```typescript
+export default definePlugin({
+  name: 'amazon',
+  version: '1.0.0',
+  type: 'marketplace',
+  description: 'Sell on Amazon',
+  author: 'ForkCart',
+
+  settings: {
+    sellerId: { type: 'string', label: 'Seller ID', required: true },
+    accessKey: { type: 'string', label: 'Access Key', required: true, secret: true },
+    secretKey: { type: 'string', label: 'Secret Key', required: true, secret: true },
+    region: { type: 'select', label: 'Region', options: ['NA', 'EU', 'FE'], default: 'EU' },
+  },
+
+  provider: {
+    async connect(settings) { },
+    async disconnect() { },
+    async testConnection() {
+      return { ok: true };
+    },
+
+    async listProduct(product) {
+      return {
+        id: 'listing_123',
+        marketplaceId: 'amazon',
+        externalId: 'ASIN123',
+        status: 'active',
+        url: 'https://amazon.com/dp/ASIN123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    },
+
+    async updateListing(listingId, product) { },
+    async deleteListing(listingId) { },
+    async fetchOrders(since) { return []; },
+    async acknowledgeOrder(orderId) { },
+    async updateShipment(orderId, tracking) { },
+    async updateInventory(sku, quantity) { },
+    async bulkUpdateInventory(items) { },
+    async getMarketplaceCategories() { return []; },
+  },
+});
+```
+
+### Email Provider
+
+```typescript
+export default definePlugin({
+  name: 'mailgun',
+  version: '1.0.0',
+  type: 'email',
+  description: 'Send emails via Mailgun',
+  author: 'ForkCart',
+
+  settings: {
+    apiKey: { type: 'string', label: 'API Key', required: true, secret: true },
+    domain: { type: 'string', label: 'Domain', required: true },
+    region: { type: 'select', label: 'Region', options: ['US', 'EU'], default: 'US' },
+  },
+
+  provider: {
+    async initialize(settings) { },
+    isConfigured() { return true; },
+
+    async sendEmail(input) {
+      // Send via Mailgun API
+      return {
+        messageId: 'msg_xxx',
+        accepted: true,
+      };
+    },
+  },
+});
+```
+
+### Shipping Provider
+
+```typescript
+export default definePlugin({
+  name: 'dhl',
+  version: '1.0.0',
+  type: 'shipping',
+  description: 'Ship with DHL',
+  author: 'ForkCart',
+
+  settings: {
+    apiKey: { type: 'string', label: 'API Key', required: true, secret: true },
+    accountNumber: { type: 'string', label: 'Account Number', required: true },
+  },
+
+  provider: {
+    async initialize(settings) { },
+
+    async getRates(from, to, parcels) {
+      return [
+        {
+          id: 'dhl_express',
+          name: 'DHL Express',
+          price: 1299,
+          currency: 'EUR',
+          estimatedDays: 2,
+          carrier: 'DHL',
+        },
+      ];
+    },
+
+    async createShipment(from, to, parcels, rateId) {
+      return {
+        trackingNumber: '1234567890',
+        carrier: 'DHL',
+        labelUrl: 'https://...',
+        trackingUrl: 'https://...',
+      };
+    },
+
+    async getTracking(trackingNumber) {
+      return [
+        {
+          status: 'in_transit',
+          location: 'Leipzig, DE',
+          timestamp: new Date(),
+          description: 'Package in transit',
+        },
+      ];
+    },
+  },
+});
+```
+
+---
+
+## Full Example: Discount Codes Plugin
 
 ```typescript
 import { definePlugin } from '@forkcart/plugin-sdk';
@@ -446,92 +667,87 @@ import { definePlugin } from '@forkcart/plugin-sdk';
 export default definePlugin({
   name: 'discount-codes',
   version: '1.0.0',
-  displayName: 'Discount Codes',
-  description: 'Add discount code functionality to your store',
-  author: 'ForkCart Team',
-  type: 'feature',
+  type: 'general',
+  description: 'Add discount code functionality',
+  author: 'ForkCart',
+  keywords: ['discount', 'coupon', 'promo'],
 
   settings: {
-    maxUsesPerCode: { type: 'number', default: 100 },
-    allowStacking: { type: 'boolean', default: false },
+    maxUsesPerCode: { type: 'number', label: 'Max Uses', default: 100 },
+    allowStacking: { type: 'boolean', label: 'Allow Stacking', default: false },
   },
 
-  // Transform cart totals when discount applied
+  permissions: ['orders:read', 'orders:write'],
+
   filters: {
-    'cart:totals': (totals, { cart }) => {
-      const code = cart.metadata?.discountCode;
-      if (code) {
-        // Apply discount logic
-        totals.discount += calculateDiscount(code, totals.subtotal);
-      }
-      return totals;
+    'cart:total': (total, ctx) => {
+      // Apply discount logic
+      return total;
     },
   },
 
-  // Track discount usage
-  events: {
-    'order:created': async (order, ctx) => {
-      const code = order.metadata?.discountCode;
-      if (code) {
-        await incrementCodeUsage(code);
-      }
+  hooks: {
+    'order:created': async (event, ctx) => {
+      // Track discount usage
     },
   },
 
-  // CLI for managing codes
+  routes: (router) => {
+    router.post('/validate', async (c) => {
+      const { code } = await c.req.json();
+      // Validate discount code
+      return c.json({ valid: true, discount: 10 });
+    });
+  },
+
+  adminPages: [
+    { path: '/discounts', label: 'Discount Codes', icon: 'tag' },
+  ],
+
   cli: [
     {
       name: 'create',
       description: 'Create a discount code',
-      handler: async ({ code, percent, expires }) => {
-        await createDiscountCode(code, percent, expires);
-        console.log(`Created code: ${code}`);
-      },
-    },
-    {
-      name: 'list',
-      description: 'List all discount codes',
-      handler: async () => {
-        const codes = await listDiscountCodes();
-        console.table(codes);
+      handler: async (args, ctx) => {
+        ctx.logger.info('Creating code...');
       },
     },
   ],
 
-  // Database for storing codes
   migrations: [
     {
-      version: 1,
-      up: `
-        CREATE TABLE IF NOT EXISTS discount_codes (
-          id SERIAL PRIMARY KEY,
-          code TEXT UNIQUE NOT NULL,
-          percent INTEGER NOT NULL,
-          max_uses INTEGER DEFAULT 100,
-          current_uses INTEGER DEFAULT 0,
-          expires_at TIMESTAMP,
-          created_at TIMESTAMP DEFAULT NOW()
-        );
-      `,
-      down: `DROP TABLE IF EXISTS discount_codes;`,
+      version: '1.0.0',
+      description: 'Create discount_codes table',
+      up: async (db) => {
+        await db.execute(`
+          CREATE TABLE IF NOT EXISTS discount_codes (
+            id SERIAL PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            percent INTEGER NOT NULL,
+            max_uses INTEGER DEFAULT 100,
+            current_uses INTEGER DEFAULT 0,
+            expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT NOW()
+          );
+        `);
+      },
+      down: async (db) => {
+        await db.execute('DROP TABLE IF EXISTS discount_codes;');
+      },
     },
   ],
 
-  onInstall: async () => {
-    console.log('Discount Codes plugin installed!');
+  onInstall: async (ctx) => {
+    ctx.logger.info('Discount codes plugin installed!');
   },
 });
 ```
 
 ---
 
-## Publishing Your Plugin
+## Publishing
 
 ### As npm Package
-
-1. Name your package: `forkcart-plugin-{name}` or `@yourorg/forkcart-plugin-{name}`
-2. Export the plugin as default
-3. Publish to npm
 
 ```json
 {
@@ -545,52 +761,16 @@ export default definePlugin({
 }
 ```
 
-### Installing Plugins
+### Installing
 
-From Admin UI:
-
+**From Admin UI:**
 1. Go to **Plugins** → **Marketplace**
-2. Search for the plugin
-3. Click **Install**
+2. Search and click **Install**
 
-From CLI:
-
+**From CLI:**
 ```bash
 forkcart plugin install forkcart-plugin-my-awesome
 forkcart plugin activate my-awesome
-```
-
----
-
-## API Reference
-
-### Plugin Context
-
-Every handler receives a context object:
-
-```typescript
-interface PluginContext {
-  db: Database; // Database connection
-  settings: Settings; // Plugin settings
-  logger: Logger; // Logging utility
-  eventBus: EventBus; // Emit events
-}
-```
-
-### Event Bus
-
-Emit custom events:
-
-```typescript
-events: {
-  'order:created': async (order, ctx) => {
-    // Emit custom event
-    ctx.eventBus.emit('myPlugin:order-processed', {
-      orderId: order.id,
-      timestamp: new Date(),
-    });
-  },
-}
 ```
 
 ---
@@ -599,11 +779,12 @@ events: {
 
 1. **Use TypeScript** — Better DX and catches errors early
 2. **Handle errors gracefully** — Don't crash the main app
-3. **Use settings** — Don't hardcode configuration
+3. **Use the settings schema** — Don't hardcode configuration
 4. **Document your plugin** — Include a README.md
 5. **Test thoroughly** — Especially payment/order flows
-6. **Version your migrations** — Never modify existing migrations
-7. **Clean up on uninstall** — Remove data when plugin is removed
+6. **Version your migrations** — Never modify existing ones
+7. **Declare permissions** — Only request what you need
+8. **Clean up on uninstall** — Remove data when plugin is removed
 
 ---
 
