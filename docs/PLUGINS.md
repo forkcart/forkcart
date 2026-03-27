@@ -4,8 +4,52 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
 
 ## Quick Start
 
+### 1. Create Plugin Structure
+
+```
+my-plugin/
+├── src/
+│   └── index.ts          # Plugin definition
+├── forkcart-plugin.json  # Plugin manifest (required for marketplace)
+├── package.json          # NPM package info
+├── README.md             # Documentation
+└── tsconfig.json
+```
+
+### 2. Create the Manifest (`forkcart-plugin.json`)
+
+```json
+{
+  "name": "My Awesome Plugin",
+  "slug": "my-awesome-plugin",
+  "packageName": "forkcart-plugin-my-awesome",
+  "version": "1.0.0",
+  "type": "general",
+  "description": "Does awesome things",
+  "author": "Your Name",
+  "license": "MIT",
+  "minForkcartVersion": "0.5.0",
+  "entryPoint": "dist/index.js"
+}
+```
+
+| Field                | Required | Description                                      |
+| -------------------- | -------- | ------------------------------------------------ |
+| `name`               | ✅       | Human-readable plugin name                       |
+| `slug`               | ✅       | URL-safe identifier (lowercase, hyphens)         |
+| `packageName`        | ✅       | NPM package name                                 |
+| `version`            | ✅       | Semver version                                   |
+| `type`               | ✅       | Plugin type (see below)                          |
+| `description`        |          | Short description for marketplace                |
+| `author`             |          | Author name                                      |
+| `license`            |          | License (MIT, GPL-3.0, etc.)                     |
+| `minForkcartVersion` |          | Minimum ForkCart version required                |
+| `entryPoint`         |          | Path to compiled JS entry point (default: dist/) |
+
+### 3. Define Your Plugin
+
 ```typescript
-// packages/plugins/my-plugin/src/index.ts
+// src/index.ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
@@ -748,6 +792,46 @@ export default definePlugin({
 ---
 
 ## Publishing
+
+### To the ForkCart Plugin Marketplace
+
+Your ZIP must contain:
+
+```
+my-plugin/
+├── forkcart-plugin.json  ← Required manifest
+├── package.json          ← Required
+├── README.md             ← Required
+├── dist/                 ← Compiled JS
+│   └── index.js
+└── src/                  ← Source (optional)
+    └── index.ts
+```
+
+**Example `forkcart-plugin.json`:**
+
+```json
+{
+  "name": "Social Proof",
+  "slug": "social-proof",
+  "packageName": "forkcart-plugin-social-proof",
+  "version": "1.0.0",
+  "type": "general",
+  "description": "Display real-time social proof on product pages",
+  "author": "Tyto 🦉",
+  "license": "MIT",
+  "minForkcartVersion": "0.5.0",
+  "entryPoint": "dist/index.js"
+}
+```
+
+**Upload steps:**
+
+1. Build your plugin: `pnpm build`
+2. Create ZIP with all required files
+3. Go to [ForkCart Developer Portal](https://developers.forkcart.com)
+4. Upload your ZIP
+5. Set pricing (free or paid — ForkCart takes 10%, you keep 90%)
 
 ### As npm Package
 
