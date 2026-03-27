@@ -41,6 +41,7 @@ import {
   RelatedProductsBlock,
   ProductShortDescBlock,
 } from './blocks/product-blocks';
+import { PluginBlock } from './blocks/plugin-block';
 
 /** All block components registered with Craft.js */
 const resolver = {
@@ -78,6 +79,7 @@ const resolver = {
   ProductReviewsBlock,
   RelatedProductsBlock,
   ProductShortDescBlock,
+  PluginBlock,
 };
 
 interface PageBuilderEditorProps {

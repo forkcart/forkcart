@@ -1,6 +1,7 @@
 'use client';
 
 import { useEditor, Element } from '@craftjs/core';
+import { useQuery } from '@tanstack/react-query';
 import {
   Type,
   Heading as HeadingIcon,
@@ -37,6 +38,7 @@ import {
   Package as PackageIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 import { Container } from './blocks/container';
 import { Heading } from './blocks/heading';
 import { TextBlock } from './blocks/text-block';
@@ -73,6 +75,21 @@ import {
   RelatedProductsBlock,
   ProductShortDescBlock,
 } from './blocks/product-blocks';
+import { PluginBlock } from './blocks/plugin-block';
+
+interface PluginBlockData {
+  pluginName: string;
+  name: string;
+  label: string;
+  icon?: string;
+  category?: string;
+  description?: string;
+  content: string;
+}
+
+interface PluginBlocksResponse {
+  data: PluginBlockData[];
+}
 
 interface BlockDefinition {
   label: string;
@@ -302,6 +319,12 @@ const categoryLabels: Record<string, string> = {
 export function ComponentPanel() {
   const { connectors } = useEditor();
 
+  const { data: pluginBlocks } = useQuery({
+    queryKey: ['plugin-blocks'],
+    queryFn: () => apiClient<PluginBlocksResponse>('/public/plugins/blocks'),
+    staleTime: 60_000,
+  });
+
   const grouped = blocks.reduce(
     (acc, block) => {
       if (!acc[block.category]) acc[block.category] = [];
@@ -310,6 +333,8 @@ export function ComponentPanel() {
     },
     {} as Record<string, BlockDefinition[]>,
   );
+
+  const pluginBlockItems = pluginBlocks?.data ?? [];
 
   return (
     <div className="w-60 overflow-y-auto border-r bg-white p-4">
@@ -339,6 +364,42 @@ export function ComponentPanel() {
           </div>
         </div>
       ))}
+      {pluginBlockItems.length > 0 && (
+        <div className="mb-6">
+          <h4 className="mb-2 text-xs font-medium uppercase tracking-wider text-gray-400">
+            🧩 Plugins
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            {pluginBlockItems.map((pb) => (
+              <div
+                key={`${pb.pluginName}:${pb.name}`}
+                ref={(ref) => {
+                  if (ref)
+                    connectors.create(
+                      ref,
+                      <PluginBlock
+                        pluginName={pb.pluginName}
+                        blockName={pb.name}
+                        label={pb.label}
+                        icon={pb.icon}
+                        description={pb.description}
+                      />,
+                    );
+                }}
+                className={cn(
+                  'flex cursor-grab flex-col items-center gap-1 rounded-lg border border-purple-200 p-3',
+                  'transition-colors hover:border-purple-400 hover:bg-purple-50',
+                  'active:cursor-grabbing',
+                )}
+                title={pb.description}
+              >
+                <span className="text-lg">{pb.icon || '🧩'}</span>
+                <span className="text-center text-xs font-medium text-gray-700">{pb.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

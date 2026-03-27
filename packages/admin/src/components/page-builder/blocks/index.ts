@@ -27,6 +27,9 @@ export { DynamicCheckout } from './dynamic-checkout';
 export { DynamicAccount } from './dynamic-account';
 export { DynamicSearch } from './dynamic-search';
 
+// Plugin blocks — rendered from plugin pageBuilderBlocks
+export { PluginBlock, type PluginBlockProps } from './plugin-block';
+
 // Product page sub-blocks — individual editable product elements
 export {
   ProductImagesBlock,

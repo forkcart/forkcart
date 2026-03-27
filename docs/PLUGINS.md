@@ -684,6 +684,21 @@ When an admin drags a plugin block into the page template, the Craft.js JSON sto
 
 The `PageRenderer` detects `PluginBlock` nodes and renders them via `PluginBlockRenderer`, which fetches the block's HTML content from the API.
 
+### Admin PageBuilder Integration
+
+Plugin blocks automatically appear in the admin PageBuilder's block picker under a **🧩 Plugins** section. No admin configuration is required — as soon as a plugin with `pageBuilderBlocks` is installed, its blocks show up.
+
+**How it works:**
+
+1. The Component Panel fetches registered blocks from `GET /api/v1/public/plugins/blocks`
+2. Each plugin block appears in the "🧩 Plugins" category with a purple-accented border
+3. Admins can **drag and drop** plugin blocks into the page canvas just like built-in blocks
+4. In the editor, plugin blocks display a preview placeholder showing the block name, plugin name, and icon
+5. The Settings Panel shows read-only plugin block info (plugin name, block name, description)
+6. On the storefront, the `PluginBlockRenderer` fetches and renders the block's actual HTML content
+
+Plugin blocks are visually distinct from built-in blocks (purple styling vs green) so admins can easily identify which blocks come from plugins.
+
 ---
 
 ## Custom API Routes
