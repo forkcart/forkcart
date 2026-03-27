@@ -32,14 +32,14 @@ export default definePlugin({
 
 ## Plugin Types
 
-| Type | Purpose |
-|------|---------|
-| `payment` | Payment gateways (Stripe, PayPal, Klarna) |
+| Type          | Purpose                                    |
+| ------------- | ------------------------------------------ |
+| `payment`     | Payment gateways (Stripe, PayPal, Klarna)  |
 | `marketplace` | External marketplaces (Amazon, eBay, Otto) |
-| `email` | Email providers (Mailgun, SendGrid, SMTP) |
-| `shipping` | Shipping & carriers (DHL, FedEx, UPS) |
-| `analytics` | Tracking & analytics (GA4, Plausible) |
-| `general` | Everything else |
+| `email`       | Email providers (Mailgun, SendGrid, SMTP)  |
+| `shipping`    | Shipping & carriers (DHL, FedEx, UPS)      |
+| `analytics`   | Tracking & analytics (GA4, Plausible)      |
+| `general`     | Everything else                            |
 
 ---
 
@@ -226,29 +226,29 @@ storefrontSlots: [
     content: '<img src="/trust-badge.png" alt="Trusted" />',
     pages: ['/product/*'],
   },
-]
+];
 ```
 
 **Available slots:**
 
-| Slot | Location |
-|------|----------|
-| `head` | Inside `<head>` |
-| `body-start` | Start of `<body>` |
-| `body-end` | End of `<body>` |
-| `header-before` | Before header |
-| `header-after` | After header |
-| `footer-before` | Before footer |
-| `footer-after` | After footer |
-| `product-page-top` | Top of product page |
-| `product-page-bottom` | Bottom of product page |
-| `product-page-sidebar` | Product page sidebar |
-| `cart-page-top` | Top of cart page |
-| `cart-page-bottom` | Bottom of cart page |
-| `checkout-before-payment` | Before payment form |
-| `checkout-after-payment` | After payment form |
-| `category-page-top` | Top of category page |
-| `category-page-bottom` | Bottom of category page |
+| Slot                      | Location                |
+| ------------------------- | ----------------------- |
+| `head`                    | Inside `<head>`         |
+| `body-start`              | Start of `<body>`       |
+| `body-end`                | End of `<body>`         |
+| `header-before`           | Before header           |
+| `header-after`            | After header            |
+| `footer-before`           | Before footer           |
+| `footer-after`            | After footer            |
+| `product-page-top`        | Top of product page     |
+| `product-page-bottom`     | Bottom of product page  |
+| `product-page-sidebar`    | Product page sidebar    |
+| `cart-page-top`           | Top of cart page        |
+| `cart-page-bottom`        | Bottom of cart page     |
+| `checkout-before-payment` | Before payment form     |
+| `checkout-after-payment`  | After payment form      |
+| `category-page-top`       | Top of category page    |
+| `category-page-bottom`    | Bottom of category page |
 
 ---
 
@@ -267,7 +267,7 @@ routes: (router) => {
     // Handle webhook
     return c.json({ received: true });
   });
-}
+};
 // Routes are mounted at: /api/v1/plugins/<plugin-name>/
 ```
 
@@ -291,7 +291,7 @@ adminPages: [
     parent: '/analytics',
     order: 20,
   },
-]
+];
 ```
 
 ---
@@ -305,9 +305,7 @@ cli: [
   {
     name: 'sync',
     description: 'Sync products to marketplace',
-    args: [
-      { name: 'sku', description: 'Product SKU', required: false },
-    ],
+    args: [{ name: 'sku', description: 'Product SKU', required: false }],
     options: [
       { name: 'force', alias: 'f', description: 'Force sync', type: 'boolean', default: false },
     ],
@@ -315,7 +313,7 @@ cli: [
       ctx.logger.info('Syncing...', args);
     },
   },
-]
+];
 // Run with: forkcart plugin run <plugin-name>:sync
 ```
 
@@ -335,7 +333,7 @@ scheduledTasks: [
       await syncInventory(ctx);
     },
   },
-]
+];
 ```
 
 ---
@@ -363,7 +361,7 @@ migrations: [
       await db.execute('DROP TABLE IF EXISTS plugin_analytics_events;');
     },
   },
-]
+];
 ```
 
 ---
@@ -404,10 +402,10 @@ Every handler receives a context object:
 
 ```typescript
 interface PluginContext {
-  settings: Record<string, unknown>;  // Resolved settings values
-  db: unknown;                        // Database connection (Drizzle)
-  logger: PluginLogger;               // Scoped logger
-  eventBus: PluginEventBus;           // Emit/subscribe to events
+  settings: Record<string, unknown>; // Resolved settings values
+  db: unknown; // Database connection (Drizzle)
+  logger: PluginLogger; // Scoped logger
+  eventBus: PluginEventBus; // Emit/subscribe to events
 }
 ```
 
@@ -436,7 +434,7 @@ permissions: [
   'files:write',
   'webhooks:manage',
   'admin:full',
-]
+];
 ```
 
 ---
@@ -542,8 +540,8 @@ export default definePlugin({
   },
 
   provider: {
-    async connect(settings) { },
-    async disconnect() { },
+    async connect(settings) {},
+    async disconnect() {},
     async testConnection() {
       return { ok: true };
     },
@@ -560,14 +558,18 @@ export default definePlugin({
       };
     },
 
-    async updateListing(listingId, product) { },
-    async deleteListing(listingId) { },
-    async fetchOrders(since) { return []; },
-    async acknowledgeOrder(orderId) { },
-    async updateShipment(orderId, tracking) { },
-    async updateInventory(sku, quantity) { },
-    async bulkUpdateInventory(items) { },
-    async getMarketplaceCategories() { return []; },
+    async updateListing(listingId, product) {},
+    async deleteListing(listingId) {},
+    async fetchOrders(since) {
+      return [];
+    },
+    async acknowledgeOrder(orderId) {},
+    async updateShipment(orderId, tracking) {},
+    async updateInventory(sku, quantity) {},
+    async bulkUpdateInventory(items) {},
+    async getMarketplaceCategories() {
+      return [];
+    },
   },
 });
 ```
@@ -589,8 +591,10 @@ export default definePlugin({
   },
 
   provider: {
-    async initialize(settings) { },
-    isConfigured() { return true; },
+    async initialize(settings) {},
+    isConfigured() {
+      return true;
+    },
 
     async sendEmail(input) {
       // Send via Mailgun API
@@ -619,7 +623,7 @@ export default definePlugin({
   },
 
   provider: {
-    async initialize(settings) { },
+    async initialize(settings) {},
 
     async getRates(from, to, parcels) {
       return [
@@ -700,9 +704,7 @@ export default definePlugin({
     });
   },
 
-  adminPages: [
-    { path: '/discounts', label: 'Discount Codes', icon: 'tag' },
-  ],
+  adminPages: [{ path: '/discounts', label: 'Discount Codes', icon: 'tag' }],
 
   cli: [
     {
@@ -764,10 +766,12 @@ export default definePlugin({
 ### Installing
 
 **From Admin UI:**
+
 1. Go to **Plugins** → **Marketplace**
 2. Search and click **Install**
 
 **From CLI:**
+
 ```bash
 forkcart plugin install forkcart-plugin-my-awesome
 forkcart plugin activate my-awesome

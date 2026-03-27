@@ -39,16 +39,16 @@ Storefront → `localhost:3000` · Admin → `localhost:3001` · API → `localh
 
 Every TypeScript e-commerce is headless-only — API without frontend. ForkCart ships the entire stack:
 
-|                   | ForkCart        | Medusa.js        | Vendure          | Saleor           | Shopware         |
-| ----------------- | --------------- | ---------------- | ---------------- | ---------------- | ---------------- |
-| **Language**      | TypeScript      | TypeScript       | TypeScript       | Python / GraphQL | PHP              |
-| **Storefront**    | ✅ Included     | ❌ Headless only | ❌ Headless only | ❌ Headless only | ✅ Twig          |
-| **Page Builder**  | ✅ Drag & Drop  | —                | —                | —                | ✅ Shopping Exp. |
-| **AI Built-in**   | ✅ Native       | —                | —                | —                | Via plugins      |
-| **Mobile App**    | ✅ Expo         | —                | —                | —                | —                |
-| **Plugin System** | SDK-based       | Modules          | Plugins          | Apps             | Plugins          |
-| **Self-hosted**   | ✅              | ✅               | ✅               | ✅               | ✅               |
-| **License**       | MIT             | MIT              | MIT              | BSD              | MIT              |
+|                   | ForkCart       | Medusa.js        | Vendure          | Saleor           | Shopware         |
+| ----------------- | -------------- | ---------------- | ---------------- | ---------------- | ---------------- |
+| **Language**      | TypeScript     | TypeScript       | TypeScript       | Python / GraphQL | PHP              |
+| **Storefront**    | ✅ Included    | ❌ Headless only | ❌ Headless only | ❌ Headless only | ✅ Twig          |
+| **Page Builder**  | ✅ Drag & Drop | —                | —                | —                | ✅ Shopping Exp. |
+| **AI Built-in**   | ✅ Native      | —                | —                | —                | Via plugins      |
+| **Mobile App**    | ✅ Expo        | —                | —                | —                | —                |
+| **Plugin System** | SDK-based      | Modules          | Plugins          | Apps             | Plugins          |
+| **Self-hosted**   | ✅             | ✅               | ✅               | ✅               | ✅               |
+| **License**       | MIT            | MIT              | MIT              | BSD              | MIT              |
 
 ---
 
