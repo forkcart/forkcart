@@ -62,6 +62,22 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
 
+  // Expose product data to plugins via window.FORKCART
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as unknown as { FORKCART?: { productId?: string; productSlug?: string } }).FORKCART =
+        {
+          productId: initialProduct.id,
+          productSlug: initialProduct.slug,
+        };
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as unknown as { FORKCART?: unknown }).FORKCART;
+      }
+    };
+  }, [initialProduct.id, initialProduct.slug]);
+
   // Fetch localized product content when locale changes
   useEffect(() => {
     fetch(`${API_URL}/api/v1/products/${initialProduct.slug}?locale=${locale}`)
