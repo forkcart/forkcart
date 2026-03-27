@@ -616,8 +616,10 @@ export async function createApp(db: Database) {
   // Public cookie consent routes (no auth — storefront banner config + logging)
   app.route('/api/v1/public/cookie-consent', createPublicCookieConsentRoutes(db));
 
-  // Mount plugin custom routes under /api/v1/plugins/<pluginName>/
-  mountPluginRoutes(v1, pluginLoader);
+  // Mount plugin custom routes under /api/v1/public/plugins/<pluginName>/
+  // NOTE: Plugin routes are public (no auth) to allow storefront JS to call them
+  // Security is handled per-plugin (plugins can add their own auth if needed)
+  mountPluginRoutes(app, pluginLoader, '/api/v1/public');
 
   app.route('/api/v1', v1);
 

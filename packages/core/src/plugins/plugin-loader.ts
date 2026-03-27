@@ -1170,6 +1170,40 @@ export class PluginLoader {
     };
   }
 
+  /**
+   * Get plugin context for use in route handlers.
+   * Returns the same context object that plugins receive in their lifecycle hooks.
+   * Accepts either the plugin's internal name (e.g., "fomo-badges") or display name (e.g., "FOMO Badges")
+   */
+  getPluginContext(pluginName: string): unknown | null {
+    // Try direct lookup first
+    let def = this.sdkPlugins.get(pluginName);
+
+    // If not found, search by slug-like matching
+    if (!def) {
+      const normalizedSearch = pluginName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      for (const [name, plugin] of this.sdkPlugins.entries()) {
+        const normalizedName = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (normalizedName === normalizedSearch) {
+          def = plugin;
+          break;
+        }
+      }
+    }
+
+    if (!def) return null;
+
+    // Build settings from defaults
+    const settings: Record<string, unknown> = {};
+    if (def.settings) {
+      for (const [key, config] of Object.entries(def.settings)) {
+        settings[key] = (config as { default?: unknown }).default;
+      }
+    }
+
+    return this.buildPluginContext(def.name, settings);
+  }
+
   // ─── Load all active plugins (startup) ────────────────────────────────────
 
   async loadActivePlugins(): Promise<void> {

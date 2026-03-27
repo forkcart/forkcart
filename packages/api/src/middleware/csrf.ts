@@ -10,11 +10,13 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 /**
  * Paths exempt from CSRF checks:
  * - Webhook endpoints (called by external services, not browsers)
+ * - Public plugin routes (called by storefront JS cross-origin)
  */
 const EXEMPT_PATH_PREFIXES = [
   '/api/v1/payments/webhook',
   '/api/v1/auth/login',
   '/api/v1/tax/calculate',
+  '/api/v1/public/plugins/', // Plugin routes are called cross-origin from storefront
 ];
 
 /**

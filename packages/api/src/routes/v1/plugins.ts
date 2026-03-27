@@ -241,15 +241,37 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
 }
 
 /** Mount plugin custom routes under /api/v1/plugins/<pluginName>/ */
-export function mountPluginRoutes(parentRouter: Hono, pluginLoader: PluginLoader): void {
+export function mountPluginRoutes(
+  parentRouter: Hono,
+  pluginLoader: PluginLoader,
+  basePath: string = '',
+): void {
   const registrars = pluginLoader.getPluginRouteRegistrars();
 
   for (const [pluginName, registrar] of registrars) {
     const pluginRouter = new Hono();
 
-    // Create a minimal router adapter that maps Hono-compatible handlers
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const wrap = (handler: (c: unknown) => unknown) => (c: Context) => handler(c) as any;
+    // Slugify plugin name for URL (e.g., "FOMO Badges" -> "fomo-badges")
+    const pluginSlug = pluginName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    // Get the plugin context (settings, db, etc.) from the loader
+    const pluginContext = pluginLoader.getPluginContext(pluginName);
+
+    // Create a wrapper that injects plugin context into Hono context
+    const wrap = (handler: (c: unknown) => unknown) => (c: Context) => {
+      // Inject plugin-specific context variables
+      if (pluginContext) {
+        c.set('pluginSettings', pluginContext.settings || {});
+        c.set('db', pluginContext.db);
+        c.set('logger', pluginContext.logger);
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return handler(c) as any;
+    };
+
     const routerAdapter = {
       get: (path: string, handler: (c: unknown) => unknown) =>
         pluginRouter.get(path, wrap(handler)),
@@ -265,9 +287,10 @@ export function mountPluginRoutes(parentRouter: Hono, pluginLoader: PluginLoader
 
     try {
       registrar(routerAdapter);
-      // Mount under /plugins/<pluginName>/
-      parentRouter.route(`/plugins/${pluginName}`, pluginRouter);
-      console.log(`[plugins] Mounted custom routes for plugin: ${pluginName}`);
+      // Mount under /api/v1/public/plugins/<pluginSlug>/
+      const routePath = basePath ? `${basePath}/plugins/${pluginSlug}` : `/plugins/${pluginSlug}`;
+      parentRouter.route(routePath, pluginRouter);
+      console.log(`[plugins] Mounted custom routes for plugin: ${pluginName} at ${routePath}`);
     } catch (error) {
       console.error(`[plugins] Failed to mount routes for plugin: ${pluginName}`, error);
     }

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { getThemeSettings, generateThemeCSS } from '@/lib/theme';
 import { StorefrontSlot } from '@/components/plugins/StorefrontSlot';
+import { API_URL } from '@/lib/config';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -28,6 +29,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.png" />
+        {/* API URL for storefront plugins */}
+        <meta name="forkcart-api" content={API_URL} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.apiUrl = "${API_URL}";`,
+          }}
+        />
         {themeCSS && <style dangerouslySetInnerHTML={{ __html: themeCSS }} />}
         {/* Plugin slot: head (for custom CSS, meta tags, etc.) */}
         <StorefrontSlot slotName="head" />

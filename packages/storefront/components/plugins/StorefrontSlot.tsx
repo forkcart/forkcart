@@ -294,6 +294,10 @@ function sanitizeHtml(html: string): string {
 
 /**
  * StorefrontSlot - Server Component that renders plugin slot content
+ *
+ * Scripts in plugin content need special handling:
+ * - dangerouslySetInnerHTML does NOT execute <script> tags
+ * - We extract scripts and render them via next/script
  */
 export async function StorefrontSlot({ slotName, currentPage, className }: StorefrontSlotProps) {
   const contents = await fetchSlotContent(slotName, currentPage);
@@ -302,13 +306,36 @@ export async function StorefrontSlot({ slotName, currentPage, className }: Store
 
   return (
     <div className={className} data-slot={slotName} data-plugin-slot>
-      {contents.map((item, index) => (
-        <div
-          key={`${item.pluginName}-${index}`}
-          data-plugin={item.pluginName}
-          dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.content) }}
-        />
-      ))}
+      {contents.map((item, index) => {
+        // Extract inline scripts from the content
+        const scriptMatches = item.content.match(/<script[^>]*>([\s\S]*?)<\/script>/gi) || [];
+        const inlineScripts = scriptMatches
+          .map((s) => {
+            const match = s.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+            return match?.[1]?.trim() ?? '';
+          })
+          .filter((s) => s.length > 0);
+
+        // Remove scripts from HTML content (they'll be executed separately)
+        const htmlWithoutScripts = item.content.replace(
+          /<script[^>]*>[\s\S]*?<\/script>/gi,
+          '',
+        );
+
+        return (
+          <div key={`${item.pluginName}-${index}`} data-plugin={item.pluginName}>
+            {/* Render HTML content */}
+            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(htmlWithoutScripts) }} />
+            {/* Render scripts separately so they execute */}
+            {inlineScripts.map((scriptContent, i) => (
+              <script
+                key={`${item.pluginName}-script-${i}`}
+                dangerouslySetInnerHTML={{ __html: scriptContent }}
+              />
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }

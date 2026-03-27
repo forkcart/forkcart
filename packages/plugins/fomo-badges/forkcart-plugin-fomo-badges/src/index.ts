@@ -256,7 +256,21 @@ export default definePlugin({
         </style>
         <script>
           (function() {
-            const productId = window.FORKCART?.productId;
+            // Try multiple sources for productId
+            let productId = window.FORKCART?.productId;
+            
+            // Fallback: Extract from URL (e.g., /product/my-product-slug)
+            if (!productId) {
+              const match = window.location.pathname.match(/\\/product\\/([^/?#]+)/);
+              if (match) productId = match[1];
+            }
+            
+            // Fallback: Look for data attribute on product element
+            if (!productId) {
+              const productEl = document.querySelector('[data-product-id]');
+              if (productEl) productId = productEl.getAttribute('data-product-id');
+            }
+            
             if (!productId) return;
             
             const sessionId = localStorage.getItem('fc_session') || 
@@ -265,9 +279,14 @@ export default definePlugin({
             const widget = document.getElementById('social-proof-widget');
             const minViewers = 2; // From settings
             
+            // Get API base URL from storefront (meta tag or global)
+            const apiBase = document.querySelector('meta[name="forkcart-api"]')?.getAttribute('content') 
+              || window.FORKCART?.apiUrl 
+              || '';
+            
             async function updateStats() {
               try {
-                const res = await fetch('/api/v1/plugins/fomo-badges/stats/' + productId);
+                const res = await fetch(apiBase + '/api/v1/public/plugins/fomo-badges/stats/' + productId);
                 const stats = await res.json();
                 
                 let hasContent = false;
@@ -298,7 +317,7 @@ export default definePlugin({
             
             async function heartbeat() {
               try {
-                await fetch('/api/v1/plugins/fomo-badges/heartbeat', {
+                await fetch(apiBase + '/api/v1/public/plugins/fomo-badges/heartbeat', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ productId, sessionId })
