@@ -350,10 +350,27 @@ export class PluginLoader {
    * Try to load a plugin from the installed plugins directory.
    * Plugins installed via the registry are stored in data/plugins/<plugin-name>/
    */
-  private async tryLoadInstalledPlugin(pluginName: string): Promise<SdkPluginDefinition | null> {
-    // Normalize plugin name to directory format (e.g., "FOMO Badges" -> "fomo-badges")
+  private async tryLoadInstalledPlugin(
+    pluginName: string,
+    pluginMetadata?: Record<string, unknown> | null,
+  ): Promise<SdkPluginDefinition | null> {
+    // Use slug from DB metadata if available, otherwise normalize display name
+    const slug = (pluginMetadata?.slug as string) ?? null;
     const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
-    const possiblePaths = [
+
+    // Build search paths — try slug first (most reliable), then normalized name
+    const slugPaths = slug
+      ? [
+          join(process.cwd(), '..', '..', 'packages', 'plugins', slug, `forkcart-plugin-${slug}`),
+          join(process.cwd(), '..', '..', 'packages', 'plugins', slug),
+          join(process.cwd(), 'data', 'plugins', slug, `forkcart-plugin-${slug}`),
+          join(process.cwd(), 'data', 'plugins', slug),
+          join(process.cwd(), 'plugins', slug, `forkcart-plugin-${slug}`),
+          join(process.cwd(), 'plugins', slug),
+        ]
+      : [];
+
+    const namePaths = [
       // Monorepo: packages/plugins/<slug>/<package-name>/ (nested from ZIP extract)
       join(process.cwd(), '..', '..', 'packages', 'plugins', dirName, `forkcart-plugin-${dirName}`),
       join(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
@@ -365,6 +382,8 @@ export class PluginLoader {
       join(process.cwd(), 'plugins', dirName),
       join(process.cwd(), 'plugins', pluginName),
     ];
+
+    const possiblePaths = [...slugPaths, ...namePaths];
 
     for (const pluginPath of possiblePaths) {
       try {
@@ -548,6 +567,17 @@ export class PluginLoader {
         return null;
       }
 
+      // Try to read forkcart-plugin.json manifest for slug
+      try {
+        const manifestPath = join(pkgPath, 'forkcart-plugin.json');
+        const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
+        if (manifest.slug) {
+          (def as Record<string, unknown>)._manifestSlug = manifest.slug;
+        }
+      } catch {
+        // No manifest — that's fine
+      }
+
       this.registerSdkPlugin(def);
       logger.info({ pluginName: def.name, path: pkgPath }, 'Plugin loaded from local path');
       return def;
@@ -660,6 +690,11 @@ export class PluginLoader {
       }
     }
 
+    // Use manifest slug if available, otherwise derive from plugin name
+    const pluginSlug =
+      ((def as Record<string, unknown>)._manifestSlug as string) ??
+      def.name.toLowerCase().replace(/\s+/g, '-');
+
     const [plugin] = await this.db
       .insert(plugins)
       .values({
@@ -669,7 +704,7 @@ export class PluginLoader {
         author: def.author,
         isActive: false,
         entryPoint: type,
-        metadata: { type },
+        metadata: { type, slug: pluginSlug },
       })
       .returning();
 
@@ -1306,7 +1341,10 @@ export class PluginLoader {
       }
 
       // Try to load from installed plugins directory (for plugins installed via registry)
-      const loadedDef = await this.tryLoadInstalledPlugin(plugin.name);
+      const loadedDef = await this.tryLoadInstalledPlugin(
+        plugin.name,
+        plugin.metadata as Record<string, unknown> | null,
+      );
       if (loadedDef) {
         await this.activateSdkPlugin(plugin.name, loadedDef, settings);
         logger.info({ pluginName: plugin.name }, 'Plugin loaded from installed directory');
