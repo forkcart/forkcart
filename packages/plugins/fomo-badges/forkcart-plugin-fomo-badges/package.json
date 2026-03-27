@@ -32,7 +32,7 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "lint": "eslint src/",
-    "test": "vitest"
+    "test": "vitest --passWithNoTests"
   },
   "peerDependencies": {
     "@forkcart/plugin-sdk": "workspace:*"
