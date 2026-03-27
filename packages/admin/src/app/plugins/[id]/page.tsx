@@ -14,6 +14,7 @@ import {
   Save,
   Loader2,
   Trash2,
+  RefreshCw,
   CheckCircle,
   XCircle,
   Eye,
@@ -61,6 +62,7 @@ interface Plugin {
   settingsSchema: PluginSettingSchema[];
   requiredSettings: unknown[];
   adminPages: unknown[];
+  metadata: Record<string, unknown> | null;
   installedAt: string;
 }
 
@@ -100,6 +102,7 @@ export default function PluginDetailPage() {
   const [formValues, setFormValues] = useState<Record<string, string>>({});
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
   const [confirmUninstall, setConfirmUninstall] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // ─── Query ──────────────────────────────────────────────────────────────
@@ -335,6 +338,28 @@ export default function PluginDetailPage() {
               </button>
             </div>
 
+            <button
+              onClick={async () => {
+                const slug =
+                  (plugin.metadata as Record<string, unknown>)?.slug ??
+                  plugin.name.toLowerCase().replace(/\s+/g, '-');
+                setUpdating(true);
+                try {
+                  await apiClient(`/store/${slug}/update`, { method: 'POST' });
+                  showToast('success', 'Plugin updated! Restart the API to load the new version.');
+                  queryClient.invalidateQueries({ queryKey: ['plugins'] });
+                } catch (err) {
+                  showToast('error', err instanceof Error ? err.message : 'Update failed');
+                } finally {
+                  setUpdating(false);
+                }
+              }}
+              disabled={updating}
+              className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${updating ? 'animate-spin' : ''}`} />
+              {updating ? 'Updating...' : 'Update'}
+            </button>
             <button
               onClick={() => setConfirmUninstall(true)}
               className="inline-flex items-center gap-1.5 rounded-md border border-destructive/30 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
