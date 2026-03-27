@@ -220,6 +220,37 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
         mkdirSync(targetDir, { recursive: true });
         zip.extractAllTo(targetDir, true);
 
+        // 3b. Auto-compile TypeScript → JavaScript
+        const { existsSync, writeFileSync } = await import('node:fs');
+        const pluginSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+        const pluginDir = existsSync(pluginSubDir) ? pluginSubDir : targetDir;
+        const srcEntry = resolve(pluginDir, 'src', 'index.ts');
+
+        if (existsSync(srcEntry)) {
+          try {
+            const shimDir = resolve(pluginDir, 'node_modules', '@forkcart', 'plugin-sdk');
+            mkdirSync(shimDir, { recursive: true });
+            writeFileSync(
+              resolve(shimDir, 'index.js'),
+              'export function definePlugin(d) { return d; }',
+            );
+            writeFileSync(
+              resolve(shimDir, 'package.json'),
+              '{"name":"@forkcart/plugin-sdk","main":"index.js","type":"module"}',
+            );
+
+            const distDir = resolve(pluginDir, 'dist');
+            mkdirSync(distDir, { recursive: true });
+
+            execSync(
+              `npx esbuild "${srcEntry}" --outfile="${resolve(distDir, 'index.js')}" --format=esm --platform=node --bundle --external:hono --loader:.ts=ts`,
+              { cwd: pluginDir, timeout: 15000 },
+            );
+          } catch (buildErr) {
+            console.error('Plugin auto-compile failed:', buildErr);
+          }
+        }
+
         // 4. Register in local plugin system DB via psql
         const plugin = detail.plugin;
         const { execSync } = await import('node:child_process');
@@ -254,6 +285,109 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
 
     const result = await pluginStoreService.installFromStore(slug);
     return c.json({ data: result }, 201);
+  });
+
+  /** Update an installed plugin to latest version (admin) */
+  router.post('/:slug/update', requireRole('admin', 'superadmin'), async (c) => {
+    const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+
+    if (!REGISTRY_URL) {
+      return c.json({ error: 'No plugin registry configured' }, 400);
+    }
+
+    try {
+      // 1. Get latest version from registry
+      const detailRes = await fetch(`${REGISTRY_URL}/store/${slug}`, {
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!detailRes.ok) throw new Error('Plugin not found in registry');
+
+      const detail = (await detailRes.json()) as {
+        plugin: Record<string, unknown>;
+        versions: Array<{ version: string; zipPath?: string }>;
+      };
+      const latestVersion = detail.versions?.[0];
+      if (!latestVersion?.version) throw new Error('No version available');
+
+      // 2. Download the ZIP
+      const zipRes = await fetch(
+        `${REGISTRY_URL}/store/${slug}/download/${latestVersion.version}`,
+        { signal: AbortSignal.timeout(30000) },
+      );
+      if (!zipRes.ok) throw new Error('ZIP download failed');
+
+      const zipBuffer = Buffer.from(await zipRes.arrayBuffer());
+
+      // 3. Extract ZIP — overwrite existing plugin directory
+      const AdmZip = (await import('adm-zip')).default;
+      const zip = new AdmZip(zipBuffer);
+      const { resolve } = await import('node:path');
+      const { mkdirSync, existsSync, writeFileSync } = await import('node:fs');
+      const targetDir = resolve(process.cwd(), '../../packages/plugins', slug);
+      mkdirSync(targetDir, { recursive: true });
+      zip.extractAllTo(targetDir, true);
+
+      // 4. Auto-compile TypeScript → JavaScript (plugins ship as source)
+      const pluginSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+      const pluginDir = existsSync(pluginSubDir) ? pluginSubDir : targetDir;
+      const srcEntry = resolve(pluginDir, 'src', 'index.ts');
+
+      if (existsSync(srcEntry)) {
+        try {
+          // Create a definePlugin shim so esbuild can bundle without @forkcart/plugin-sdk
+          const shimDir = resolve(pluginDir, 'node_modules', '@forkcart', 'plugin-sdk');
+          mkdirSync(shimDir, { recursive: true });
+          writeFileSync(
+            resolve(shimDir, 'index.js'),
+            'export function definePlugin(d) { return d; }',
+          );
+          writeFileSync(
+            resolve(shimDir, 'package.json'),
+            '{"name":"@forkcart/plugin-sdk","main":"index.js","type":"module"}',
+          );
+
+          const distDir = resolve(pluginDir, 'dist');
+          mkdirSync(distDir, { recursive: true });
+
+          const { execSync } = await import('node:child_process');
+          execSync(
+            `npx esbuild "${srcEntry}" --outfile="${resolve(distDir, 'index.js')}" --format=esm --platform=node --bundle --external:hono --loader:.ts=ts`,
+            { cwd: pluginDir, timeout: 15000 },
+          );
+        } catch (buildErr) {
+          console.error('Plugin auto-compile failed:', buildErr);
+          // Continue anyway — maybe dist already exists
+        }
+      }
+
+      // 5. Update DB version
+      const dbUrl =
+        process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
+      const escapeSql = (s: string) => s.replace(/'/g, "''");
+      const plugin = detail.plugin;
+      const pluginName = String(plugin.name || slug);
+      const updateSql = `UPDATE plugins SET version = '${escapeSql(latestVersion.version)}', updated_at = NOW() WHERE metadata->>'slug' = '${escapeSql(slug)}' OR name = '${escapeSql(pluginName)}';`;
+      try {
+        const { execSync } = await import('node:child_process');
+        execSync(`psql "${dbUrl}" -c "${updateSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+      } catch {
+        console.error('Failed to update plugin version in DB');
+      }
+
+      return c.json({
+        data: {
+          name: plugin.name,
+          slug,
+          version: latestVersion.version,
+          updatedTo: pluginDir,
+          source: 'registry',
+          message: 'Plugin updated. Restart the API to load the new version.',
+        },
+      });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: `Update failed: ${errMsg}` }, 500);
+    }
   });
 
   /** Uninstall a plugin (admin) */
