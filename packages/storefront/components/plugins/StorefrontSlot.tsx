@@ -51,11 +51,22 @@ async function fetchSlotContent(slotName: string, currentPage?: string): Promise
 }
 
 /**
- * Sanitize HTML content to prevent XSS attacks
+ * Sanitize HTML content for plugin slots.
+ *
+ * IMPORTANT: Plugin slots allow <script> and <style> tags because plugins
+ * need JavaScript to function (e.g., analytics, widgets, tracking).
+ *
+ * Security model:
+ * - Plugins are installed by store admins who review them
+ * - Marketplace plugins go through review before publishing
+ * - This is the same model as Shopware/WooCommerce/Magento
+ *
+ * If you need stricter security, consider CSP nonces in a future version.
  */
 function sanitizeHtml(html: string): string {
   return sanitizeHtmlLib(html, {
     allowedTags: [
+      // Layout & structure
       'a',
       'abbr',
       'address',
@@ -126,10 +137,43 @@ function sanitizeHtml(html: string): string {
       'var',
       'video',
       'wbr',
+      // Plugin essentials — scripts and styles
+      'script',
+      'style',
+      'link',
+      'noscript',
+      // Forms (for plugin widgets)
+      'form',
+      'input',
+      'textarea',
+      'select',
+      'option',
+      'optgroup',
+      'label',
+      'fieldset',
+      'legend',
+      // Canvas/SVG (for charts, graphics)
+      'canvas',
+      'svg',
+      'path',
+      'circle',
+      'rect',
+      'line',
+      'polygon',
+      'polyline',
+      'ellipse',
+      'g',
+      'defs',
+      'use',
+      'symbol',
+      'text',
+      'tspan',
+      // iframes (for embeds — YouTube, maps, etc.)
+      'iframe',
     ],
     allowedAttributes: {
-      '*': ['class', 'id', 'style', 'data-*', 'aria-*', 'role'],
-      a: ['href', 'target', 'rel', 'title'],
+      '*': ['class', 'id', 'style', 'data-*', 'aria-*', 'role', 'title'],
+      a: ['href', 'target', 'rel', 'title', 'download'],
       img: ['src', 'srcset', 'alt', 'title', 'width', 'height', 'loading', 'decoding'],
       source: ['src', 'srcset', 'type', 'media', 'sizes'],
       video: [
@@ -143,11 +187,106 @@ function sanitizeHtml(html: string): string {
         'width',
         'height',
       ],
-      button: ['type', 'name', 'value', 'disabled'],
+      button: ['type', 'name', 'value', 'disabled', 'onclick'],
       td: ['colspan', 'rowspan', 'scope', 'headers'],
       th: ['colspan', 'rowspan', 'scope', 'headers'],
       time: ['datetime'],
       details: ['open'],
+      // Script & style attributes
+      script: ['src', 'type', 'async', 'defer', 'crossorigin', 'integrity', 'nomodule'],
+      style: ['type', 'media'],
+      link: ['rel', 'href', 'type', 'media', 'crossorigin', 'integrity'],
+      // Form attributes
+      form: ['action', 'method', 'enctype', 'target', 'novalidate'],
+      input: [
+        'type',
+        'name',
+        'value',
+        'placeholder',
+        'required',
+        'disabled',
+        'readonly',
+        'checked',
+        'min',
+        'max',
+        'step',
+        'pattern',
+        'autocomplete',
+      ],
+      textarea: ['name', 'placeholder', 'required', 'disabled', 'readonly', 'rows', 'cols'],
+      select: ['name', 'required', 'disabled', 'multiple'],
+      option: ['value', 'selected', 'disabled'],
+      label: ['for'],
+      // SVG attributes
+      svg: ['viewBox', 'width', 'height', 'fill', 'stroke', 'xmlns'],
+      path: ['d', 'fill', 'stroke', 'stroke-width', 'transform'],
+      circle: ['cx', 'cy', 'r', 'fill', 'stroke'],
+      rect: ['x', 'y', 'width', 'height', 'rx', 'ry', 'fill', 'stroke'],
+      line: ['x1', 'y1', 'x2', 'y2', 'stroke'],
+      polygon: ['points', 'fill', 'stroke'],
+      polyline: ['points', 'fill', 'stroke'],
+      ellipse: ['cx', 'cy', 'rx', 'ry', 'fill', 'stroke'],
+      g: ['transform', 'fill', 'stroke'],
+      use: ['href', 'xlink:href', 'x', 'y', 'width', 'height'],
+      text: ['x', 'y', 'fill', 'font-size', 'text-anchor'],
+      // Canvas
+      canvas: ['width', 'height'],
+      // iframe (for embeds)
+      iframe: [
+        'src',
+        'width',
+        'height',
+        'frameborder',
+        'allowfullscreen',
+        'allow',
+        'loading',
+        'sandbox',
+      ],
+    },
+    // Allow inline styles (plugins need them for widgets)
+    allowedStyles: {
+      '*': {
+        // Allow common CSS properties
+        color: [/.*/],
+        'background-color': [/.*/],
+        background: [/.*/],
+        'font-size': [/.*/],
+        'font-weight': [/.*/],
+        'text-align': [/.*/],
+        margin: [/.*/],
+        padding: [/.*/],
+        border: [/.*/],
+        'border-radius': [/.*/],
+        display: [/.*/],
+        width: [/.*/],
+        height: [/.*/],
+        'max-width': [/.*/],
+        'min-width': [/.*/],
+        position: [/.*/],
+        top: [/.*/],
+        right: [/.*/],
+        bottom: [/.*/],
+        left: [/.*/],
+        'z-index': [/.*/],
+        opacity: [/.*/],
+        transform: [/.*/],
+        transition: [/.*/],
+        'box-shadow': [/.*/],
+        'text-decoration': [/.*/],
+        'line-height': [/.*/],
+        'font-family': [/.*/],
+        cursor: [/.*/],
+        overflow: [/.*/],
+        'flex-direction': [/.*/],
+        'justify-content': [/.*/],
+        'align-items': [/.*/],
+        gap: [/.*/],
+        flex: [/.*/],
+        'flex-wrap': [/.*/],
+        grid: [/.*/],
+        'grid-template-columns': [/.*/],
+        'grid-gap': [/.*/],
+      },
     },
     disallowedTagsMode: 'discard',
   });
