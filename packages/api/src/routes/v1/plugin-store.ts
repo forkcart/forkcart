@@ -58,7 +58,17 @@ const SlugParamSchema = z.object({
 });
 
 /** Plugin Store routes — browsing, local install, reviews, versions */
-export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) {
+export function createPluginStoreRoutes(
+  pluginStoreService: PluginStoreService,
+  pluginLoader?: {
+    registerSdkPlugin: (def: never) => void;
+    activateSdkPlugin: (
+      name: string,
+      def: never,
+      settings: Record<string, unknown>,
+    ) => Promise<void>;
+  },
+) {
   const router = new Hono();
 
   // ─── Registry proxy helper ──────────────────────────────────────────────
@@ -374,6 +384,22 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
         console.error('Failed to update plugin version in DB');
       }
 
+      // 6. Hot-reload: re-import the updated plugin module
+      try {
+        const distPath = resolve(pluginDir, 'dist', 'index.js');
+        const cacheBustUrl = `file://${distPath}?t=${Date.now()}`;
+        const mod = (await import(cacheBustUrl)) as Record<string, unknown>;
+        const def = (mod['default'] ?? mod) as Record<string, unknown>;
+
+        if (def.name && def.version) {
+          pluginLoader.registerSdkPlugin(def as never);
+          const settings: Record<string, unknown> = {};
+          await pluginLoader.activateSdkPlugin(String(def.name), def as never, settings);
+        }
+      } catch (reloadErr) {
+        console.error('Hot-reload failed (restart API manually):', reloadErr);
+      }
+
       return c.json({
         data: {
           name: plugin.name,
@@ -381,7 +407,7 @@ export function createPluginStoreRoutes(pluginStoreService: PluginStoreService) 
           version: latestVersion.version,
           updatedTo: pluginDir,
           source: 'registry',
-          message: 'Plugin updated. Restart the API to load the new version.',
+          message: 'Plugin updated and reloaded!',
         },
       });
     } catch (err) {

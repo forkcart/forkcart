@@ -883,7 +883,7 @@ export class PluginLoader {
 
   // ─── SDK plugin activation ────────────────────────────────────────────────
 
-  private async activateSdkPlugin(
+  async activateSdkPlugin(
     pluginName: string,
     def: SdkPluginDefinition,
     settings: Record<string, unknown>,
