@@ -874,6 +874,75 @@ forkcart plugin activate my-awesome
 7. **Declare permissions** — Only request what you need
 8. **Clean up on uninstall** — Remove data when plugin is removed
 
+### ⚠️ Naming Conventions (Important!)
+
+**Database Tables:** Always prefix with `plugin_<your-plugin-name>_`
+
+```typescript
+// ✅ CORRECT — table name matches plugin name
+name: 'fomo-badges',
+// ...
+migrations: [{
+  up: async (db) => {
+    await db.execute(`
+      CREATE TABLE plugin_fomo_badges_stats (...)
+    `);
+  }
+}]
+
+// ❌ WRONG — table name doesn't match plugin name
+name: 'fomo-badges',
+// ...
+migrations: [{
+  up: async (db) => {
+    await db.execute(`
+      CREATE TABLE plugin_social_proof_stats (...)  // Wrong!
+    `);
+  }
+}]
+```
+
+**Why:** The `ScopedDatabase` proxy allows plugins to access their own tables (`plugin_<name>_*`) without needing extra permissions. Mismatched names = permission errors.
+
+**Storefront Settings:** Don't hardcode settings in inline JS. Use the injected config:
+
+```typescript
+// ✅ CORRECT — use injected settings
+storefrontSlots: [
+  {
+    slot: 'product-page-bottom',
+    content: `
+    <script>
+      const settings = window.FORKCART?.pluginSettings?.['my-plugin'] || {};
+      const minViewers = settings.minViewers || 2;
+      // ...
+    </script>
+  `,
+  },
+];
+
+// ❌ WRONG — hardcoded settings
+storefrontSlots: [
+  {
+    slot: 'product-page-bottom',
+    content: `
+    <script>
+      const minViewers = 2;  // Ignores admin settings!
+    </script>
+  `,
+  },
+];
+```
+
+**Route API Endpoints:** Use your plugin name in the path:
+
+```typescript
+// Routes are auto-mounted at: /api/v1/plugins/<plugin-name>/
+routes: (router) => {
+  router.get('/stats', ...);  // → /api/v1/plugins/fomo-badges/stats
+}
+```
+
 ---
 
 ## Need Help?

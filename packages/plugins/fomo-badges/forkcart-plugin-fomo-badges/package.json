@@ -1,0 +1,43 @@
+{
+  "name": "forkcart-plugin-fomo-badges",
+  "version": "1.0.0",
+  "description": "Display real-time social proof on product pages to boost conversions",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "author": "Tyto 🦉",
+  "license": "MIT",
+  "keywords": [
+    "forkcart",
+    "forkcart-plugin",
+    "social-proof",
+    "conversion",
+    "e-commerce",
+    "fomo",
+    "urgency"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/forkcart/forkcart-plugin-social-proof"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "test": "vitest"
+  },
+  "peerDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0"
+  },
+  "devDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "forkcart": {
+    "type": "general",
+    "minVersion": "0.5.0"
+  }
+}
