@@ -60,6 +60,12 @@ export default async function ProductPage({ params }: Props) {
     return (
       <>
         {seoEl}
+        {/* Set productId for plugin scripts — SSR, no hydration delay */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
+          }}
+        />
         {/* Plugin slot: product page top */}
         <ProductPageSlots position="top" />
         <div className="container-page py-12">
@@ -75,6 +81,11 @@ export default async function ProductPage({ params }: Props) {
   return (
     <>
       {seoEl}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
+        }}
+      />
       {/* Plugin slot: product page top */}
       <ProductPageSlots position="top" />
       <ProductContent product={product} />
