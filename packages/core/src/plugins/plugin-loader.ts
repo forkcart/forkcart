@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { watch, type FSWatcher } from 'node:fs';
 import { readdir } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -284,6 +285,19 @@ export class PluginLoader {
    * Validate that all declared dependencies of a plugin are installed and active.
    * Throws if any dependency is missing or inactive.
    */
+  /** Simple semver comparison: returns true if a < b */
+  private semverLt(a: string, b: string): boolean {
+    const pa = a.split('.').map(Number);
+    const pb = b.split('.').map(Number);
+    for (let i = 0; i < 3; i++) {
+      const va = pa[i] || 0;
+      const vb = pb[i] || 0;
+      if (va < vb) return true;
+      if (va > vb) return false;
+    }
+    return false;
+  }
+
   private async validateDependencies(pluginName: string, dependencies: string[]): Promise<void> {
     const missing: string[] = [];
     const inactive: string[] = [];
@@ -738,9 +752,35 @@ export class PluginLoader {
       await this.validateDependencies(plugin.name, sdkDef.dependencies);
     }
 
+    // Check ForkCart version compatibility
+    if (sdkDef?.minVersion) {
+      const currentVersion = process.env.FORKCART_VERSION || '0.1.0';
+      if (this.semverLt(currentVersion, sdkDef.minVersion)) {
+        throw new Error(
+          `Plugin '${plugin.name}' requires ForkCart ${sdkDef.minVersion}+, but current version is ${currentVersion}`,
+        );
+      }
+    }
+
     const rawSettings: Record<string, unknown> = {};
     for (const s of plugin.settings) {
       rawSettings[s.key] = s.value;
+    }
+
+    // Validate required settings
+    if (sdkDef?.settings) {
+      const missing: string[] = [];
+      for (const [key, schema] of Object.entries(sdkDef.settings)) {
+        const s = schema as { required?: boolean; label?: string };
+        if (s.required && (rawSettings[key] === undefined || rawSettings[key] === '')) {
+          missing.push(s.label || key);
+        }
+      }
+      if (missing.length > 0) {
+        throw new Error(
+          `Cannot activate '${plugin.name}': missing required settings: ${missing.join(', ')}`,
+        );
+      }
     }
 
     // Decrypt secret settings before passing to the plugin
@@ -901,6 +941,14 @@ export class PluginLoader {
             await handler(event, ctx);
           } catch (error) {
             logger.error({ pluginName, eventType, error }, 'Plugin hook handler failed');
+            // Call plugin's onError handler if defined
+            if (def.onError && error instanceof Error) {
+              try {
+                await def.onError(error, { type: 'hook', name: eventType }, ctx);
+              } catch {
+                /* onError itself failed — swallow */
+              }
+            }
           }
         };
         this.eventBus.on(eventType, wrappedHandler);
@@ -1354,6 +1402,24 @@ export class PluginLoader {
       logger.warn({ pluginName: plugin.name }, 'Active plugin has no registered definition');
     }
 
+    // Call onReady for all active SDK plugins
+    for (const plugin of activePlugins) {
+      const sdkDef = this.sdkPlugins.get(plugin.name);
+      if (sdkDef?.onReady) {
+        const rawSettings: Record<string, unknown> = {};
+        for (const s of plugin.settings) {
+          rawSettings[s.key] = s.value;
+        }
+        const settings = this.decryptSettings(plugin.name, rawSettings);
+        try {
+          await sdkDef.onReady(this.buildPluginContext(plugin.name, settings));
+          logger.info({ pluginName: plugin.name }, 'Plugin onReady completed');
+        } catch (error) {
+          logger.error({ pluginName: plugin.name, error }, 'Plugin onReady failed');
+        }
+      }
+    }
+
     logger.info(
       {
         activeCount: activePlugins.length,
@@ -1703,6 +1769,350 @@ export class PluginLoader {
     return results;
   }
 
+  /** Detailed health check for a single plugin */
+  async getPluginHealth(pluginId: string): Promise<PluginHealthReport> {
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.id, pluginId),
+      with: { settings: true },
+    });
+
+    if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
+
+    const sdkDef = this.sdkPlugins.get(plugin.name);
+    const state = this.activeStates.get(plugin.name);
+
+    // Migration status
+    let migrationStatus: PluginHealthReport['migrations'] = {
+      status: 'applied',
+      total: 0,
+      applied: 0,
+      pending: 0,
+      failed: false,
+    };
+    if (sdkDef?.migrations && sdkDef.migrations.length > 0) {
+      try {
+        const applied = await this.migrationRunner.getAppliedMigrations(plugin.name);
+        const appliedSet = new Set(applied);
+        const pending = sdkDef.migrations.filter((m) => !appliedSet.has(m.version));
+        migrationStatus = {
+          status: pending.length > 0 ? 'pending' : 'applied',
+          total: sdkDef.migrations.length,
+          applied: applied.length,
+          pending: pending.length,
+          failed: false,
+        };
+      } catch {
+        migrationStatus = {
+          status: 'failed',
+          total: sdkDef.migrations.length,
+          applied: 0,
+          pending: 0,
+          failed: true,
+        };
+      }
+    }
+
+    // Settings validation
+    const settingsIssues: string[] = [];
+    if (sdkDef?.settings) {
+      for (const [key, schema] of Object.entries(sdkDef.settings)) {
+        if (!schema.required) continue;
+        const setting = plugin.settings.find((s) => s.key === key);
+        if (!setting || setting.value === null || setting.value === undefined) {
+          settingsIssues.push(`Required setting '${key}' is not set`);
+        }
+      }
+    }
+
+    // Route registration
+    const hasRoutes = this.pluginRouteRegistrars.has(plugin.name);
+
+    // Dependency check
+    const depIssues: string[] = [];
+    if (sdkDef?.dependencies) {
+      for (const dep of sdkDef.dependencies) {
+        const depPlugin = await this.db.query.plugins.findFirst({
+          where: eq(plugins.name, dep),
+        });
+        if (!depPlugin) {
+          depIssues.push(`Missing dependency: ${dep}`);
+        } else if (!depPlugin.isActive) {
+          depIssues.push(`Inactive dependency: ${dep}`);
+        }
+      }
+    }
+
+    // Last error — check DB for any stored error (simplified: we report issues found)
+    const issues = [...settingsIssues, ...depIssues];
+    const healthy =
+      migrationStatus.status !== 'failed' && settingsIssues.length === 0 && depIssues.length === 0;
+
+    return {
+      pluginId: plugin.id,
+      pluginName: plugin.name,
+      healthy,
+      isActive: plugin.isActive,
+      migrations: migrationStatus,
+      settings: {
+        valid: settingsIssues.length === 0,
+        issues: settingsIssues,
+      },
+      routes: {
+        registered: hasRoutes,
+        hasDefinition: !!sdkDef?.routes,
+      },
+      dependencies: {
+        satisfied: depIssues.length === 0,
+        issues: depIssues,
+      },
+      hooks: state ? state.registeredHooks.size : 0,
+      filters: state ? state.registeredFilters.size : 0,
+      lastError: issues.length > 0 ? (issues[0] ?? null) : null,
+    };
+  }
+
+  // ─── Conflict Detection ───────────────────────────────────────────────────
+
+  /** Detect conflicts between active plugins */
+  detectConflicts(): PluginConflict[] {
+    const conflicts: PluginConflict[] = [];
+
+    // 1. Route path conflicts
+    const routePaths = new Map<string, string[]>();
+    for (const [pluginName] of this.pluginRouteRegistrars) {
+      const sdkDef = this.sdkPlugins.get(pluginName);
+      if (!sdkDef?.routes) continue;
+      // Extract route paths by running the registrar against a fake router
+      const paths: string[] = [];
+      const fakeRouter = {
+        get: (path: string) => paths.push(`GET ${path}`),
+        post: (path: string) => paths.push(`POST ${path}`),
+        put: (path: string) => paths.push(`PUT ${path}`),
+        delete: (path: string) => paths.push(`DELETE ${path}`),
+        patch: (path: string) => paths.push(`PATCH ${path}`),
+      };
+      try {
+        sdkDef.routes(fakeRouter);
+      } catch {
+        // Plugin route registration failed — skip
+      }
+      for (const p of paths) {
+        const existing = routePaths.get(p) ?? [];
+        existing.push(pluginName);
+        routePaths.set(p, existing);
+      }
+    }
+    for (const [path, pluginNames] of routePaths) {
+      if (pluginNames.length > 1) {
+        conflicts.push({
+          type: 'route',
+          plugins: pluginNames,
+          detail: `Multiple plugins register route: ${path}`,
+        });
+      }
+    }
+
+    // 2. Event hook conflicts (same event with the same filter key)
+    const hookEvents = new Map<string, string[]>();
+    for (const [pluginName, state] of this.activeStates) {
+      for (const eventType of state.registeredHooks.keys()) {
+        const existing = hookEvents.get(eventType) ?? [];
+        existing.push(pluginName);
+        hookEvents.set(eventType, existing);
+      }
+    }
+    for (const [eventType, pluginNames] of hookEvents) {
+      if (pluginNames.length > 1) {
+        // Check if any have conflicting filters on the same event
+        const filtersOnEvent = pluginNames.filter((pn) => {
+          const state = this.activeStates.get(pn);
+          return state?.registeredFilters.has(eventType);
+        });
+        if (filtersOnEvent.length > 1) {
+          conflicts.push({
+            type: 'hook',
+            plugins: filtersOnEvent,
+            detail: `Multiple plugins hook and filter the same event: ${eventType}`,
+          });
+        }
+      }
+    }
+
+    // 3. Storefront slot conflicts (same slot + same order)
+    for (const [slotName, entries] of this.storefrontSlots) {
+      const orderMap = new Map<number, string[]>();
+      for (const entry of entries) {
+        const existing = orderMap.get(entry.order) ?? [];
+        existing.push(entry.pluginName);
+        orderMap.set(entry.order, existing);
+      }
+      for (const [order, pluginNames] of orderMap) {
+        if (pluginNames.length > 1) {
+          conflicts.push({
+            type: 'slot',
+            plugins: pluginNames,
+            detail: `Multiple plugins claim slot '${slotName}' with order ${order}`,
+          });
+        }
+      }
+    }
+
+    // 4. PageBuilder block name conflicts
+    const blockNames = new Map<string, string[]>();
+    for (const entries of this.pageBuilderBlocks.values()) {
+      for (const entry of entries) {
+        const existing = blockNames.get(entry.name) ?? [];
+        if (!existing.includes(entry.pluginName)) {
+          existing.push(entry.pluginName);
+        }
+        blockNames.set(entry.name, existing);
+      }
+    }
+    for (const [blockName, pluginNames] of blockNames) {
+      if (pluginNames.length > 1) {
+        conflicts.push({
+          type: 'block',
+          plugins: pluginNames,
+          detail: `Multiple plugins register PageBuilder block: ${blockName}`,
+        });
+      }
+    }
+
+    return conflicts;
+  }
+
+  // ─── Dev Mode Hot Reload ──────────────────────────────────────────────────
+
+  private fileWatchers = new Map<string, FSWatcher>();
+
+  /**
+   * Watch a plugin's directory for changes and hot-reload on file changes.
+   * Only works in development mode (NODE_ENV !== 'production').
+   */
+  watchPlugin(pluginName: string): { watching: boolean; reason?: string } {
+    if (process.env.NODE_ENV === 'production') {
+      return { watching: false, reason: 'Hot reload is disabled in production' };
+    }
+
+    if (this.fileWatchers.has(pluginName)) {
+      return { watching: true, reason: 'Already watching' };
+    }
+
+    // Find the plugin's directory
+    const sdkDef = this.sdkPlugins.get(pluginName);
+    if (!sdkDef) {
+      return { watching: false, reason: `Plugin '${pluginName}' not found` };
+    }
+
+    const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
+    const possiblePaths = [
+      resolve(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
+      resolve(process.cwd(), 'data', 'plugins', dirName),
+      resolve(process.cwd(), 'plugins', dirName),
+    ];
+
+    let pluginDir: string | null = null;
+    for (const p of possiblePaths) {
+      try {
+        readFileSync(join(p, 'package.json'));
+        pluginDir = p;
+        break;
+      } catch {
+        // Try next
+      }
+    }
+
+    if (!pluginDir) {
+      return { watching: false, reason: `Cannot find directory for plugin '${pluginName}'` };
+    }
+
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const watcher = watch(pluginDir, { recursive: true }, (_eventType, filename) => {
+      if (!filename) return;
+      // Ignore non-JS/TS files and node_modules
+      if (filename.includes('node_modules')) return;
+      if (!/\.(js|ts|json|mjs)$/.test(filename)) return;
+
+      // Debounce — reload once after rapid changes settle
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        logger.info({ pluginName, filename }, 'File changed, reloading plugin');
+        this.reloadPlugin(pluginName).catch((err) => {
+          logger.error({ pluginName, error: err }, 'Hot reload failed');
+        });
+      }, 300);
+    });
+
+    this.fileWatchers.set(pluginName, watcher);
+    logger.info({ pluginName, pluginDir }, 'Watching plugin for changes');
+    return { watching: true };
+  }
+
+  /** Stop watching a plugin */
+  unwatchPlugin(pluginName: string): void {
+    const watcher = this.fileWatchers.get(pluginName);
+    if (watcher) {
+      watcher.close();
+      this.fileWatchers.delete(pluginName);
+      logger.info({ pluginName }, 'Stopped watching plugin');
+    }
+  }
+
+  /** Stop all file watchers */
+  unwatchAll(): void {
+    for (const [name, watcher] of this.fileWatchers) {
+      watcher.close();
+      logger.debug({ pluginName: name }, 'Stopped watching plugin');
+    }
+    this.fileWatchers.clear();
+  }
+
+  /**
+   * Reload a plugin by name — re-imports the module and re-registers everything.
+   * Used by hot reload and the manual reload endpoint.
+   */
+  async reloadPlugin(pluginName: string): Promise<void> {
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.name, pluginName),
+      with: { settings: true },
+    });
+
+    if (!plugin) throw new Error(`Plugin not found in DB: ${pluginName}`);
+
+    const wasActive = plugin.isActive;
+
+    // Deactivate if active (unregisters hooks, routes, etc.)
+    if (wasActive) {
+      await this.deactivatePlugin(plugin.id);
+    }
+
+    // Remove old definition
+    this.sdkPlugins.delete(pluginName);
+
+    // Re-discover and load the plugin
+    const loadedDef = await this.tryLoadInstalledPlugin(
+      pluginName,
+      plugin.metadata as Record<string, unknown> | null,
+    );
+
+    if (!loadedDef) {
+      logger.warn({ pluginName }, 'Could not reload plugin — definition not found');
+      return;
+    }
+
+    // Re-activate if it was active before
+    if (wasActive) {
+      const rawSettings: Record<string, unknown> = {};
+      for (const s of plugin.settings) {
+        rawSettings[s.key] = s.value;
+      }
+      const settings = this.decryptSettings(pluginName, rawSettings);
+      await this.activateSdkPlugin(pluginName, loadedDef, settings);
+    }
+
+    logger.info({ pluginName }, 'Plugin reloaded successfully');
+  }
+
   // ─── Plugin Version Tracking (onUpdate) ───────────────────────────────────
 
   /**
@@ -1864,4 +2274,43 @@ export class PluginLoader {
 
     logger.info({ pluginId, keys: Object.keys(newSettings) }, 'Plugin settings updated');
   }
+}
+
+// ─── Health Check Types ───────────────────────────────────────────────────
+
+export interface PluginHealthReport {
+  pluginId: string;
+  pluginName: string;
+  healthy: boolean;
+  isActive: boolean;
+  migrations: {
+    status: 'pending' | 'applied' | 'failed';
+    total: number;
+    applied: number;
+    pending: number;
+    failed: boolean;
+  };
+  settings: {
+    valid: boolean;
+    issues: string[];
+  };
+  routes: {
+    registered: boolean;
+    hasDefinition: boolean;
+  };
+  dependencies: {
+    satisfied: boolean;
+    issues: string[];
+  };
+  hooks: number;
+  filters: number;
+  lastError: string | null;
+}
+
+// ─── Conflict Detection Types ─────────────────────────────────────────────
+
+export interface PluginConflict {
+  type: string;
+  plugins: string[];
+  detail: string;
 }

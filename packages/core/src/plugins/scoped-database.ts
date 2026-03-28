@@ -42,19 +42,36 @@ const PERMISSION_TABLE_MAP: Record<string, { tables: string[]; write: boolean }>
  * - Logs all queries for audit purposes
  * - `admin:full` grants unrestricted access (use sparingly)
  */
+/** Query statistics tracked per ScopedDatabase instance */
+export interface ScopedDbStats {
+  totalQueries: number;
+  slowQueries: number;
+  lastQueryAt: Date | null;
+}
+
 export class ScopedDatabase {
   private readonly allowedReadTables: Set<string>;
   private readonly allowedWriteTables: Set<string>;
   private readonly pluginTablePrefix: string;
   private readonly hasFullAccess: boolean;
 
+  // ─── Query Tracking ──────────────────────────────────────────────────────
+  private _totalQueries = 0;
+  private _slowQueries = 0;
+  private _lastQueryAt: Date | null = null;
+  private _queryTimestamps: number[] = [];
+  private _rateLimitPerSecond: number;
+  private static readonly SLOW_QUERY_THRESHOLD_MS = 500;
+
   constructor(
     private readonly db: Database,
     private readonly pluginName: string,
     permissions: Set<PluginPermission>,
+    rateLimitPerSecond = 100,
   ) {
     this.pluginTablePrefix = `plugin_${pluginName.replace(/[^a-z0-9]/gi, '_')}_`;
     this.hasFullAccess = permissions.has('admin:full');
+    this._rateLimitPerSecond = rateLimitPerSecond;
 
     // Build allowed table sets from permissions
     this.allowedReadTables = new Set<string>();
@@ -70,6 +87,48 @@ export class ScopedDatabase {
         }
       }
     }
+  }
+
+  /** Track a query and enforce rate limits */
+  private trackQuery(): void {
+    const now = Date.now();
+    this._totalQueries++;
+    this._lastQueryAt = new Date();
+
+    // Prune timestamps older than 1 second
+    this._queryTimestamps = this._queryTimestamps.filter((ts) => now - ts < 1000);
+    this._queryTimestamps.push(now);
+
+    if (this._queryTimestamps.length > this._rateLimitPerSecond) {
+      logger.warn(
+        { pluginName: this.pluginName, queriesInLastSecond: this._queryTimestamps.length },
+        'Plugin query rate limit exceeded',
+      );
+      throw new Error(
+        `Plugin '${this.pluginName}' exceeded query rate limit (${this._rateLimitPerSecond}/s)`,
+      );
+    }
+  }
+
+  /** Log slow queries */
+  private logSlowQuery(startMs: number, operation: string): void {
+    const durationMs = Date.now() - startMs;
+    if (durationMs > ScopedDatabase.SLOW_QUERY_THRESHOLD_MS) {
+      this._slowQueries++;
+      logger.warn(
+        { pluginName: this.pluginName, operation, durationMs },
+        'Slow plugin query detected',
+      );
+    }
+  }
+
+  /** Get query statistics for this plugin */
+  getStats(): ScopedDbStats {
+    return {
+      totalQueries: this._totalQueries,
+      slowQueries: this._slowQueries,
+      lastQueryAt: this._lastQueryAt,
+    };
   }
 
   /** Check if a table name is a plugin-owned table */
@@ -103,40 +162,46 @@ export class ScopedDatabase {
     query: Parameters<Database['execute']>[0] | string,
     params?: unknown[],
   ): Promise<{ rows: T[] }> {
+    this.trackQuery();
+    const startMs = Date.now();
     logger.debug({ pluginName: this.pluginName }, 'Scoped DB execute');
 
-    // If it's a raw string, convert to parameterized query
-    if (typeof query === 'string') {
-      // Use the raw pg client through Drizzle's execute with sql tag
-      const { sql: drizzleSql } = await import('drizzle-orm');
+    try {
+      // If it's a raw string, convert to parameterized query
+      if (typeof query === 'string') {
+        // Use the raw pg client through Drizzle's execute with sql tag
+        const { sql: drizzleSql } = await import('drizzle-orm');
 
-      if (params && params.length > 0) {
-        // For parameterized queries, use raw SQL with embedded values
-        // Replace $1, $2, etc. with actual values (escaped)
-        let processedQuery = query;
-        params.forEach((param, i) => {
-          const placeholder = `$${i + 1}`;
-          // Escape strings, leave numbers/booleans as-is
-          const value =
-            param === null
-              ? 'NULL'
-              : typeof param === 'string'
-                ? `'${param.replace(/'/g, "''")}'`
-                : String(param);
-          processedQuery = processedQuery.replace(placeholder, value);
-        });
-        const result = await this.db.execute(drizzleSql.raw(processedQuery));
+        if (params && params.length > 0) {
+          // For parameterized queries, use raw SQL with embedded values
+          // Replace $1, $2, etc. with actual values (escaped)
+          let processedQuery = query;
+          params.forEach((param, i) => {
+            const placeholder = `$${i + 1}`;
+            // Escape strings, leave numbers/booleans as-is
+            const value =
+              param === null
+                ? 'NULL'
+                : typeof param === 'string'
+                  ? `'${param.replace(/'/g, "''")}'`
+                  : String(param);
+            processedQuery = processedQuery.replace(placeholder, value);
+          });
+          const result = await this.db.execute(drizzleSql.raw(processedQuery));
+          return { rows: result as unknown as T[] };
+        }
+
+        // No params, just execute the raw SQL
+        const result = await this.db.execute(drizzleSql.raw(query));
         return { rows: result as unknown as T[] };
       }
 
-      // No params, just execute the raw SQL
-      const result = await this.db.execute(drizzleSql.raw(query));
+      // It's already a Drizzle sql template tag
+      const result = await this.db.execute(query);
       return { rows: result as unknown as T[] };
+    } finally {
+      this.logSlowQuery(startMs, 'execute');
     }
-
-    // It's already a Drizzle sql template tag
-    const result = await this.db.execute(query);
-    return { rows: result as unknown as T[] };
   }
 
   /**
@@ -168,6 +233,7 @@ export class ScopedDatabase {
    * Insert proxy — checks write permission before allowing inserts.
    */
   insert(table: Parameters<Database['insert']>[0]) {
+    this.trackQuery();
     const tableName = this.getTableName(table);
     if (!this.canWrite(tableName)) {
       logger.warn({ pluginName: this.pluginName, table: tableName }, 'Blocked write to table');
@@ -182,6 +248,7 @@ export class ScopedDatabase {
    * Update proxy — checks write permission before allowing updates.
    */
   update(table: Parameters<Database['update']>[0]) {
+    this.trackQuery();
     const tableName = this.getTableName(table);
     if (!this.canWrite(tableName)) {
       logger.warn({ pluginName: this.pluginName, table: tableName }, 'Blocked write to table');
@@ -196,6 +263,7 @@ export class ScopedDatabase {
    * Delete proxy — checks write permission before allowing deletes.
    */
   delete(table: Parameters<Database['delete']>[0]) {
+    this.trackQuery();
     const tableName = this.getTableName(table);
     if (!this.canWrite(tableName)) {
       logger.warn({ pluginName: this.pluginName, table: tableName }, 'Blocked delete on table');
@@ -210,6 +278,7 @@ export class ScopedDatabase {
    * Select proxy — checks read permission.
    */
   select(...args: Parameters<Database['select']>) {
+    this.trackQuery();
     // Select doesn't target a specific table at call time (it's in .from())
     // We allow it and rely on the query-level checks
     return this.db.select(...args);

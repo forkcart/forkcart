@@ -24,6 +24,10 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
 - [Permissions](#permissions)
 - [Security Model](#security-model)
 - [Plugin Dependencies](#plugin-dependencies)
+- [Health Check API](#health-check-api)
+- [Dev Mode & Hot Reload](#dev-mode--hot-reload)
+- [Conflict Detection](#conflict-detection)
+- [Query Stats & Rate Limiting](#query-stats--rate-limiting)
 - [Provider Implementations](#provider-implementations)
 - [Full Example: Discount Codes Plugin](#full-example-discount-codes-plugin)
 - [Publishing](#publishing)
@@ -875,10 +879,12 @@ migrations: [
   {
     version: '1.0.0',
     description: 'Create analytics table',
-    up: async (db) => {
+    up: async (db, { ref }) => {
       await db.execute(`
         CREATE TABLE IF NOT EXISTS plugin_my_plugin_events (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          product_id ${ref('products.id')} NOT NULL,
+          customer_id ${ref('customers.id')},
           event_type TEXT NOT NULL,
           data JSONB,
           created_at TIMESTAMPTZ DEFAULT NOW()
@@ -892,13 +898,61 @@ migrations: [
 ];
 ```
 
+### Type-Safe Column References with `ref()`
+
+When your plugin tables reference core ForkCart tables, **always use `ref()`** to get the correct column type:
+
+```typescript
+import { ref, coreSchema } from '@forkcart/plugin-sdk';
+
+// ref() returns the SQL type as a string
+ref('products.id'); // → 'UUID'
+ref('products.name'); // → 'VARCHAR(255)'
+ref('products.price'); // → 'INTEGER'
+ref('orders.id'); // → 'UUID'
+ref('customers.email') // → 'VARCHAR(255)'
+// Use in template literals for migrations:
+`source_product_id ${ref('products.id')} NOT NULL`;
+// expands to: "source_product_id UUID NOT NULL"
+```
+
+**Why this matters:** ForkCart uses UUID for all primary keys. If you use `VARCHAR(255)` instead, PostgreSQL will reject JOINs between your tables and core tables with `operator does not exist: uuid = character varying`. Using `ref()` prevents this entirely.
+
+The `ref()` function provides full IDE autocomplete for all valid `table.column` paths.
+
+#### Available Tables in `coreSchema`
+
+| Table             | Primary Key | Common Columns                                         |
+| ----------------- | ----------- | ------------------------------------------------------ |
+| `products`        | `UUID`      | name, slug, sku, price, currency, category_id, status  |
+| `variants`        | `UUID`      | product_id, sku, name, price, stock_quantity           |
+| `orders`          | `UUID`      | order_number, status, customer_id, email, total_amount |
+| `order_items`     | `UUID`      | order_id, product_id, variant_id, quantity, unit_price |
+| `customers`       | `UUID`      | email, first_name, last_name, phone                    |
+| `categories`      | `UUID`      | name, slug, parent_id, sort_order                      |
+| `media`           | `UUID`      | filename, mime_type, url                               |
+| `payments`        | `UUID`      | order_id, provider, status, amount                     |
+| `product_images`  | `UUID`      | product_id, url, alt_text, sort_order                  |
+| `product_reviews` | `UUID`      | product_id, customer_id, rating, title                 |
+
+To inspect the full schema at runtime:
+
+```typescript
+import { coreSchema } from '@forkcart/plugin-sdk';
+
+// Get all columns for a table
+console.log(coreSchema.products);
+// { id: { sqlType: 'UUID', nullable: false, primaryKey: true }, name: { sqlType: 'VARCHAR(255)', ... }, ... }
+```
+
 ### How Migrations Work
 
 1. Applied migrations are tracked in the `plugin_migrations` table
 2. On plugin activation, `MigrationRunner.runPendingMigrations()` compares defined vs. applied migrations
 3. Pending migrations run in version order (semver string comparison)
-4. The `db` parameter passed to `up`/`down` is the **`ScopedDatabase`** instance (not the full context)
+4. The `up` function receives two arguments: `db` (ScopedDatabase) and `helpers` (`{ ref, schema }`)
 5. On plugin version update, new migrations are automatically run
+6. A migration validator warns if you use VARCHAR for columns that reference UUID core tables
 
 ### `ScopedDatabase.execute()` in Migrations
 
@@ -914,6 +968,14 @@ await db.execute('CREATE TABLE IF NOT EXISTS plugin_my_plugin_data (id SERIAL PR
 // Raw SQL string with positional params ($1, $2, ...)
 await db.execute('INSERT INTO plugin_my_plugin_data (name) VALUES ($1)', ['test']);
 ```
+
+### ⚠️ Common Migration Mistakes
+
+| ❌ Wrong                                | ✅ Right                                      | Why                                                     |
+| --------------------------------------- | --------------------------------------------- | ------------------------------------------------------- |
+| `product_id VARCHAR(255)`               | `product_id ${ref('products.id')}`            | products.id is UUID, not VARCHAR                        |
+| `JOIN products ON products.id = my_col` | `JOIN products ON products.id::text = my_col` | Type mismatch without cast (if you used VARCHAR)        |
+| Hardcoding `UUID`                       | Using `ref('products.id')`                    | Future-proof — if we change the type, ref() updates too |
 
 ---
 
@@ -940,27 +1002,45 @@ onDeactivate: async (ctx) => {
 
 onUpdate: async (ctx, fromVersion) => {
   // Handle version migrations
-  // Called when the plugin version changes in the DB
   if (fromVersion < '2.0.0') {
     // Migrate old data
   }
 },
+
+// Called when an unhandled error occurs in a hook, route, or task.
+// Great for error tracking (Sentry, etc.). Return true to suppress the error.
+onError: async (error, source, ctx) => {
+  ctx.logger.error(`Error in ${source.type}:${source.name}: ${error.message}`);
+  // Sentry.captureException(error);
+},
+
+// Called on every server startup after activation.
+// Use for cache warming, connection pools, health checks, etc.
+onReady: async (ctx) => {
+  ctx.logger.info('Plugin ready — warming caches...');
+},
 ```
+
+### Required Settings Validation
+
+If a setting has `required: true`, the plugin **cannot be activated** until that setting is configured. The admin panel will show an error if required settings are missing.
 
 ### Activation Order
 
 When a plugin is activated, the following happens in order:
 
 1. Dependencies are validated (all required plugins must be installed and active)
-2. Event hooks are registered on the EventBus
-3. Filters are registered
-4. Storefront slots are registered
-5. CLI commands are registered
-6. Scheduled tasks are registered
-7. Custom routes are registered
-8. **Pending migrations are run** (passing `ctx.db`, the ScopedDatabase)
-9. **`onActivate` is called**
-10. Provider bridges are registered (payment, email, marketplace, shipping)
+2. **Required settings are validated** (missing required settings block activation)
+3. Event hooks are registered on the EventBus
+4. Filters are registered
+5. Storefront slots are registered
+6. CLI commands are registered
+7. Scheduled tasks are registered
+8. Custom routes are registered
+9. **Pending migrations are run** (passing `db` + `{ ref, schema }` helpers)
+10. **`onActivate` is called**
+11. **`onReady` is called** (also on every server restart)
+12. Provider bridges are registered (payment, email, marketplace, shipping)
 
 ---
 
@@ -1118,6 +1198,207 @@ minVersion: '0.5.0', // Minimum ForkCart version
 ```
 
 Dependencies are validated on activation. If any required plugin is missing or inactive, activation fails with a descriptive error listing all unmet dependencies.
+
+---
+
+## Health Check API
+
+Get a detailed health report for any installed plugin. Useful for debugging activation issues, missing settings, or failed migrations.
+
+### Endpoint
+
+```
+GET /api/v1/plugins/:id/health
+```
+
+### Response
+
+```json
+{
+  "data": {
+    "pluginId": "uuid-here",
+    "pluginName": "my-plugin",
+    "healthy": true,
+    "isActive": true,
+    "migrations": {
+      "status": "applied",
+      "total": 2,
+      "applied": 2,
+      "pending": 0,
+      "failed": false
+    },
+    "settings": {
+      "valid": true,
+      "issues": []
+    },
+    "routes": {
+      "registered": true,
+      "hasDefinition": true
+    },
+    "dependencies": {
+      "satisfied": true,
+      "issues": []
+    },
+    "hooks": 3,
+    "filters": 1,
+    "lastError": null
+  }
+}
+```
+
+**Fields:**
+
+| Field          | Description                                                                     |
+| -------------- | ------------------------------------------------------------------------------- |
+| `healthy`      | `true` if migrations are applied, required settings are filled, and deps are OK |
+| `migrations`   | Status of database migrations — `pending`, `applied`, or `failed`               |
+| `settings`     | Whether all `required: true` settings have values                               |
+| `routes`       | Whether the plugin's custom routes are registered                               |
+| `dependencies` | Whether all declared dependencies are installed and active                      |
+| `lastError`    | First detected issue, or `null` if healthy                                      |
+
+There's also a bulk health check for all active plugins:
+
+```
+GET /api/v1/plugins/health
+```
+
+---
+
+## Dev Mode & Hot Reload
+
+During development, ForkCart can watch your plugin's directory and automatically reload it when files change.
+
+### How It Works
+
+1. `fs.watch` monitors the plugin directory recursively
+2. On `.js`, `.ts`, `.json`, or `.mjs` file changes, a debounced reload triggers
+3. The plugin is deactivated, its module is re-imported, and it's reactivated
+4. All hooks, routes, filters, and slots are re-registered
+
+**Hot reload is disabled in production** (`NODE_ENV === 'production'`).
+
+### Programmatic API
+
+```typescript
+// Start watching (returns { watching: boolean, reason?: string })
+pluginLoader.watchPlugin('my-plugin');
+
+// Stop watching
+pluginLoader.unwatchPlugin('my-plugin');
+
+// Stop all watchers
+pluginLoader.unwatchAll();
+```
+
+### Manual Reload Endpoint
+
+Trigger a reload without file watching:
+
+```
+POST /api/v1/plugins/:id/reload
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "success": true,
+    "pluginName": "my-plugin",
+    "reloadedAt": "2026-03-28T00:00:00.000Z"
+  }
+}
+```
+
+This deactivates the plugin, re-imports the module from disk, and reactivates it. Useful for CI/CD deployments or when you've manually updated plugin files.
+
+---
+
+## Conflict Detection
+
+When multiple plugins are active, they may conflict by registering the same routes, claiming the same storefront slots, or using the same PageBuilder block names.
+
+### Endpoint
+
+```
+GET /api/v1/plugins/conflicts
+```
+
+### Response
+
+```json
+{
+  "data": [
+    {
+      "type": "route",
+      "plugins": ["plugin-a", "plugin-b"],
+      "detail": "Multiple plugins register route: GET /status"
+    },
+    {
+      "type": "slot",
+      "plugins": ["plugin-a", "plugin-c"],
+      "detail": "Multiple plugins claim slot 'header-after' with order 10"
+    }
+  ],
+  "hasConflicts": true
+}
+```
+
+### Conflict Types
+
+| Type    | Description                                                    |
+| ------- | -------------------------------------------------------------- |
+| `route` | Two plugins register the same HTTP method + path               |
+| `hook`  | Two plugins hook and filter the same event                     |
+| `slot`  | Two plugins claim the same storefront slot with the same order |
+| `block` | Two plugins register a PageBuilder block with the same name    |
+
+### Programmatic API
+
+```typescript
+const conflicts = pluginLoader.detectConflicts();
+// Returns: Array<{ type: string, plugins: string[], detail: string }>
+```
+
+---
+
+## Query Stats & Rate Limiting
+
+The `ScopedDatabase` tracks query metrics per plugin and enforces rate limits to prevent runaway plugins from degrading performance.
+
+### Rate Limiting
+
+Each plugin is limited to **100 queries per second** by default. Exceeding this throws an error:
+
+```
+Plugin 'my-plugin' exceeded query rate limit (100/s)
+```
+
+The limit is configurable per `ScopedDatabase` instance (set via constructor).
+
+### Slow Query Logging
+
+Any query taking longer than **500ms** is logged as a warning:
+
+```
+WARN [scoped-database] Slow plugin query detected { pluginName: 'my-plugin', operation: 'execute', durationMs: 1234 }
+```
+
+### Query Statistics
+
+Access stats from the plugin context's `db` instance:
+
+```typescript
+const stats = ctx.db.getStats();
+// {
+//   totalQueries: 42,
+//   slowQueries: 1,
+//   lastQueryAt: Date
+// }
+```
+
+All operations are tracked: `execute`, `insert`, `update`, `delete`, and `select`.
 
 ---
 

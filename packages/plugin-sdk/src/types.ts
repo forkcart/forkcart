@@ -359,6 +359,15 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
   onUninstall?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
   /** Called when the plugin is updated to a new version */
   onUpdate?: (ctx: PluginContext<TSettings>, fromVersion: string) => void | Promise<void>;
+  /** Called when an unhandled error occurs in a hook, route, or scheduled task.
+   *  Return `true` to suppress the error, or handle it (e.g. send to Sentry). */
+  onError?: (
+    error: Error,
+    source: { type: 'hook' | 'route' | 'task' | 'filter'; name: string },
+    ctx: PluginContext<TSettings>,
+  ) => void | boolean | Promise<void | boolean>;
+  /** Called on every API server startup (after activation). Use for warmup, cache priming, etc. */
+  onReady?: (ctx: PluginContext<TSettings>) => void | Promise<void>;
 
   /** Event hooks (triggered after events occur) */
   hooks?: PluginHooks;

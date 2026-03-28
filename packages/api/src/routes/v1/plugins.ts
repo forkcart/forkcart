@@ -326,13 +326,60 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     });
   });
 
-  // ─── Health Check Route ───────────────────────────────────────────────────
+  // ─── Health Check Routes ──────────────────────────────────────────────────
 
   /** Get health status of all active plugins */
   router.get('/health', async (c) => {
     const health = await pluginLoader.healthCheck();
     const allHealthy = health.every((h) => h.healthy);
     return c.json({ data: health, allHealthy }, allHealthy ? 200 : 503);
+  });
+
+  /** Detailed health check for a specific plugin */
+  router.get('/:id/health', async (c) => {
+    const { id } = IdParamSchema.parse({ id: c.req.param('id') });
+    try {
+      const report = await pluginLoader.getPluginHealth(id);
+      return c.json({ data: report }, report.healthy ? 200 : 503);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      if (message.includes('not found')) {
+        return c.json({ error: { code: 'NOT_FOUND', message } }, 404);
+      }
+      return c.json({ error: { code: 'HEALTH_CHECK_FAILED', message } }, 500);
+    }
+  });
+
+  // ─── Conflict Detection Route ─────────────────────────────────────────────
+
+  /** Detect conflicts between active plugins */
+  router.get('/conflicts', async (c) => {
+    const conflicts = pluginLoader.detectConflicts();
+    return c.json({ data: conflicts, hasConflicts: conflicts.length > 0 });
+  });
+
+  // ─── Dev Mode / Hot Reload Routes ─────────────────────────────────────────
+
+  /** Manually reload a plugin (admin only) */
+  router.post('/:id/reload', async (c) => {
+    const { id } = IdParamSchema.parse({ id: c.req.param('id') });
+
+    // Find plugin name from ID
+    const allPlugins = await pluginLoader.getAllPlugins();
+    const plugin = allPlugins.find((p) => p.id === id);
+    if (!plugin) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+    }
+
+    try {
+      await pluginLoader.reloadPlugin(plugin.name);
+      return c.json({
+        data: { success: true, pluginName: plugin.name, reloadedAt: new Date().toISOString() },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Reload failed';
+      return c.json({ error: { code: 'RELOAD_FAILED', message } }, 500);
+    }
   });
 
   return router;
