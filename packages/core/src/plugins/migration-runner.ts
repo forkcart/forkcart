@@ -31,13 +31,9 @@ function getMigrationHelpers() {
     _migrationHelpers = { ref, schema: coreSchema };
   } catch {
     // Fallback: plugin-sdk not available (shouldn't happen in practice)
-    logger.warn('Could not load @forkcart/plugin-sdk for migration helpers — ref() unavailable');
+    logger.warn('Could not load @forkcart/plugin-sdk for migration helpers — using UUID fallback');
     _migrationHelpers = {
-      ref: (path: string) => {
-        throw new Error(
-          `ref('${path}') unavailable — @forkcart/plugin-sdk not found. Use raw SQL types instead.`,
-        );
-      },
+      ref: (_path: string) => 'UUID',
       schema: {},
     };
   }

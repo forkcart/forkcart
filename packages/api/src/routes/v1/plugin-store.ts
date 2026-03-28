@@ -233,8 +233,14 @@ export function createPluginStoreRoutes(
         // 3b. Auto-compile TypeScript → JavaScript
         const { existsSync, writeFileSync } = await import('node:fs');
         const { execSync: execSyncFn } = await import('node:child_process');
-        const pluginSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
-        const pluginDir = existsSync(pluginSubDir) ? pluginSubDir : targetDir;
+        // Find the actual plugin dir — ZIP may nest as forkcart-plugin-slug/, slug/, or direct
+        const prefixedSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+        const sameNameSubDir = resolve(targetDir, slug);
+        const pluginDir = existsSync(prefixedSubDir)
+          ? prefixedSubDir
+          : existsSync(sameNameSubDir)
+            ? sameNameSubDir
+            : targetDir;
         const srcEntry = resolve(pluginDir, 'src', 'index.ts');
 
         if (existsSync(srcEntry)) {
@@ -339,8 +345,13 @@ export function createPluginStoreRoutes(
       zip.extractAllTo(targetDir, true);
 
       // 4. Auto-compile TypeScript → JavaScript (plugins ship as source)
-      const pluginSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
-      const pluginDir = existsSync(pluginSubDir) ? pluginSubDir : targetDir;
+      const prefixedSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+      const sameNameSubDir = resolve(targetDir, slug);
+      const pluginDir = existsSync(prefixedSubDir)
+        ? prefixedSubDir
+        : existsSync(sameNameSubDir)
+          ? sameNameSubDir
+          : targetDir;
       const srcEntry = resolve(pluginDir, 'src', 'index.ts');
 
       if (existsSync(srcEntry)) {

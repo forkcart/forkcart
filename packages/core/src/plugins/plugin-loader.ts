@@ -486,20 +486,26 @@ export class PluginLoader {
       const name = pkgJson['name'] as string;
       if (
         !keywords.includes('forkcart-plugin') &&
-        !name.startsWith('forkcart-plugin-') &&
-        !name.startsWith('@forkcart/plugin-')
+        !name?.startsWith('forkcart-plugin-') &&
+        !name?.startsWith('@forkcart/plugin-')
       ) {
+        logger.debug({ path: pkgPath, name, keywords }, 'Skipped: not a ForkCart plugin');
         return null;
       }
 
       // Already registered?
       if (this.sdkPlugins.has(name) || this.legacyPlugins.has(name)) {
+        logger.debug({ path: pkgPath, name }, 'Skipped: already registered');
         return null;
       }
 
       // Try loading from file path directly (for local plugins)
       return await this.loadPluginFromPath(pkgPath, name);
-    } catch {
+    } catch (err) {
+      logger.debug(
+        { path: pkgPath, error: err instanceof Error ? err.message : err },
+        'tryLoadPluginFromPath failed',
+      );
       return null;
     }
   }
