@@ -83,7 +83,7 @@ export function validateMigrationSql(pluginName: string, sql: string): Validatio
   const joinPattern = /JOIN\s+(\w+)\s+\w+\s+ON\s+\w+\.id\s*=\s*/gi;
   let match;
   while ((match = joinPattern.exec(sql)) !== null) {
-    const joinedTable = match[1].toLowerCase();
+    const joinedTable = match[1]!.toLowerCase();
     if (CORE_ID_TYPES[joinedTable] === 'UUID') {
       // Check if there's a ::text cast nearby
       const context = sql.substring(match.index, match.index + 100);

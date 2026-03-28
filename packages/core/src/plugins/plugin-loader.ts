@@ -76,6 +76,12 @@ interface SdkPluginDefinition {
   onInstall?: (ctx: unknown) => void | Promise<void>;
   onUninstall?: (ctx: unknown) => void | Promise<void>;
   onUpdate?: (ctx: unknown, fromVersion: string) => void | Promise<void>;
+  onError?: (
+    error: Error,
+    source: { type: string; name: string },
+    ctx: unknown,
+  ) => void | boolean | Promise<void | boolean>;
+  onReady?: (ctx: unknown) => void | Promise<void>;
   hooks?: Record<string, (event: unknown, ctx: unknown) => void | Promise<void>>;
   filters?: Record<string, (data: unknown, ctx: unknown) => unknown | Promise<unknown>>;
   provider?: Record<string, unknown>;
