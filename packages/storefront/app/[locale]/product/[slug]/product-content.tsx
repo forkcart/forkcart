@@ -62,18 +62,26 @@ export function ProductContent({ product: initialProduct }: { product: ProductDa
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const hasDiscount = product.compareAtPrice && product.compareAtPrice > product.price;
 
-  // Expose product data to plugins via window.FORKCART
+  // Expose product data to plugins via window.FORKCART (merge, don't overwrite)
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      (window as unknown as { FORKCART?: { productId?: string; productSlug?: string } }).FORKCART =
-        {
-          productId: initialProduct.id,
-          productSlug: initialProduct.slug,
-        };
+      const fc = ((window as unknown as Record<string, unknown>).FORKCART ?? {}) as Record<
+        string,
+        unknown
+      >;
+      fc.productId = initialProduct.id;
+      fc.productSlug = initialProduct.slug;
+      (window as unknown as Record<string, unknown>).FORKCART = fc;
     }
     return () => {
       if (typeof window !== 'undefined') {
-        delete (window as unknown as { FORKCART?: unknown }).FORKCART;
+        const fc = (window as unknown as Record<string, unknown>).FORKCART as
+          | Record<string, unknown>
+          | undefined;
+        if (fc) {
+          delete fc.productId;
+          delete fc.productSlug;
+        }
       }
     };
   }, [initialProduct.id, initialProduct.slug]);
