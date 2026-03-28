@@ -223,6 +223,9 @@ export class PluginLoader {
   // ─── Plugin Permissions Registry ──────────────────────────────────────────
   private pluginPermissions = new Map<string, Set<PluginPermission>>();
 
+  /** Track the filesystem path each plugin was loaded from (for hot reload) */
+  private pluginPaths = new Map<string, string>();
+
   // ─── Plugin Routes Registry ────────────────────────────────────────────────
   private pluginRouteRegistrars = new Map<string, (router: unknown) => void>();
 
@@ -575,7 +578,8 @@ export class PluginLoader {
       }
 
       // Import using file:// URL (works for local ES modules)
-      const fileUrl = `file://${entryPath}`;
+      // Cache-bust with timestamp query to force re-import on reload
+      const fileUrl = `file://${entryPath}?t=${Date.now()}`;
       const mod = (await import(fileUrl)) as Record<string, unknown>;
       const def = (mod['default'] ?? mod) as SdkPluginDefinition;
 
@@ -599,6 +603,7 @@ export class PluginLoader {
       }
 
       this.registerSdkPlugin(def);
+      this.pluginPaths.set(def.name, pkgPath);
       logger.info({ pluginName: def.name, path: pkgPath }, 'Plugin loaded from local path');
       return def;
     } catch (error) {
@@ -2004,27 +2009,38 @@ export class PluginLoader {
       return { watching: true, reason: 'Already watching' };
     }
 
-    // Find the plugin's directory
+    // Find the plugin's directory — use tracked path first, then search
     const sdkDef = this.sdkPlugins.get(pluginName);
     if (!sdkDef) {
       return { watching: false, reason: `Plugin '${pluginName}' not found` };
     }
 
-    const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
-    const possiblePaths = [
-      resolve(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
-      resolve(process.cwd(), 'data', 'plugins', dirName),
-      resolve(process.cwd(), 'plugins', dirName),
-    ];
+    let pluginDir: string | null = this.pluginPaths.get(pluginName) ?? null;
 
-    let pluginDir: string | null = null;
-    for (const p of possiblePaths) {
-      try {
-        readFileSync(join(p, 'package.json'));
-        pluginDir = p;
-        break;
-      } catch {
-        // Try next
+    // Fallback: search common paths if not tracked
+    if (!pluginDir) {
+      const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
+      const slug =
+        ((sdkDef as unknown as Record<string, unknown>)._manifestSlug as string) ?? dirName;
+      const possiblePaths = [
+        resolve(process.cwd(), '..', '..', 'packages', 'plugins', slug, `forkcart-plugin-${slug}`),
+        resolve(process.cwd(), '..', '..', 'packages', 'plugins', slug),
+        resolve(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
+        resolve(process.cwd(), 'data', 'plugins', slug, `forkcart-plugin-${slug}`),
+        resolve(process.cwd(), 'data', 'plugins', slug),
+        resolve(process.cwd(), 'data', 'plugins', dirName),
+        resolve(process.cwd(), 'plugins', slug),
+        resolve(process.cwd(), 'plugins', dirName),
+      ];
+
+      for (const p of possiblePaths) {
+        try {
+          readFileSync(join(p, 'package.json'));
+          pluginDir = p;
+          break;
+        } catch {
+          // Try next
+        }
       }
     }
 
