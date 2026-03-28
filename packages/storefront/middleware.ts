@@ -31,7 +31,14 @@ export async function middleware(request: NextRequest) {
 
   // Check if first segment looks like a locale code but isn't supported
   // → redirect to the same path without the prefix (default locale)
-  if (maybeLocale && /^[a-z]{2,3}$/.test(maybeLocale) && !supportedLocales.includes(maybeLocale)) {
+  // Skip 'ext' — it's the plugin storefront pages prefix, not a locale
+  const RESERVED_PREFIXES = ['ext', 'api', 'app'];
+  if (
+    maybeLocale &&
+    /^[a-z]{2,3}$/.test(maybeLocale) &&
+    !supportedLocales.includes(maybeLocale) &&
+    !RESERVED_PREFIXES.includes(maybeLocale)
+  ) {
     const rest = segments.slice(2).join('/');
     const newPath = rest ? `/${rest}` : '/';
     const url = request.nextUrl.clone();

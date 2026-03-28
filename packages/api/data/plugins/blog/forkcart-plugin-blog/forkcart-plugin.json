@@ -1,0 +1,13 @@
+{
+  "name": "Blog",
+  "slug": "blog",
+  "packageName": "forkcart-plugin-blog",
+  "version": "1.0.1",
+  "type": "general",
+  "description": "Add a blog to your ForkCart store — create posts, link products, boost SEO",
+  "author": "Tyto 🦉",
+  "license": "MIT",
+  "category": "Content",
+  "minForkcartVersion": "0.5.0",
+  "entryPoint": "dist/index.js"
+}
