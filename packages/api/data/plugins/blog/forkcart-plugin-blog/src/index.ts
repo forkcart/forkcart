@@ -110,8 +110,8 @@ export default definePlugin({
   // ─── API ROUTES ─────────────────────────────────────
 
   routes: (router) => {
-    // ── Storefront: Blog list page (contentRoute for storefrontPages) ──
-    router.get('/storefront/blog-list', async (c) => {
+    // ── Public API: Blog posts data (JSON) ──
+    router.get('/posts-data', async (c) => {
       const db = c.get('db');
       const settings = c.get('pluginSettings');
       const page = parseInt(c.req.query('page') || '1');
@@ -138,7 +138,7 @@ export default definePlugin({
     });
 
     // ── Storefront: Single blog post page (contentRoute for storefrontPages) ──
-    router.get('/storefront/blog-post', async (c) => {
+    router.get('/posts-data/slug', async (c) => {
       const slug = c.req.query('slug') || '';
       const db = c.get('db');
 
