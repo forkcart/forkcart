@@ -287,6 +287,17 @@ export class PluginLoader {
    * Validate that all declared dependencies of a plugin are installed and active.
    * Throws if any dependency is missing or inactive.
    */
+  /** Find SDK definition by DB name or metadata slug */
+  private findSdkDef(
+    dbName: string,
+    metadata?: Record<string, unknown> | null,
+  ): SdkPluginDefinition | undefined {
+    return (
+      this.sdkPlugins.get(dbName) ??
+      (metadata?.slug ? this.sdkPlugins.get(metadata.slug as string) : undefined)
+    );
+  }
+
   /** Simple semver comparison: returns true if a < b */
   private semverLt(a: string, b: string): boolean {
     const pa = a.split('.').map(Number);
@@ -695,7 +706,7 @@ export class PluginLoader {
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
     // Validate dependencies before activation
-    const sdkDef = this.sdkPlugins.get(plugin.name);
+    const sdkDef = this.findSdkDef(plugin.name, plugin.metadata as Record<string, unknown> | null);
     if (sdkDef?.dependencies && sdkDef.dependencies.length > 0) {
       await this.validateDependencies(plugin.name, sdkDef.dependencies);
     }
@@ -787,7 +798,7 @@ export class PluginLoader {
     const settings = this.decryptSettings(plugin.name, rawSettings);
 
     // Call onDeactivate for SDK plugins
-    const sdkDef = this.sdkPlugins.get(plugin.name);
+    const sdkDef = this.findSdkDef(plugin.name, plugin.metadata as Record<string, unknown> | null);
     if (sdkDef?.onDeactivate) {
       try {
         await sdkDef.onDeactivate(this.buildPluginContext(plugin.name, settings));
@@ -1327,7 +1338,10 @@ export class PluginLoader {
       // Decrypt secret settings before passing to plugins
       const settings = this.decryptSettings(plugin.name, rawSettings);
 
-      const sdkDef = this.sdkPlugins.get(plugin.name);
+      const sdkDef = this.findSdkDef(
+        plugin.name,
+        plugin.metadata as Record<string, unknown> | null,
+      );
       if (sdkDef) {
         await this.activateSdkPlugin(plugin.name, sdkDef, settings);
         logger.info({ pluginName: plugin.name }, 'SDK plugin loaded');
@@ -1357,7 +1371,10 @@ export class PluginLoader {
 
     // Call onReady for all active SDK plugins
     for (const plugin of activePlugins) {
-      const sdkDef = this.sdkPlugins.get(plugin.name);
+      const sdkDef = this.findSdkDef(
+        plugin.name,
+        plugin.metadata as Record<string, unknown> | null,
+      );
       if (sdkDef?.onReady) {
         const rawSettings: Record<string, unknown> = {};
         for (const s of plugin.settings) {
@@ -1635,7 +1652,10 @@ export class PluginLoader {
 
     return allPlugins.map((p) => {
       const legacyDef = this.legacyPlugins.get(p.name);
-      const sdkDef = this.sdkPlugins.get(p.name);
+      // Try by DB name first, then by slug from metadata (store-installed plugins
+      // have display name in DB but technical name in sdkPlugins)
+      const slug = (p.metadata as Record<string, unknown> | null)?.slug as string | undefined;
+      const sdkDef = this.sdkPlugins.get(p.name) ?? (slug ? this.sdkPlugins.get(slug) : undefined);
       const paymentProvider = legacyDef?.createProvider?.();
       const emailProvider = legacyDef?.createEmailProvider?.();
 
@@ -1731,7 +1751,7 @@ export class PluginLoader {
 
     if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
 
-    const sdkDef = this.sdkPlugins.get(plugin.name);
+    const sdkDef = this.findSdkDef(plugin.name, plugin.metadata as Record<string, unknown> | null);
     const state = this.activeStates.get(plugin.name);
 
     // Migration status
