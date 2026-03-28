@@ -2,9 +2,11 @@
   <img src="brand/logo-green-400w.png" alt="ForkCart" width="280" />
 </p>
 
-<h3 align="center">Open-source e-commerce. TypeScript end-to-end.</h3>
+<h3 align="center">The open-source e-commerce platform with everything included.</h3>
 
 <p align="center">
+  <a href="https://github.com/forkcart/forkcart"><img src="https://img.shields.io/github/stars/forkcart/forkcart?style=social" alt="GitHub Stars" /></a>
+  <a href="https://github.com/forkcart/forkcart/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/forkcart/forkcart/ci.yml?branch=main&label=CI" alt="CI" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT" /></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-blue.svg" alt="TypeScript" /></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16-black.svg" alt="Next.js 16" /></a>
@@ -15,9 +17,11 @@
 
 ## What is ForkCart?
 
-The only open-source TypeScript e-commerce platform that ships **storefront + admin + API + mobile app** in one monorepo. Plugin-first architecture. AI-native. No vendor lock-in.
+The only open-source TypeScript e-commerce platform that ships **storefront + admin + API + mobile app** in one monorepo. Full-stack, plugin-first, AI-ready. No vendor lock-in.
 
 **[Live Demo (Shop)](https://forkcart.heynyx.dev)** · **[Admin Demo](https://forkcart-admin.heynyx.dev)** (login: `admin@forkcart.dev` / `admin123`)
+
+<!-- Screenshots coming soon: Admin Dashboard, Storefront, PageBuilder, Plugin Store -->
 
 ---
 
@@ -39,16 +43,18 @@ Storefront → `localhost:3000` · Admin → `localhost:3001` · API → `localh
 
 Every TypeScript e-commerce is headless-only — API without frontend. ForkCart ships the entire stack:
 
-|                   | ForkCart       | Medusa.js        | Vendure          | Saleor           | Shopware         |
-| ----------------- | -------------- | ---------------- | ---------------- | ---------------- | ---------------- |
-| **Language**      | TypeScript     | TypeScript       | TypeScript       | Python / GraphQL | PHP              |
-| **Storefront**    | ✅ Included    | ❌ Headless only | ❌ Headless only | ❌ Headless only | ✅ Twig          |
-| **Page Builder**  | ✅ Drag & Drop | —                | —                | —                | ✅ Shopping Exp. |
-| **AI Built-in**   | ✅ Native      | —                | —                | —                | Via plugins      |
-| **Mobile App**    | ✅ Expo        | —                | —                | —                | —                |
-| **Plugin System** | SDK-based      | Modules          | Plugins          | Apps             | Plugins          |
-| **Self-hosted**   | ✅             | ✅               | ✅               | ✅               | ✅               |
-| **License**       | MIT            | MIT              | MIT              | BSD              | MIT              |
+|                    | ForkCart                 | Medusa.js        | Vendure          | Saleor           | Shopware         |
+| ------------------ | ------------------------ | ---------------- | ---------------- | ---------------- | ---------------- |
+| **Language**       | TypeScript               | TypeScript       | TypeScript       | Python / GraphQL | PHP              |
+| **Storefront**     | ✅ Included              | ❌ Headless only | ❌ Headless only | ❌ Headless only | ✅ Twig          |
+| **Page Builder**   | ✅ Drag & Drop           | —                | —                | —                | ✅ Shopping Exp. |
+| **AI Built-in**    | ✅ Native                | —                | —                | —                | Via plugins      |
+| **Mobile App**     | ✅ Expo                  | —                | —                | —                | —                |
+| **Plugin System**  | SDK + Store + Hot Reload | Modules          | Plugins          | Apps             | Plugins          |
+| **Plugin Dev CLI** | ✅ `plugin:dev`          | —                | —                | —                | —                |
+| **CSS Isolation**  | ✅ Scoped                | —                | —                | —                | —                |
+| **Self-hosted**    | ✅                       | ✅               | ✅               | ✅               | ✅               |
+| **License**        | MIT                      | MIT              | MIT              | BSD              | MIT              |
 
 ---
 
@@ -80,7 +86,18 @@ URL-based locale routing, per-locale product content with fallback, admin transl
 
 ### 🔌 Plugins
 
-WordPress/Shopware-level extensibility. Payments, emails, shipping, UI slots, admin pages, CLI commands, cron jobs, custom routes, database migrations — all via `definePlugin()`.
+Developer-first plugin system with everything you'd expect — and things you wouldn't:
+
+- **`definePlugin()`** — single entry point, full TypeScript autocomplete
+- **Typed Events** — `hooks` with typed payloads, filters for data transformation
+- **Storefront Pages** — plugins can build their own pages (`/ext/blog`, `/ext/wishlist`)
+- **ScopedDatabase** — permission-aware DB access with rate limiting & slow query logging
+- **CSS Isolation** — scoped styles so plugins never break your theme
+- **Settings Groups** — organize complex plugin settings into tabs
+- **Hot Reload** — file watcher in dev, instant feedback
+- **Plugin Dev CLI** — `npx forkcart plugin:dev <slug>` for watch + build + reload
+- **Preview Sandbox** — inspect slots, blocks, and admin widgets before going live
+- **Plugin Store** — publish, sell, install. **You keep 90%, we take 10%.**
 
 ### 🔒 Security
 
@@ -111,14 +128,14 @@ import { definePlugin } from '@forkcart/plugin-sdk';
 export default definePlugin({
   name: 'my-plugin',
   version: '1.0.0',
-  type: 'feature',
+  type: 'general',
 
   settings: {
     apiKey: { type: 'string', required: true, secret: true },
   },
 
-  events: {
-    'order:created': async (order) => {
+  hooks: {
+    'order:created': async (event, ctx) => {
       // notify, sync, transform — anything
     },
   },
@@ -129,13 +146,24 @@ export default definePlugin({
 
   storefrontSlots: [{ slot: 'header-after', content: '<div>Free shipping today!</div>' }],
 
+  storefrontPages: [
+    {
+      path: '/wishlist',
+      title: 'My Wishlist',
+      content: '<div id="wishlist">Loading...</div>',
+      showInNav: true,
+      navIcon: '❤️',
+      requireAuth: true,
+    },
+  ],
+
   scheduledTasks: [{ name: 'cleanup', schedule: '0 3 * * *', handler: async () => {} }],
 });
 ```
 
 **Plugin types:** `payment` · `marketplace` · `email` · `shipping` · `analytics` · `general`
 
-Plugins can also register custom API routes, admin pages, CLI commands, and database migrations.
+Plugins can also register custom API routes, admin pages, CLI commands, PageBuilder blocks, and database migrations.
 
 📖 **[Full Plugin Docs →](docs/PLUGINS.md)** · **[Architecture →](docs/ARCHITECTURE.md)**
 
@@ -223,3 +251,7 @@ pnpm lint           # Lint
 ## License
 
 [MIT](LICENSE) — do whatever you want.
+
+---
+
+<p align="center">Built with ❤️ by Fabian & Nyx 🦞</p>
