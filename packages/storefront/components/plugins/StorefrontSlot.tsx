@@ -7,6 +7,7 @@
 
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from './sanitize-plugin-html';
+import { scopePluginCss } from './scope-plugin-css';
 import { ScriptExecutor } from './script-executor';
 
 export interface StorefrontSlotProps {
@@ -75,13 +76,28 @@ export async function StorefrontSlot({ slotName, currentPage, className }: Store
           })
           .filter((s) => s.length > 0);
 
-        // Remove scripts from HTML content (they'll be executed separately)
-        const htmlWithoutScripts = item.content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+        // Extract and scope inline <style> tags so plugin CSS can't leak
+        const styleMatches = item.content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+        const scopedStyles = styleMatches
+          .map((s) => {
+            const match = s.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+            return match?.[1]?.trim() ?? '';
+          })
+          .filter((s) => s.length > 0)
+          .map((s) => scopePluginCss(s, item.pluginName))
+          .join('\n');
+
+        // Remove scripts and styles from HTML content
+        const htmlClean = item.content
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
         return (
           <div key={`${item.pluginName}-${index}`} data-plugin={item.pluginName}>
+            {/* Inject scoped styles */}
+            {scopedStyles && <style dangerouslySetInnerHTML={{ __html: scopedStyles }} />}
             {/* Render HTML content */}
-            <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
+            <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlClean) }} />
             {/* Use ScriptExecutor instead of <script> tags — inline scripts inside
                 React Suspense hidden boundaries are NOT executed by the browser */}
             {inlineScripts.map((scriptContent, i) => (

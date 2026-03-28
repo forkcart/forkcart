@@ -61,6 +61,14 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
     return c.json({ data: pages });
   });
 
+  /** Get route paths for plugin pages that opt out of /ext/ prefix.
+   *  Used by the storefront middleware to rewrite clean URLs to /ext/... internally. */
+  router.get('/pages/routes', async (c) => {
+    const pages = pluginLoader.getStorefrontPages();
+    const routes = pages.filter((p) => p.useExtPrefix === false).map((p) => p.path);
+    return c.json({ data: routes });
+  });
+
   /** Get content for a specific storefront page */
   router.get('/pages/*', async (c) => {
     // Extract path from the URL after /pages

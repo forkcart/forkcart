@@ -89,6 +89,11 @@ interface SdkPluginDefinition {
   }>;
   routes?: (router: unknown) => void;
   storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
+  settingsGroups?: Array<{
+    label: string;
+    description?: string;
+    keys: string[];
+  }>;
   storefrontPages?: Array<{
     path: string;
     title: string;
@@ -101,6 +106,7 @@ interface SdkPluginDefinition {
     navIcon?: string;
     requireAuth?: boolean;
     metaDescription?: string;
+    useExtPrefix?: boolean;
   }>;
   pageBuilderBlocks?: Array<{
     name: string;
@@ -236,6 +242,7 @@ export class PluginLoader {
       navIcon?: string;
       requireAuth?: boolean;
       metaDescription?: string;
+      useExtPrefix?: boolean;
     }
   >();
 
@@ -1019,6 +1026,7 @@ export class PluginLoader {
           navIcon: page.navIcon,
           requireAuth: page.requireAuth,
           metaDescription: page.metaDescription,
+          useExtPrefix: page.useExtPrefix,
         });
         logger.debug({ pluginName, path: normalizedPath }, 'Storefront page registered');
       }
@@ -1536,6 +1544,7 @@ export class PluginLoader {
     navIcon?: string;
     requireAuth?: boolean;
     metaDescription?: string;
+    useExtPrefix?: boolean;
   }> {
     return [...this.storefrontPages.values()].map((p) => ({
       pluginName: p.pluginName,
@@ -1546,6 +1555,7 @@ export class PluginLoader {
       navIcon: p.navIcon,
       requireAuth: p.requireAuth,
       metaDescription: p.metaDescription,
+      useExtPrefix: p.useExtPrefix,
     }));
   }
 
@@ -1563,6 +1573,7 @@ export class PluginLoader {
     navIcon?: string;
     requireAuth?: boolean;
     metaDescription?: string;
+    useExtPrefix?: boolean;
   } | null {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
 
@@ -1815,6 +1826,7 @@ export class PluginLoader {
           value: this.isSecretSetting(p.name, s.key) ? (s.value ? '••••••••' : null) : s.value,
         })),
         settingsSchema,
+        settingsGroups: sdkDef?.settingsGroups ?? [],
         adminPages,
         requiredSettings:
           paymentProvider?.getRequiredSettings() ?? emailProvider?.getRequiredSettings() ?? [],

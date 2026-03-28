@@ -71,6 +71,16 @@ export type PluginSettingSchema =
 /** Record of setting key → schema definition */
 export type PluginSettingsMap = Record<string, PluginSettingSchema>;
 
+/** Group settings into tabs in the admin panel */
+export interface PluginSettingsGroup {
+  /** Tab label shown in the admin UI */
+  label: string;
+  /** Optional description shown below the tab label */
+  description?: string;
+  /** Setting keys that belong to this group */
+  keys: string[];
+}
+
 // ─── Resolved settings value type ───────────────────────────────────────────
 
 /** Infer the runtime value type from a PluginSettingSchema */
@@ -206,6 +216,9 @@ export interface PluginStorefrontPage {
   requireAuth?: boolean;
   /** Meta description for SEO */
   metaDescription?: string;
+  /** If false, the page is served at its path directly (e.g. /blog) instead of /ext/blog.
+   *  Default: true (backwards compatible — pages live under /ext/ prefix). */
+  useExtPrefix?: boolean;
 }
 
 // ─── Storefront slots (frontend extension points) ───────────────────────────
@@ -376,6 +389,11 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
 
   /** Setting definitions for the admin panel */
   settings?: TSettings;
+
+  /** Group settings into tabs in the admin panel.
+   *  If defined, the admin renders tabs instead of a flat list.
+   *  Settings not included in any group appear under a "General" tab. */
+  settingsGroups?: PluginSettingsGroup[];
 
   /** Called when the plugin is activated */
   onActivate?: (ctx: PluginContext<TSettings>) => void | Promise<void>;

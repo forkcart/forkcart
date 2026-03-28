@@ -46,6 +46,12 @@ interface PluginSettingSchema {
   max?: number;
 }
 
+interface PluginSettingsGroup {
+  label: string;
+  description?: string;
+  keys: string[];
+}
+
 interface PluginSetting {
   key: string;
   value: unknown;
@@ -62,6 +68,7 @@ interface Plugin {
   source: string;
   settings: PluginSetting[];
   settingsSchema: PluginSettingSchema[];
+  settingsGroups: PluginSettingsGroup[];
   requiredSettings: unknown[];
   adminPages: unknown[];
   metadata: Record<string, unknown> | null;
@@ -93,6 +100,206 @@ function getTypeBadgeVariant(
   return map[type] ?? 'outline';
 }
 
+// ─── Setting field component ────────────────────────────────────────────────
+
+function SettingField({
+  schema,
+  value,
+  existingValue,
+  onChange,
+  showSecrets,
+  setShowSecrets,
+}: {
+  schema: PluginSettingSchema;
+  value: string;
+  existingValue?: unknown;
+  onChange: (val: string) => void;
+  showSecrets: Record<string, boolean>;
+  setShowSecrets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+}) {
+  const fieldKey = schema.key;
+  const isSecret = schema.secret === true;
+  const showKey = `show_${fieldKey}`;
+  const hasMaskedValue = existingValue === '••••••••';
+
+  return (
+    <div
+      className={cn(
+        schema.type === 'boolean' ? '' : 'sm:col-span-2',
+        schema.type === 'select' ? 'sm:col-span-1' : '',
+      )}
+    >
+      <Label htmlFor={fieldKey}>
+        {schema.label ?? fieldKey}
+        {schema.required && <span className="ml-1 text-destructive">*</span>}
+      </Label>
+
+      {schema.type === 'string' && (
+        <div className="relative mt-1.5">
+          <Input
+            id={fieldKey}
+            type={isSecret && !showSecrets[showKey] ? 'password' : 'text'}
+            placeholder={
+              hasMaskedValue
+                ? '(configured — enter new value to change)'
+                : (schema.placeholder ?? (schema.default ? String(schema.default) : ''))
+            }
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+          {isSecret && (
+            <button
+              type="button"
+              onClick={() => setShowSecrets((prev) => ({ ...prev, [showKey]: !prev[showKey] }))}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {showSecrets[showKey] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          )}
+        </div>
+      )}
+
+      {schema.type === 'number' && (
+        <Input
+          id={fieldKey}
+          type="number"
+          min={schema.min}
+          max={schema.max}
+          placeholder={schema.default !== undefined ? String(schema.default) : ''}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-1.5"
+        />
+      )}
+
+      {schema.type === 'boolean' && (
+        <div className="mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onChange(value === 'true' ? 'false' : 'true')}
+            className={cn(
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+              value === 'true' ? 'bg-green-500' : 'bg-gray-300',
+            )}
+          >
+            <span
+              className={cn(
+                'inline-block h-4 w-4 rounded-full bg-white transition-transform',
+                value === 'true' ? 'translate-x-6' : 'translate-x-1',
+              )}
+            />
+          </button>
+          <span className="text-sm text-muted-foreground">
+            {value === 'true' ? 'Enabled' : 'Disabled'}
+          </span>
+        </div>
+      )}
+
+      {schema.type === 'select' && (
+        <Select
+          id={fieldKey}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="mt-1.5"
+        >
+          <option value="">Select...</option>
+          {(schema.options ?? []).map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </Select>
+      )}
+
+      {schema.description && (
+        <p className="mt-1 text-xs text-muted-foreground">{schema.description}</p>
+      )}
+    </div>
+  );
+}
+
+// ─── Settings group tabs component ──────────────────────────────────────────
+
+function SettingsGroupTabs({
+  plugin,
+  formValues,
+  setFormValues,
+  showSecrets,
+  setShowSecrets,
+  activeTab,
+  setActiveTab,
+}: {
+  plugin: Plugin;
+  formValues: Record<string, string>;
+  setFormValues: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  showSecrets: Record<string, boolean>;
+  setShowSecrets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  activeTab: number;
+  setActiveTab: (tab: number) => void;
+}) {
+  // Collect all keys that are in a group
+  const groupedKeys = new Set(plugin.settingsGroups.flatMap((g) => g.keys));
+
+  // Find ungrouped settings
+  const ungroupedSchemas = plugin.settingsSchema.filter((s) => !groupedKeys.has(s.key));
+
+  // Build tabs: explicit groups + "General" for ungrouped (if any)
+  const tabs = [
+    ...plugin.settingsGroups.map((g) => ({
+      label: g.label,
+      description: g.description,
+      schemas: plugin.settingsSchema.filter((s) => g.keys.includes(s.key)),
+    })),
+    ...(ungroupedSchemas.length > 0
+      ? [{ label: 'General', description: undefined, schemas: ungroupedSchemas }]
+      : []),
+  ];
+
+  const currentTab = tabs[activeTab] ?? tabs[0];
+
+  return (
+    <div className="mt-6">
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b">
+        {tabs.map((tab, idx) => (
+          <button
+            key={tab.label}
+            onClick={() => setActiveTab(idx)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium transition-colors',
+              idx === activeTab
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab description */}
+      {currentTab?.description && (
+        <p className="mt-3 text-sm text-muted-foreground">{currentTab.description}</p>
+      )}
+
+      {/* Tab content */}
+      <div className="mt-4 grid gap-5 sm:grid-cols-2">
+        {currentTab?.schemas.map((schema) => (
+          <SettingField
+            key={schema.key}
+            schema={schema}
+            value={formValues[schema.key] ?? ''}
+            existingValue={plugin.settings.find((s) => s.key === schema.key)?.value}
+            onChange={(val) => setFormValues((prev) => ({ ...prev, [schema.key]: val }))}
+            showSecrets={showSecrets}
+            setShowSecrets={setShowSecrets}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────────────────────────
 
 export default function PluginDetailPage() {
@@ -107,6 +314,7 @@ export default function PluginDetailPage() {
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState(0);
 
   // ─── Query ──────────────────────────────────────────────────────────────
 
@@ -406,136 +614,32 @@ export default function PluginDetailPage() {
             Configure this plugin to work with your store.
           </p>
 
-          <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            {plugin.settingsSchema.map((schema) => {
-              const fieldKey = schema.key;
-              const value = formValues[fieldKey] ?? '';
-              const isSecret = schema.secret === true;
-              const showKey = `show_${fieldKey}`;
-              const existingSetting = plugin.settings.find((s) => s.key === fieldKey);
-              const hasMaskedValue = existingSetting?.value === '••••••••';
-
-              return (
-                <div
-                  key={fieldKey}
-                  className={cn(
-                    schema.type === 'boolean' ? '' : 'sm:col-span-2',
-                    schema.type === 'select' ? 'sm:col-span-1' : '',
-                  )}
-                >
-                  <Label htmlFor={fieldKey}>
-                    {schema.label ?? fieldKey}
-                    {schema.required && <span className="ml-1 text-destructive">*</span>}
-                  </Label>
-
-                  {/* String field */}
-                  {schema.type === 'string' && (
-                    <div className="relative mt-1.5">
-                      <Input
-                        id={fieldKey}
-                        type={isSecret && !showSecrets[showKey] ? 'password' : 'text'}
-                        placeholder={
-                          hasMaskedValue
-                            ? '(configured — enter new value to change)'
-                            : (schema.placeholder ?? (schema.default ? String(schema.default) : ''))
-                        }
-                        value={value}
-                        onChange={(e) =>
-                          setFormValues((prev) => ({ ...prev, [fieldKey]: e.target.value }))
-                        }
-                      />
-                      {isSecret && (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setShowSecrets((prev) => ({
-                              ...prev,
-                              [showKey]: !prev[showKey],
-                            }))
-                          }
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                        >
-                          {showSecrets[showKey] ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Number field */}
-                  {schema.type === 'number' && (
-                    <Input
-                      id={fieldKey}
-                      type="number"
-                      min={schema.min}
-                      max={schema.max}
-                      placeholder={schema.default !== undefined ? String(schema.default) : ''}
-                      value={value}
-                      onChange={(e) =>
-                        setFormValues((prev) => ({ ...prev, [fieldKey]: e.target.value }))
-                      }
-                      className="mt-1.5"
-                    />
-                  )}
-
-                  {/* Boolean field */}
-                  {schema.type === 'boolean' && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFormValues((prev) => ({
-                            ...prev,
-                            [fieldKey]: prev[fieldKey] === 'true' ? 'false' : 'true',
-                          }))
-                        }
-                        className={cn(
-                          'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                          value === 'true' ? 'bg-green-500' : 'bg-gray-300',
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            'inline-block h-4 w-4 rounded-full bg-white transition-transform',
-                            value === 'true' ? 'translate-x-6' : 'translate-x-1',
-                          )}
-                        />
-                      </button>
-                      <span className="text-sm text-muted-foreground">
-                        {value === 'true' ? 'Enabled' : 'Disabled'}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Select field */}
-                  {schema.type === 'select' && (
-                    <Select
-                      id={fieldKey}
-                      value={value}
-                      onChange={(e) =>
-                        setFormValues((prev) => ({ ...prev, [fieldKey]: e.target.value }))
-                      }
-                      className="mt-1.5"
-                    >
-                      <option value="">Select...</option>
-                      {(schema.options ?? []).map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-
-                  {schema.description && (
-                    <p className="mt-1 text-xs text-muted-foreground">{schema.description}</p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+          {/* Tabbed settings (when settingsGroups is defined) */}
+          {plugin.settingsGroups.length > 0 ? (
+            <SettingsGroupTabs
+              plugin={plugin}
+              formValues={formValues}
+              setFormValues={setFormValues}
+              showSecrets={showSecrets}
+              setShowSecrets={setShowSecrets}
+              activeTab={activeSettingsTab}
+              setActiveTab={setActiveSettingsTab}
+            />
+          ) : (
+            <div className="mt-6 grid gap-5 sm:grid-cols-2">
+              {plugin.settingsSchema.map((schema) => (
+                <SettingField
+                  key={schema.key}
+                  schema={schema}
+                  value={formValues[schema.key] ?? ''}
+                  existingValue={plugin.settings.find((s) => s.key === schema.key)?.value}
+                  onChange={(val) => setFormValues((prev) => ({ ...prev, [schema.key]: val }))}
+                  showSecrets={showSecrets}
+                  setShowSecrets={setShowSecrets}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="mt-6 flex items-center gap-3 border-t pt-4">
             <button

@@ -11,6 +11,7 @@
 
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from './sanitize-plugin-html';
+import { scopePluginCss } from './scope-plugin-css';
 import { ScriptExecutor } from './script-executor';
 
 export interface PluginBlockFallbackProps {
@@ -89,7 +90,20 @@ export async function PluginBlockFallback({
           })
           .filter((s) => s.length > 0);
 
-        const htmlWithoutScripts = block.content.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+        // Extract and scope inline <style> tags so plugin CSS can't leak
+        const styleMatches = block.content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+        const scopedStyles = styleMatches
+          .map((s) => {
+            const match = s.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+            return match?.[1]?.trim() ?? '';
+          })
+          .filter((s) => s.length > 0)
+          .map((s) => scopePluginCss(s, block.pluginName))
+          .join('\n');
+
+        const htmlClean = block.content
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
         return (
           <div
@@ -98,7 +112,9 @@ export async function PluginBlockFallback({
             data-plugin={block.pluginName}
             data-fallback
           >
-            <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
+            {/* Inject scoped styles */}
+            {scopedStyles && <style dangerouslySetInnerHTML={{ __html: scopedStyles }} />}
+            <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlClean) }} />
             {/* Use ScriptExecutor instead of <script> tags — inline scripts inside
                 React Suspense hidden boundaries are NOT executed by the browser */}
             {inlineScripts.map((scriptContent, i) => (

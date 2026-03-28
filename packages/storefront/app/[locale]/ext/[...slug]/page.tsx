@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from '@/components/plugins/sanitize-plugin-html';
+import { scopePluginCss } from '@/components/plugins/scope-plugin-css';
 import { ScriptExecutor } from '@/components/plugins/script-executor';
 import { PluginPageContext } from './plugin-page-context';
 
@@ -82,22 +83,41 @@ export default async function PluginPage({
     })
     .filter((s) => s.length > 0);
 
-  // Remove scripts from HTML (they'll be executed via ScriptExecutor)
-  const htmlWithoutScripts = page.html.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+  // Extract and scope inline <style> tags from HTML content
+  const styleMatches = page.html.match(/<style[^>]*>([\s\S]*?)<\/style>/gi) || [];
+  const inlineStyles = styleMatches
+    .map((s) => {
+      const match = s.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      return match?.[1]?.trim() ?? '';
+    })
+    .filter((s) => s.length > 0)
+    .map((s) => scopePluginCss(s, page.pluginName))
+    .join('\n');
+
+  // Remove scripts and styles from HTML
+  const htmlClean = page.html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+  // Scope page-level styles
+  const scopedPageStyles = page.styles ? scopePluginCss(page.styles, page.pluginName) : '';
+
+  // Combine all scoped styles
+  const allStyles = [scopedPageStyles, inlineStyles].filter(Boolean).join('\n');
 
   // Combine page-level scripts with inline scripts from content
   const allScripts = [...(page.scripts ?? []), ...inlineScripts];
 
   return (
     <div className="plugin-page" data-plugin={page.pluginName} data-plugin-page={page.path}>
-      {/* Inject page-level styles */}
-      {page.styles && <style dangerouslySetInnerHTML={{ __html: page.styles }} />}
+      {/* Inject scoped page-level styles */}
+      {allStyles && <style dangerouslySetInnerHTML={{ __html: allStyles }} />}
 
       {/* Set window.FORKCART context */}
       <PluginPageContext path={page.path} requireAuth={page.requireAuth} locale={locale} />
 
       {/* Render HTML content */}
-      <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
+      <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlClean) }} />
 
       {/* Execute scripts */}
       {allScripts.map((script, i) => (
