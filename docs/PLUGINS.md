@@ -2474,18 +2474,133 @@ export default definePlugin({
 
 ### Nyx Recommendations Plugin
 
-See [`data/plugins/nyx-recommendations/`](../packages/api/data/plugins/nyx-recommendations/) for a full real-world plugin demonstrating:
+A full real-world plugin that demonstrates most plugin features. Install it from the Plugin Store or build it yourself:
 
-- Settings with all types (string, number, boolean, select)
-- Event hooks (`order:paid`)
-- Custom API routes with database queries
-- Admin page with dynamic `apiRoute`
-- PageBuilder block with JavaScript widget
-- Database migrations using `ref()`
-- CLI commands
-- Scheduled tasks
-- Error handling via `onError`
-- Startup warmup via `onReady`
+```ts
+import { definePlugin, ref } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'nyx-recommendations',
+  version: '1.0.0',
+  type: 'general',
+  description: 'Smart product recommendations based on purchase history',
+  author: 'Nyx 🦞',
+
+  settings: {
+    maxRecommendations: { type: 'number', label: 'Max Recommendations', default: 6 },
+    algorithm: {
+      type: 'select',
+      label: 'Algorithm',
+      options: ['frequency', 'recency', 'trending'],
+      default: 'frequency',
+    },
+    categoryBoost: { type: 'number', label: 'Category Boost Factor', default: 1.5 },
+    enableTrending: { type: 'boolean', label: 'Show Trending Badge', default: true },
+  },
+
+  permissions: ['products:read', 'orders:read'],
+
+  hooks: {
+    'order:paid': async (event, ctx) => {
+      // Track product purchase for recommendation scoring
+      const { orderId } = event.payload;
+      ctx.logger.info('Tracking purchase for recommendations', { orderId });
+    },
+  },
+
+  routes: (router) => {
+    router.get('/recommendations/:productId', async (c) => {
+      const productId = c.req.param('productId');
+      const db = c.get('db');
+      const settings = c.get('pluginSettings');
+      // Query purchase history, score by frequency × recency × category_boost
+      return c.json({ data: [] });
+    });
+
+    router.post('/click', async (c) => {
+      // Track click-through for analytics
+      return c.json({ ok: true });
+    });
+  },
+
+  pageBuilderBlocks: [
+    {
+      name: 'recommendations-widget',
+      label: 'Product Recommendations',
+      icon: '🦞',
+      category: 'Marketing',
+      description: 'Shows smart product recommendations',
+      defaultSlot: 'product-page-bottom',
+      content: `
+      <div id="nyx-recs-root">Loading recommendations...</div>
+      <script>
+        const fc = window.FORKCART || {};
+        if (fc.productId) {
+          fetch(fc.apiUrl + '/api/v1/public/plugins/nyx-recommendations/recommendations/' + fc.productId)
+            .then(r => r.json())
+            .then(data => {
+              document.getElementById('nyx-recs-root').innerHTML =
+                data.data.map(p => '<a href="/product/' + p.slug + '">' + p.name + '</a>').join('');
+            });
+        }
+      </script>
+    `,
+    },
+  ],
+
+  adminPages: [
+    {
+      path: '/dashboard',
+      label: 'Recommendations Dashboard',
+      icon: 'chart-bar',
+      apiRoute: '/admin/dashboard',
+    },
+  ],
+
+  migrations: [
+    {
+      version: '1.0.0',
+      description: 'Create recommendation tracking tables',
+      up: async (db, { ref }) => {
+        await db.execute(`
+        CREATE TABLE IF NOT EXISTS plugin_nyx_recommendations_scores (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          source_product_id ${ref('products.id')} NOT NULL,
+          recommended_product_id ${ref('products.id')} NOT NULL,
+          score FLOAT DEFAULT 0,
+          purchases INTEGER DEFAULT 0,
+          clicks INTEGER DEFAULT 0,
+          updated_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `);
+      },
+      down: async (db) => {
+        await db.execute('DROP TABLE IF EXISTS plugin_nyx_recommendations_scores;');
+      },
+    },
+  ],
+
+  scheduledTasks: [
+    {
+      name: 'recalculate-scores',
+      schedule: '0 */6 * * *',
+      handler: async (ctx) => {
+        ctx.logger.info('Recalculating recommendation scores...');
+      },
+    },
+  ],
+
+  onReady: async (ctx) => {
+    ctx.logger.info('Nyx Recommendations ready — warming cache...');
+  },
+
+  onError: async (error, source, ctx) => {
+    ctx.logger.error(`Error in ${source.type}:${source.name}: ${error.message}`);
+  },
+});
+```
+
+**Features demonstrated:** Settings (all types), event hooks, custom API routes, PageBuilder block with JS widget, admin page, database migrations with `ref()`, scheduled tasks, `onReady`, `onError`.
 
 ---
 
