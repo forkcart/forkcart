@@ -102,10 +102,31 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
 
         if (response.ok) {
           const result = (await response.json()) as { html?: string };
+
+          if (typeof result.html !== 'string') {
+            const resultType = Array.isArray(result)
+              ? 'JSON array'
+              : typeof result === 'object'
+                ? `JSON object without "html" key (keys: ${Object.keys(result as Record<string, unknown>).join(', ')})`
+                : typeof result;
+            console.error(
+              `[plugins] contentRoute ${page.contentRoute} returned ${resultType} instead of { html: string }. Did you forget to wrap your response?`,
+            );
+            return c.json(
+              {
+                error: {
+                  code: 'INVALID_CONTENT_RESPONSE',
+                  message: `contentRoute ${page.contentRoute} must return { html: string } but returned ${resultType}`,
+                },
+              },
+              502,
+            );
+          }
+
           return c.json({
             data: {
               ...page,
-              html: result.html ?? '',
+              html: result.html,
               source: 'api',
             },
           });
@@ -492,15 +513,38 @@ function buildPluginRouter(
     return handler(c) as any;
   };
 
+  const registeredRoutes = new Set<string>();
+  const warnDuplicate = (method: string, path: string) => {
+    const key = `${method.toUpperCase()} ${path}`;
+    if (registeredRoutes.has(key)) {
+      console.warn(
+        `[plugins] Plugin '${pluginName}' registers route ${key} more than once — only the first registration will be used`,
+      );
+    }
+    registeredRoutes.add(key);
+  };
+
   const routerAdapter = {
-    get: (path: string, handler: (c: unknown) => unknown) => pluginRouter.get(path, wrap(handler)),
-    post: (path: string, handler: (c: unknown) => unknown) =>
-      pluginRouter.post(path, wrap(handler)),
-    put: (path: string, handler: (c: unknown) => unknown) => pluginRouter.put(path, wrap(handler)),
-    delete: (path: string, handler: (c: unknown) => unknown) =>
-      pluginRouter.delete(path, wrap(handler)),
-    patch: (path: string, handler: (c: unknown) => unknown) =>
-      pluginRouter.patch(path, wrap(handler)),
+    get: (path: string, handler: (c: unknown) => unknown) => {
+      warnDuplicate('GET', path);
+      pluginRouter.get(path, wrap(handler));
+    },
+    post: (path: string, handler: (c: unknown) => unknown) => {
+      warnDuplicate('POST', path);
+      pluginRouter.post(path, wrap(handler));
+    },
+    put: (path: string, handler: (c: unknown) => unknown) => {
+      warnDuplicate('PUT', path);
+      pluginRouter.put(path, wrap(handler));
+    },
+    delete: (path: string, handler: (c: unknown) => unknown) => {
+      warnDuplicate('DELETE', path);
+      pluginRouter.delete(path, wrap(handler));
+    },
+    patch: (path: string, handler: (c: unknown) => unknown) => {
+      warnDuplicate('PATCH', path);
+      pluginRouter.patch(path, wrap(handler));
+    },
   };
 
   registrar(routerAdapter);

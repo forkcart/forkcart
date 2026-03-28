@@ -36,3 +36,7 @@ uploads/
 packages/api/uploads/
 packages/admin/public/downloads/*.apk
 packages/plugins/
+
+# Runtime data (plugins & database)
+packages/api/data/plugins/
+packages/api/data/forkcart.db

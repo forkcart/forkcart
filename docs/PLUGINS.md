@@ -1133,6 +1133,8 @@ storefrontPages: [
 
 **Dynamic pages** use `contentRoute` — the storefront fetches HTML from your plugin's API route at render time:
 
+> ⚠️ **Critical:** Your `contentRoute` handler **must** return `{ html: string }` — not raw data, not an array, not HTML without the wrapper object. The storefront reads `result.html` from the JSON response. If you return anything else (e.g. a JSON array of blog posts), the page will fail to render.
+
 ```typescript
 storefrontPages: [
   {
@@ -1145,8 +1147,18 @@ storefrontPages: [
 
 routes(router) {
   router.get('/rewards/page', async (c) => {
-    // Build HTML dynamically (e.g. fetch customer data)
-    return c.json({ html: '<div>Your points: 420</div>' });
+    const db = c.get('db');
+    // Fetch your data
+    const points = 420;
+
+    // ✅ CORRECT: Return { html: string } — the storefront expects this exact shape
+    return c.json({
+      html: `<div><h2>Your Rewards</h2><p>You have ${points} points!</p></div>`
+    });
+
+    // ❌ WRONG: Do NOT return raw data — the storefront can't render this
+    // return c.json({ data: [{ id: 1, points: 420 }] });
+    // return c.json([{ id: 1, title: "Post" }]);
   });
 },
 ```
@@ -1267,6 +1279,12 @@ adminPages: [
   },
 ],
 ```
+
+### Calling the API from Admin Pages
+
+> ⚠️ **Important:** Admin page scripts run in the browser on the admin domain, NOT on the API server.
+> Use `window.__FORKCART_API_URL` to construct API URLs. Never use relative paths like `/api/v1/...`
+> — they'll hit the admin server instead of the API.
 
 ### Dynamic Content via API Route
 
