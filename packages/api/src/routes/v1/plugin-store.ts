@@ -226,7 +226,7 @@ export function createPluginStoreRoutes(
         const zip = new AdmZip(zipBuffer);
         const { resolve } = await import('node:path');
         const { mkdirSync } = await import('node:fs');
-        const targetDir = resolve(process.cwd(), '../../packages/plugins', slug);
+        const targetDir = resolve(process.cwd(), 'data', 'plugins', slug);
         mkdirSync(targetDir, { recursive: true });
         zip.extractAllTo(targetDir, true);
 
@@ -242,7 +242,7 @@ export function createPluginStoreRoutes(
             mkdirSync(shimDir, { recursive: true });
             writeFileSync(
               resolve(shimDir, 'index.js'),
-              'export function definePlugin(d) { return d; }',
+              'export function definePlugin(d) { return d; } export function ref() { return "UUID"; } export const coreSchema = {};',
             );
             writeFileSync(
               resolve(shimDir, 'package.json'),
@@ -333,7 +333,7 @@ export function createPluginStoreRoutes(
       const zip = new AdmZip(zipBuffer);
       const { resolve } = await import('node:path');
       const { mkdirSync, existsSync, writeFileSync } = await import('node:fs');
-      const targetDir = resolve(process.cwd(), '../../packages/plugins', slug);
+      const targetDir = resolve(process.cwd(), 'data', 'plugins', slug);
       mkdirSync(targetDir, { recursive: true });
       zip.extractAllTo(targetDir, true);
 
@@ -349,7 +349,7 @@ export function createPluginStoreRoutes(
           mkdirSync(shimDir, { recursive: true });
           writeFileSync(
             resolve(shimDir, 'index.js'),
-            'export function definePlugin(d) { return d; }',
+            'export function definePlugin(d) { return d; } export function ref() { return "UUID"; } export const coreSchema = {};',
           );
           writeFileSync(
             resolve(shimDir, 'package.json'),
