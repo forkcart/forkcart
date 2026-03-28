@@ -104,6 +104,13 @@ export default function CartPage() {
   const discount = couponResult?.valid ? couponResult.discount : 0;
   const totalAfterDiscount = subtotal - discount;
 
+  // Set window.FORKCART context for plugin scripts
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>;
+    w.FORKCART = w.FORKCART || {};
+    (w.FORKCART as Record<string, unknown>).pageType = 'cart';
+  }, []);
+
   if (items.length === 0) {
     return (
       <div className="container-page py-24 text-center">

@@ -76,6 +76,11 @@ export default async function CategoryPage({ params, searchParams }: Props) {
 
   return (
     <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.pageType = "category"; window.FORKCART.categorySlug = "${categorySlug}";${categoryId ? ` window.FORKCART.categoryId = "${categoryId}";` : ''}`,
+        }}
+      />
       <BreadcrumbJsonLd
         items={[
           { name: 'Home', url: '/' },

@@ -72,18 +72,25 @@ export default async function SearchPage({ searchParams }: Props) {
   }
 
   return (
-    <SearchContent
-      q={q}
-      products={products}
-      total={total}
-      searchMode={searchMode}
-      suggestions={suggestions}
-      popularSearches={popularSearches}
-      allCategories={allCategories}
-      category={category}
-      priceMin={priceMin}
-      priceMax={priceMax}
-      sort={sort}
-    />
+    <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.pageType = "search";${q ? ` window.FORKCART.query = ${JSON.stringify(q)};` : ''}`,
+        }}
+      />
+      <SearchContent
+        q={q}
+        products={products}
+        total={total}
+        searchMode={searchMode}
+        suggestions={suggestions}
+        popularSearches={popularSearches}
+        allCategories={allCategories}
+        category={category}
+        priceMin={priceMin}
+        priceMax={priceMax}
+        sort={sort}
+      />
+    </>
   );
 }

@@ -167,6 +167,17 @@ export const coreSchema: CoreSchema = {
     status: { sqlType: 'VARCHAR(20)', nullable: false },
     created_at: { sqlType: 'TIMESTAMPTZ', nullable: false },
   },
+
+  /**
+   * Many-to-many junction table linking products to categories.
+   * Note: products.category_id holds the *primary* category,
+   * but product_categories is the canonical table for ALL category
+   * assignments (including the primary one).
+   */
+  product_categories: {
+    product_id: { sqlType: 'UUID', nullable: false, primaryKey: true },
+    category_id: { sqlType: 'UUID', nullable: false, primaryKey: true },
+  },
 };
 
 // ─── ref() — Type-Safe Foreign Key Helper ───────────────────────────────────

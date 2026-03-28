@@ -31,34 +31,57 @@ let blockCache: { data: BlockData[]; fetchedAt: number } | null = null;
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Fetch all plugin blocks and find the matching one.
- * Uses in-memory cache + Next.js fetch cache to prevent request storms.
+ * Inflight promise for request deduplication.
+ * When multiple PluginBlocks render concurrently and the cache is cold,
+ * only one actual fetch fires — all others await the same promise.
  */
-async function fetchBlockContent(pluginName: string, blockName: string): Promise<string | null> {
+let inflightRequest: Promise<BlockData[]> | null = null;
+
+async function fetchAllBlocks(): Promise<BlockData[]> {
   // Return from memory cache if fresh
   if (blockCache && Date.now() - blockCache.fetchedAt < CACHE_TTL) {
-    const block = blockCache.data.find((b) => b.pluginName === pluginName && b.name === blockName);
-    return block?.content ?? null;
+    return blockCache.data;
   }
 
-  try {
-    const res = await fetch(`${API_URL}/api/v1/public/plugins/blocks`, {
-      next: { revalidate: 300 }, // Cache for 5 min in Next.js
-    });
+  // Deduplicate: if a request is already in flight, piggyback on it
+  if (inflightRequest) {
+    return inflightRequest;
+  }
 
-    if (!res.ok) {
-      // Don't retry on rate limit or server errors
-      console.warn(`[plugin-block] Failed to fetch blocks: ${res.status}`);
-      return null;
+  inflightRequest = (async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/v1/public/plugins/blocks`, {
+        next: { revalidate: 300 }, // Cache for 5 min in Next.js
+      });
+
+      if (!res.ok) {
+        console.warn(`[plugin-block] Failed to fetch blocks: ${res.status}`);
+        return [];
+      }
+
+      const json = (await res.json()) as BlocksResponse;
+      const data = json.data ?? [];
+      blockCache = { data, fetchedAt: Date.now() };
+      return data;
+    } catch {
+      return [];
+    } finally {
+      inflightRequest = null;
     }
+  })();
 
-    const json = (await res.json()) as BlocksResponse;
-    blockCache = { data: json.data ?? [], fetchedAt: Date.now() };
-    const block = blockCache.data.find((b) => b.pluginName === pluginName && b.name === blockName);
-    return block?.content ?? null;
-  } catch {
-    return null;
-  }
+  return inflightRequest;
+}
+
+/**
+ * Fetch all plugin blocks and find the matching one.
+ * Uses in-memory cache + Next.js fetch cache + request deduplication
+ * to prevent request storms when many PluginBlocks render concurrently.
+ */
+async function fetchBlockContent(pluginName: string, blockName: string): Promise<string | null> {
+  const blocks = await fetchAllBlocks();
+  const block = blocks.find((b) => b.pluginName === pluginName && b.name === blockName);
+  return block?.content ?? null;
 }
 
 export async function PluginBlockRenderer({ pluginName, blockName }: PluginBlockProps) {

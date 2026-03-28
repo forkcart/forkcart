@@ -87,6 +87,13 @@ export default function CheckoutPageWrapper() {
 }
 
 function CheckoutPage() {
+  // Set window.FORKCART context for plugin scripts
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>;
+    w.FORKCART = w.FORKCART || {};
+    (w.FORKCART as Record<string, unknown>).pageType = 'checkout';
+  }, []);
+
   const { items, subtotal, clearCart, serverCartId } = useCart();
   const { customer, token } = useAuth();
   const { t } = useTranslation();

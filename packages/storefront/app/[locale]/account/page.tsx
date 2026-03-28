@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useAuth } from '@/components/auth/auth-provider';
 import { LocaleLink } from '@/components/locale-link';
 import { useTranslation } from '@forkcart/i18n/react';
@@ -9,6 +10,13 @@ import { Package, MapPin, UserCircle, LogOut } from 'lucide-react';
 export default function AccountPage() {
   const { customer, logout } = useAuth();
   const { t } = useTranslation();
+
+  // Set window.FORKCART context for plugin scripts
+  useEffect(() => {
+    const w = window as unknown as Record<string, unknown>;
+    w.FORKCART = w.FORKCART || {};
+    (w.FORKCART as Record<string, unknown>).pageType = 'account';
+  }, []);
 
   return (
     <ProtectedRoute>

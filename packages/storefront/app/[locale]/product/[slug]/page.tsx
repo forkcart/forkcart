@@ -63,7 +63,7 @@ export default async function ProductPage({ params }: Props) {
         {/* Set productId for plugin scripts — SSR, no hydration delay */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
+            __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.pageType = "product"; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
           }}
         />
         {/* Plugin slot: product page top */}
@@ -83,7 +83,7 @@ export default async function ProductPage({ params }: Props) {
       {seoEl}
       <script
         dangerouslySetInnerHTML={{
-          __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
+          __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.pageType = "product"; window.FORKCART.productId = "${product.id}"; window.FORKCART.productSlug = "${product.slug}";`,
         }}
       />
       {/* Plugin slot: product page top */}
