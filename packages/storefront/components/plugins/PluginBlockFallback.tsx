@@ -48,7 +48,7 @@ async function fetchFallbackBlocks(
 
     const res = await fetch(
       `${API_URL}/api/v1/public/plugins/blocks/fallbacks${query ? `?${query}` : ''}`,
-      { next: { revalidate: 60 } },
+      { next: { revalidate: 300 } },
     );
 
     if (!res.ok) return [];

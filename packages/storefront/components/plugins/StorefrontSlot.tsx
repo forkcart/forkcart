@@ -37,7 +37,7 @@ async function fetchSlotContent(slotName: string, currentPage?: string): Promise
 
     const res = await fetch(
       `${API_URL}/api/v1/public/plugins/slots/${encodeURIComponent(slotName)}${query ? `?${query}` : ''}`,
-      { next: { revalidate: 60 } },
+      { next: { revalidate: 300 } },
     );
 
     if (!res.ok) return [];

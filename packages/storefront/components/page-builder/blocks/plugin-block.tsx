@@ -25,20 +25,35 @@ interface BlocksResponse {
   data: BlockData[];
 }
 
+/** In-memory cache to avoid hammering the API on every render */
+let blockCache: { data: BlockData[]; fetchedAt: number } | null = null;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 /**
  * Fetch all plugin blocks and find the matching one.
- * Cached for 60s via Next.js fetch cache.
+ * Uses in-memory cache + Next.js fetch cache to prevent request storms.
  */
 async function fetchBlockContent(pluginName: string, blockName: string): Promise<string | null> {
+  // Return from memory cache if fresh
+  if (blockCache && Date.now() - blockCache.fetchedAt < CACHE_TTL) {
+    const block = blockCache.data.find((b) => b.pluginName === pluginName && b.name === blockName);
+    return block?.content ?? null;
+  }
+
   try {
     const res = await fetch(`${API_URL}/api/v1/public/plugins/blocks`, {
-      next: { revalidate: 60 },
+      next: { revalidate: 300 }, // Cache for 5 min in Next.js
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // Don't retry on rate limit or server errors
+      console.warn(`[plugin-block] Failed to fetch blocks: ${res.status}`);
+      return null;
+    }
 
     const json = (await res.json()) as BlocksResponse;
-    const block = json.data.find((b) => b.pluginName === pluginName && b.name === blockName);
+    blockCache = { data: json.data ?? [], fetchedAt: Date.now() };
+    const block = blockCache.data.find((b) => b.pluginName === pluginName && b.name === blockName);
     return block?.content ?? null;
   } catch {
     return null;
