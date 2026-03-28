@@ -3,6 +3,7 @@ import { config } from 'dotenv';
 import { Command } from 'commander';
 import chalk from 'chalk';
 import { registerPluginCommands } from './commands/plugin.js';
+import { registerPluginDevCommand } from './commands/plugin-dev.js';
 
 // Load environment variables from .env
 config();
@@ -34,6 +35,7 @@ ${chalk.dim('For more information, visit https://forkcart.dev/docs/cli')}
 
 // Register command groups
 registerPluginCommands(program);
+registerPluginDevCommand(program);
 
 // Parse and execute
 program.parse();

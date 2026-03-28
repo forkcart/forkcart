@@ -19,6 +19,7 @@ import {
   XCircle,
   Eye,
   EyeOff,
+  FlaskConical,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { apiClient } from '@/lib/api-client';
@@ -27,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PluginPreview } from '@/components/plugins/plugin-preview';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -104,6 +106,7 @@ export default function PluginDetailPage() {
   const [confirmUninstall, setConfirmUninstall] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // ─── Query ──────────────────────────────────────────────────────────────
 
@@ -353,6 +356,13 @@ export default function PluginDetailPage() {
               </button>
             </div>
 
+            <button
+              onClick={() => setShowPreview(true)}
+              className="inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
+            >
+              <FlaskConical className="h-4 w-4" />
+              Preview
+            </button>
             {availableUpdate && (
               <button
                 onClick={async () => {
@@ -598,6 +608,16 @@ export default function PluginDetailPage() {
           </div>
         </dl>
       </div>
+
+      {/* Plugin Preview Sandbox */}
+      {showPreview && (
+        <PluginPreview
+          pluginId={pluginId}
+          pluginName={plugin.name}
+          isActive={plugin.isActive}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
       {/* Uninstall confirmation modal */}
       {confirmUninstall && (
