@@ -504,7 +504,8 @@ export async function createApp(db: Database) {
   app.use('/api/v1/payments/*', rateLimit('payments', 10)); // 10/min
   app.use('/api/v1/public/search/*', rateLimit('search', 60)); // 60/min
   app.use('/api/v1/search/*', rateLimit('search-admin', 60));
-  app.use('/api/v1/*', rateLimit('global', 100)); // 100/min
+  app.use('/api/v1/public/*', rateLimit('public', 500)); // 500/min for storefront
+  app.use('/api/v1/*', rateLimit('global', 200)); // 200/min for authenticated
 
   // Auth middleware — protects all routes except /health and /auth/login
   app.use('*', createAuthMiddleware(authService));
