@@ -572,7 +572,7 @@ export class PluginLoader {
         const manifestPath = join(pkgPath, 'forkcart-plugin.json');
         const manifest = JSON.parse(readFileSync(manifestPath, 'utf-8')) as Record<string, unknown>;
         if (manifest.slug) {
-          (def as Record<string, unknown>)._manifestSlug = manifest.slug;
+          (def as unknown as Record<string, unknown>)._manifestSlug = manifest.slug;
         }
       } catch {
         // No manifest — that's fine
@@ -692,7 +692,7 @@ export class PluginLoader {
 
     // Use manifest slug if available, otherwise derive from plugin name
     const pluginSlug =
-      ((def as Record<string, unknown>)._manifestSlug as string) ??
+      ((def as unknown as Record<string, unknown>)._manifestSlug as string) ??
       def.name.toLowerCase().replace(/\s+/g, '-');
 
     const [plugin] = await this.db

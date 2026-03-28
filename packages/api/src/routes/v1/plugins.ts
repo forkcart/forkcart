@@ -292,11 +292,28 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
           const result = (await response.json()) as { html?: string };
           return c.json({ data: { html: result.html ?? '', source: 'api' } });
         }
+
+        // apiRoute returned non-OK status
+        console.error(`[plugins] apiRoute for ${plugin.name} returned ${response.status}`);
+        return c.json({
+          data: {
+            html: `<div style="text-align:center;padding:2rem;color:#dc2626"><p style="font-weight:600;">Plugin content error</p><p style="font-size:0.85em;margin-top:0.5rem;color:#888">apiRoute <code>${apiRoute}</code> returned HTTP ${response.status}</p></div>`,
+            source: 'error',
+          },
+        });
       } catch (error) {
         console.error(
           `[plugins] Failed to fetch admin page content via apiRoute for ${plugin.name}:`,
           error,
         );
+        // apiRoute exists but failed — show error instead of misleading "no content" message
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
+        return c.json({
+          data: {
+            html: `<div style="text-align:center;padding:2rem;color:#dc2626"><p style="font-weight:600;">Failed to load plugin content</p><p style="font-size:0.85em;margin-top:0.5rem;color:#888">apiRoute <code>${apiRoute}</code> returned an error: ${errMsg}</p></div>`,
+            source: 'error',
+          },
+        });
       }
     }
 
