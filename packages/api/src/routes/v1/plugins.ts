@@ -94,7 +94,25 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
         const routePath = page.contentRoute.startsWith('/')
           ? page.contentRoute
           : `/${page.contentRoute}`;
-        const internalUrl = `${c.req.url.split('/api/')[0]}/api/v1/public/plugins/${pluginSlug}${routePath}`;
+
+        // Pass the full requested path and any wildcard remainder to the contentRoute
+        // e.g. page pattern '/blog/*', requested '/blog/my-post' → slug='my-post'
+        const requestedPath = pagePath;
+        const pagePattern = page.path.replace(/\/?\*$/, '');
+        const pathRemainder = requestedPath.startsWith(pagePattern + '/')
+          ? requestedPath.slice(pagePattern.length + 1)
+          : '';
+        const queryParams = new URLSearchParams();
+        if (pathRemainder) queryParams.set('slug', pathRemainder);
+        queryParams.set('path', requestedPath);
+        // Forward original query params from the storefront request
+        const originalUrl = new URL(c.req.url);
+        originalUrl.searchParams.forEach((v, k) => {
+          if (!queryParams.has(k)) queryParams.set(k, v);
+        });
+
+        const qs = queryParams.toString();
+        const internalUrl = `${c.req.url.split('/api/')[0]}/api/v1/public/plugins/${pluginSlug}${routePath}${qs ? '?' + qs : ''}`;
 
         const response = await fetch(internalUrl, {
           headers: { Accept: 'application/json' },

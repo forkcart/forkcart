@@ -1165,6 +1165,58 @@ routes(router) {
 
 When `contentRoute` is set, the API internally calls `GET /api/v1/public/plugins/<plugin-slug><contentRoute>` and returns the HTML in the response.
 
+**For wildcard pages** (e.g. `path: '/blog/*'`), the system automatically passes the dynamic portion as query parameters to your `contentRoute`:
+
+- `?slug=<remainder>` — the path after the wildcard prefix (e.g. `my-post` for `/blog/my-post`)
+- `?path=<full-path>` — the full requested path (e.g. `/blog/my-post`)
+
+This enables **server-side rendering of dynamic content** — critical for SEO:
+
+```typescript
+storefrontPages: [
+  {
+    path: '/blog/*',
+    title: 'Blog Post',
+    contentRoute: '/storefront/blog-post',
+  },
+],
+
+routes(router) {
+  // This route receives ?slug=my-post&path=/blog/my-post
+  router.get('/storefront/blog-post', async (c) => {
+    const slug = c.req.query('slug');
+    const db = c.get('db');
+
+    const result = await db.execute(
+      `SELECT * FROM plugin_blog_posts WHERE slug = $1 AND status = 'published'`,
+      [slug]
+    );
+    const post = result.rows?.[0];
+
+    if (!post) {
+      return c.json({ html: '<div><h2>Post not found</h2><a href="/ext/blog">← Back</a></div>' });
+    }
+
+    // ✅ SSR: Return COMPLETE HTML with content — Google sees everything
+    return c.json({
+      html: `
+        <article>
+          <h1>${post.title}</h1>
+          <div>${post.content}</div>
+        </article>
+      `
+    });
+  });
+},
+```
+
+> 🔍 **SEO Best Practice:** Always render content server-side via `contentRoute` when possible. If your `contentRoute` returns an empty shell with a client-side `fetch()` script, search engines will only see "Loading..." — no content, no ranking.
+>
+> | Approach                  | Google sees              | SEO   |
+> | ------------------------- | ------------------------ | ----- |
+> | ✅ SSR via contentRoute   | Full HTML with content   | Great |
+> | ❌ CSR via script + fetch | "Loading..." placeholder | Bad   |
+
 ### Navigation Integration
 
 Pages with `showInNav: true` automatically appear in the storefront header. The storefront fetches the page list from `GET /api/v1/public/plugins/pages` and renders nav links for pages that have `showInNav` enabled.
