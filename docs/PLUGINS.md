@@ -2175,7 +2175,7 @@ migrations: [{
 
 **Checklist:**
 
-1. Is your plugin in one of the scanned directories? (`data/plugins/`, `packages/plugins/`, `plugins/`, or `node_modules/`)
+1. Is your plugin in `data/plugins/<slug>/`?
 2. Does `package.json` exist in the plugin root?
 3. Does `package.json` have `"keywords": ["forkcart-plugin"]` or a name starting with `forkcart-plugin-`?
 4. Is the plugin already registered? (The loader skips already-known plugins)
