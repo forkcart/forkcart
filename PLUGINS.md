@@ -15,6 +15,7 @@ Everything you need to build, ship, and maintain ForkCart plugins.
 - [Custom API Routes](#custom-api-routes)
 - [Admin Pages](#admin-pages)
 - [Storefront Integration](#storefront-integration)
+- [window.FORKCART Context](#windowforkcart-context)
 - [PageBuilder Blocks](#pagebuilder-blocks)
 - [Database Migrations](#database-migrations)
 - [Scheduled Tasks](#scheduled-tasks)
@@ -22,6 +23,8 @@ Everything you need to build, ship, and maintain ForkCart plugins.
 - [Permissions](#permissions)
 - [Plugin Store](#plugin-store)
 - [Health Checks & Conflict Detection](#health-checks--conflict-detection)
+- [Plugin Dev CLI](#plugin-dev-cli)
+- [Plugin Preview & Sandbox](#plugin-preview--sandbox)
 - [Hot Reload (Dev Mode)](#hot-reload-dev-mode)
 - [Gotchas & Common Mistakes](#gotchas--common-mistakes)
 
@@ -418,6 +421,46 @@ For PageBuilder blocks that haven't been manually placed by the admin, `PluginBl
 
 ---
 
+## window.FORKCART Context
+
+Every storefront page sets `window.FORKCART` with page-specific data that your plugin scripts can read. This is the primary way to get context about the current page without parsing URLs yourself.
+
+The root layout always provides:
+
+```ts
+window.FORKCART.apiUrl; // Base API URL (e.g. "http://localhost:3000")
+```
+
+### Properties per page type
+
+| Page     | `pageType`   | Additional properties                            |
+| -------- | ------------ | ------------------------------------------------ |
+| Product  | `"product"`  | `productId` (UUID), `productSlug`                |
+| Category | `"category"` | `categorySlug`, `categoryId` (UUID, if resolved) |
+| Cart     | `"cart"`     | —                                                |
+| Checkout | `"checkout"` | —                                                |
+| Search   | `"search"`   | `query` (the search string, if present)          |
+| Account  | `"account"`  | —                                                |
+
+### Usage in plugin scripts
+
+```ts
+// Inside your storefrontSlot or pageBuilderBlock <script>:
+const fc = window.FORKCART || {};
+
+if (fc.pageType === 'product') {
+  fetch(`${fc.apiUrl}/api/v1/public/plugins/my-widget/recs?product=${fc.productId}`)
+    .then((r) => r.json())
+    .then((data) => {
+      // Render recommendations
+    });
+}
+```
+
+> **Note:** On SSR pages (product, category, search), `window.FORKCART` is set via an inline `<script>` tag that runs before your plugin scripts. On client-rendered pages (cart, checkout, account), it's set via `useEffect` — so it's available by the time the DOM settles, but not during the very first synchronous tick.
+
+---
+
 ## PageBuilder Blocks
 
 Register blocks for the Craft.js-based PageBuilder:
@@ -442,6 +485,10 @@ pageBuilderBlocks: [
 ```
 
 Blocks with a `defaultSlot` appear automatically on matching pages even if the admin hasn't placed them in the PageBuilder template. Once placed manually, the fallback is suppressed.
+
+### Block Fetch Deduplication
+
+When multiple `PluginBlock` components render concurrently (common with several blocks on one page), the storefront deduplicates the API call. Only **one** request to `/api/v1/public/plugins/blocks` is made — all concurrent renders share the same in-flight promise. Results are cached in memory for 5 minutes and also leverage the Next.js fetch cache (`revalidate: 300`). You don't need to do anything special — this is automatic.
 
 ---
 
@@ -492,6 +539,29 @@ up: async (db, { ref, schema }) => {
 
   // schema for programmatic introspection
   const orderCols = Object.keys(schema.orders); // ['id', 'order_number', 'status', ...]
+};
+```
+
+### Core Schema Reference: `product_categories`
+
+The `product_categories` table is a **many-to-many junction table** linking products to categories. While `products.category_id` holds the _primary_ category, `product_categories` is the canonical table for **all** category assignments (including the primary one). It has a composite primary key:
+
+| Column        | Type   | Notes               |
+| ------------- | ------ | ------------------- |
+| `product_id`  | `UUID` | PK, FK → products   |
+| `category_id` | `UUID` | PK, FK → categories |
+
+Use it in migrations when you need to reference multi-category assignments:
+
+```ts
+up: async (db, { ref }) => {
+  await db.execute(`
+    CREATE TABLE plugin_my_widget_category_stats (
+      category_id ${ref('product_categories.category_id')} NOT NULL,
+      product_count INTEGER DEFAULT 0,
+      PRIMARY KEY (category_id)
+    );
+  `);
 };
 ```
 
@@ -655,6 +725,74 @@ Detects:
 - **Hook conflicts** — Multiple plugins filtering the same event
 - **Slot conflicts** — Multiple plugins claiming the same slot with identical order
 - **Block conflicts** — Multiple plugins registering a PageBuilder block with the same name
+
+---
+
+## Plugin Dev CLI
+
+The `plugin:dev` command gives you a watch-build-reload loop for local plugin development:
+
+```bash
+npx forkcart plugin:dev <slug>
+```
+
+This will:
+
+1. **Resolve** your plugin directory in `data/plugins/<slug>/`
+2. **Build** `src/index.ts` → `dist/index.js` using esbuild (ESM, Node platform, bundled)
+3. **Watch** the `src/` directory for `.ts`, `.js`, `.json`, and `.mjs` changes (200ms debounce)
+4. **Rebuild** on every change
+5. **Hot-reload** the plugin on the running server via `POST /api/v1/plugins/:id/reload`
+
+### Options
+
+| Option        | Default            | Description                                |
+| ------------- | ------------------ | ------------------------------------------ |
+| `-p, --port`  | `3000`             | ForkCart server port                       |
+| `--host`      | `http://localhost` | ForkCart server host                       |
+| `--no-reload` | —                  | Only rebuild on change, skip server reload |
+
+### Example
+
+```bash
+# Watch and auto-reload on the default server
+npx forkcart plugin:dev my-widget
+
+# Custom port, no auto-reload (manual testing)
+npx forkcart plugin:dev my-widget --port 4000 --no-reload
+```
+
+If the server isn't running, the CLI still builds — it just skips the reload step and prints a warning. You can use `--no-reload` for a pure build-watch workflow without a running ForkCart instance.
+
+> **Tip:** The build creates a temporary `@forkcart/plugin-sdk` shim in `node_modules/` so esbuild can bundle without the SDK installed as a real dependency. This is the same approach the Plugin Store uses for server-side compilation.
+
+---
+
+## Plugin Preview & Sandbox
+
+The admin panel includes a **Plugin Preview** modal that lets you inspect everything a plugin registers — without visiting the storefront.
+
+### Opening the Preview
+
+In the admin **Plugins** list, click the preview (👁) button on any plugin. The modal opens as a full-screen overlay.
+
+### The 3 Tabs
+
+| Tab                    | Shows                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Storefront Slots**   | Every slot the plugin injects content into (e.g. `product-page-bottom`). Click a slot to expand and preview its rendered HTML.  |
+| **PageBuilder Blocks** | All blocks the plugin provides for the drag-and-drop PageBuilder, with their icon, description, default slot, and page filters. |
+| **Admin Widgets**      | Custom admin pages registered by the plugin. Click a page to load and preview its content inline.                               |
+
+Each tab shows a count badge so you can see at a glance what a plugin contributes.
+
+### Viewport Switcher
+
+The top-right corner has a **Desktop / Tablet / Mobile** toggle (Monitor, Tablet, Smartphone icons). Switching viewport resizes the preview content area to `100%`, `768px`, or `375px` width — useful for checking how plugin output looks on different screen sizes.
+
+### Inactive Plugins
+
+If the plugin is inactive, the preview shows a warning instead of content. Inactive plugins don't register their slots, blocks, or admin pages, so there's nothing to preview — activate first.
 
 ---
 
