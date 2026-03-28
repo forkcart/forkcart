@@ -1,10 +1,8 @@
 import { eq } from 'drizzle-orm';
-import { execFile } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { watch, type FSWatcher } from 'node:fs';
-import { readdir } from 'node:fs/promises';
+import { readdir, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { promisify } from 'node:util';
 import type { Database } from '@forkcart/database';
 import { plugins, pluginSettings } from '@forkcart/database/schemas';
 import type { PaymentProvider } from '../payments/provider';
@@ -21,12 +19,7 @@ import { encryptSecret, decryptSecret, isEncrypted } from '../utils/crypto';
 import { ScopedDatabase } from './scoped-database';
 import { MigrationRunner } from './migration-runner';
 
-const execFileAsync = promisify(execFile);
 const logger = createLogger('plugin-loader');
-
-/** Validate npm package name to prevent command injection */
-const VALID_PACKAGE_NAME_REGEX =
-  /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[a-zA-Z0-9._-]+)?$/;
 
 // ─── Legacy definition (backward compat with existing registerDefinition calls) ─
 
@@ -192,7 +185,7 @@ interface ActivePluginState {
 
 /**
  * Unified plugin loader — handles both legacy registerDefinition() plugins
- * and new SDK-style `definePlugin()` plugins discovered from node_modules.
+ * and new SDK-style `definePlugin()` plugins discovered from data/plugins/.
  */
 export class PluginLoader {
   private legacyPlugins = new Map<string, LegacyPluginDefinition>();
@@ -381,29 +374,17 @@ export class PluginLoader {
     const slug = (pluginMetadata?.slug as string) ?? null;
     const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
 
-    // Build search paths — try slug first (most reliable), then normalized name
+    // Search paths in data/plugins/ — slug first (most reliable), then normalized name
+    const dataPluginsDir = join(process.cwd(), 'data', 'plugins');
+
     const slugPaths = slug
-      ? [
-          join(process.cwd(), '..', '..', 'packages', 'plugins', slug, `forkcart-plugin-${slug}`),
-          join(process.cwd(), '..', '..', 'packages', 'plugins', slug),
-          join(process.cwd(), 'data', 'plugins', slug, `forkcart-plugin-${slug}`),
-          join(process.cwd(), 'data', 'plugins', slug),
-          join(process.cwd(), 'plugins', slug, `forkcart-plugin-${slug}`),
-          join(process.cwd(), 'plugins', slug),
-        ]
+      ? [join(dataPluginsDir, slug, `forkcart-plugin-${slug}`), join(dataPluginsDir, slug)]
       : [];
 
     const namePaths = [
-      // Monorepo: packages/plugins/<slug>/<package-name>/ (nested from ZIP extract)
-      join(process.cwd(), '..', '..', 'packages', 'plugins', dirName, `forkcart-plugin-${dirName}`),
-      join(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
-      join(process.cwd(), '..', '..', 'packages', 'plugins', pluginName),
-      // Standalone: data/plugins/<slug>
-      join(process.cwd(), 'data', 'plugins', dirName),
-      join(process.cwd(), 'data', 'plugins', pluginName),
-      // Standalone: plugins/<slug>
-      join(process.cwd(), 'plugins', dirName),
-      join(process.cwd(), 'plugins', pluginName),
+      join(dataPluginsDir, dirName, `forkcart-plugin-${dirName}`),
+      join(dataPluginsDir, dirName),
+      join(dataPluginsDir, pluginName),
     ];
 
     const possiblePaths = [...slugPaths, ...namePaths];
@@ -420,63 +401,15 @@ export class PluginLoader {
       }
     }
 
-    // Also try loading as npm package (might be installed but not discovered yet)
-    try {
-      const def = await this.loadPlugin(pluginName);
-      if (def) return def;
-    } catch {
-      // Not an npm package
-    }
-
-    // Try the forkcart-plugin- prefixed package name
-    try {
-      const packageName = `forkcart-plugin-${dirName}`;
-      const def = await this.loadPlugin(packageName);
-      if (def) return def;
-    } catch {
-      // Not found
-    }
-
     return null;
   }
 
-  /** Scan node_modules AND local plugin directories for plugins */
+  /** Scan data/plugins/ for store-installed and local dev plugins */
   async discoverPlugins(): Promise<SdkPluginDefinition[]> {
     const discovered: SdkPluginDefinition[] = [];
 
-    // 1. Scan node_modules for npm-installed plugins
-    const nodeModulesPath = resolve(process.cwd(), 'node_modules');
-    try {
-      const entries = await readdir(nodeModulesPath, { withFileTypes: true });
-
-      for (const entry of entries) {
-        // Check top-level forkcart-plugin-* packages
-        if (entry.isDirectory() && entry.name.startsWith('forkcart-plugin-')) {
-          const def = await this.tryLoadPluginFromPath(join(nodeModulesPath, entry.name));
-          if (def) discovered.push(def);
-        }
-        // Check @forkcart scoped packages
-        if (entry.isDirectory() && entry.name === '@forkcart') {
-          const scopedPath = join(nodeModulesPath, '@forkcart');
-          const scopedEntries = await readdir(scopedPath, { withFileTypes: true });
-          for (const scopedEntry of scopedEntries) {
-            if (scopedEntry.isDirectory() && scopedEntry.name.startsWith('plugin-')) {
-              const def = await this.tryLoadPluginFromPath(join(scopedPath, scopedEntry.name));
-              if (def) discovered.push(def);
-            }
-          }
-        }
-      }
-    } catch {
-      logger.warn('Could not scan node_modules for plugins');
-    }
-
-    // 2. Scan local plugin directories (for registry-installed plugins)
-    const localPluginDirs = [
-      resolve(process.cwd(), '..', '..', 'packages', 'plugins'), // Monorepo
-      resolve(process.cwd(), 'data', 'plugins'), // Standalone
-      resolve(process.cwd(), 'plugins'), // Standalone alt
-    ];
+    // Single source: data/plugins/
+    const localPluginDirs = [resolve(process.cwd(), 'data', 'plugins')];
 
     for (const pluginsDir of localPluginDirs) {
       try {
@@ -612,70 +545,51 @@ export class PluginLoader {
     }
   }
 
-  /** Dynamically import a plugin by package name */
-  async loadPlugin(packageName: string): Promise<SdkPluginDefinition | null> {
-    try {
-      const mod = (await import(packageName)) as Record<string, unknown>;
-      const def = (mod['default'] ?? mod) as SdkPluginDefinition;
-
-      if (!def.name || !def.version || !def.type) {
-        logger.warn({ packageName }, 'Invalid plugin definition — missing name/version/type');
-        return null;
-      }
-
-      this.registerSdkPlugin(def);
-      return def;
-    } catch (error) {
-      logger.error({ packageName, error }, 'Failed to load plugin');
-      return null;
-    }
-  }
-
   // ─── Install / Uninstall ──────────────────────────────────────────────────
 
-  /** Install a plugin package via pnpm */
-  async installPlugin(packageName: string): Promise<SdkPluginDefinition | null> {
-    if (!VALID_PACKAGE_NAME_REGEX.test(packageName)) {
-      throw new Error(`Invalid package name: ${packageName}`);
-    }
-
-    logger.info({ packageName }, 'Installing plugin');
-    try {
-      await execFileAsync('pnpm', ['add', packageName], { cwd: process.cwd() });
-      return await this.loadPlugin(packageName);
-    } catch (error) {
-      logger.error({ packageName, error }, 'Failed to install plugin');
-      throw new Error(`Failed to install plugin: ${packageName}`);
-    }
+  /**
+   * Install a plugin.
+   * Actual ZIP download + extraction is handled by the plugin-store API route.
+   * This method loads an already-extracted plugin from data/plugins/.
+   */
+  async installPlugin(pluginName: string): Promise<SdkPluginDefinition | null> {
+    logger.info({ pluginName }, 'Loading installed plugin from data/plugins/');
+    return this.tryLoadInstalledPlugin(pluginName);
   }
 
-  /** Uninstall a plugin package */
-  async uninstallPlugin(packageName: string): Promise<void> {
-    if (!VALID_PACKAGE_NAME_REGEX.test(packageName)) {
-      throw new Error(`Invalid package name: ${packageName}`);
-    }
-
-    logger.info({ packageName }, 'Uninstalling plugin');
+  /** Uninstall a plugin — deactivate, remove from DB, delete from disk */
+  async uninstallPlugin(pluginName: string): Promise<void> {
+    logger.info({ pluginName }, 'Uninstalling plugin');
 
     // Deactivate first if active
     const plugin = await this.db.query.plugins.findFirst({
-      where: eq(plugins.name, packageName),
+      where: eq(plugins.name, pluginName),
     });
     if (plugin?.isActive) {
       await this.deactivatePlugin(plugin.id);
     }
 
-    try {
-      await execFileAsync('pnpm', ['remove', packageName], { cwd: process.cwd() });
-    } catch {
-      // Plugin may not be an npm dependency (e.g. registered via store/registry)
-      logger.info({ packageName }, 'Plugin not found as npm dependency — removing from DB only');
-    }
-
-    this.sdkPlugins.delete(packageName);
+    this.sdkPlugins.delete(pluginName);
 
     // Remove from DB
-    await this.db.delete(plugins).where(eq(plugins.name, packageName));
+    await this.db.delete(plugins).where(eq(plugins.name, pluginName));
+
+    // Delete plugin directory from disk
+    const dirName = pluginName.toLowerCase().replace(/\s+/g, '-');
+    const slug = (plugin?.metadata as Record<string, unknown> | null)?.slug as string | undefined;
+    const pluginsDir = resolve(process.cwd(), 'data', 'plugins');
+
+    // Try slug-based dir first, then name-based
+    for (const dir of [slug, dirName].filter(Boolean)) {
+      const dirPath = join(pluginsDir, dir!);
+      try {
+        await rm(dirPath, { recursive: true, force: true });
+        logger.info({ pluginName, dirPath }, 'Deleted plugin directory');
+        break;
+      } catch {
+        // Directory may not exist at this path
+      }
+    }
   }
 
   // ─── DB sync ──────────────────────────────────────────────────────────────
@@ -1716,7 +1630,7 @@ export class PluginLoader {
         author: p.author,
         type: (p.metadata as Record<string, string>)?.type ?? 'general',
         isActive: p.isActive,
-        source: sdkDef ? 'sdk' : legacyDef ? 'legacy' : 'unknown',
+        source: sdkDef ? 'store' : legacyDef ? 'local' : 'unknown',
         settings: p.settings.map((s) => ({
           key: s.key,
           value: this.isSecretSetting(p.name, s.key) ? (s.value ? '••••••••' : null) : s.value,
@@ -2023,14 +1937,9 @@ export class PluginLoader {
       const slug =
         ((sdkDef as unknown as Record<string, unknown>)._manifestSlug as string) ?? dirName;
       const possiblePaths = [
-        resolve(process.cwd(), '..', '..', 'packages', 'plugins', slug, `forkcart-plugin-${slug}`),
-        resolve(process.cwd(), '..', '..', 'packages', 'plugins', slug),
-        resolve(process.cwd(), '..', '..', 'packages', 'plugins', dirName),
         resolve(process.cwd(), 'data', 'plugins', slug, `forkcart-plugin-${slug}`),
         resolve(process.cwd(), 'data', 'plugins', slug),
         resolve(process.cwd(), 'data', 'plugins', dirName),
-        resolve(process.cwd(), 'plugins', slug),
-        resolve(process.cwd(), 'plugins', dirName),
       ];
 
       for (const p of possiblePaths) {
