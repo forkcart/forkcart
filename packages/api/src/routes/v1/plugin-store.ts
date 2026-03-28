@@ -232,6 +232,7 @@ export function createPluginStoreRoutes(
 
         // 3b. Auto-compile TypeScript → JavaScript
         const { existsSync, writeFileSync } = await import('node:fs');
+        const { execSync: execSyncFn } = await import('node:child_process');
         const pluginSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
         const pluginDir = existsSync(pluginSubDir) ? pluginSubDir : targetDir;
         const srcEntry = resolve(pluginDir, 'src', 'index.ts');
@@ -252,7 +253,7 @@ export function createPluginStoreRoutes(
             const distDir = resolve(pluginDir, 'dist');
             mkdirSync(distDir, { recursive: true });
 
-            execSync(
+            execSyncFn(
               `npx esbuild "${srcEntry}" --outfile="${resolve(distDir, 'index.js')}" --format=esm --platform=node --bundle --external:hono --loader:.ts=ts`,
               { cwd: pluginDir, timeout: 15000 },
             );
