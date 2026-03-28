@@ -1565,7 +1565,22 @@ export class PluginLoader {
     metaDescription?: string;
   } | null {
     const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    return this.storefrontPages.get(normalizedPath) ?? null;
+
+    // Exact match first
+    const exact = this.storefrontPages.get(normalizedPath);
+    if (exact) return exact;
+
+    // Wildcard match: find pages with '*' patterns (e.g. '/blog/*' matches '/blog/my-post')
+    for (const [pattern, page] of this.storefrontPages) {
+      if (pattern.includes('*')) {
+        const prefix = pattern.replace(/\/?\*$/, '');
+        if (normalizedPath.startsWith(prefix + '/') || normalizedPath === prefix) {
+          return page;
+        }
+      }
+    }
+
+    return null;
   }
 
   // ─── PageBuilder Blocks API ─────────────────────────────────────────────────
