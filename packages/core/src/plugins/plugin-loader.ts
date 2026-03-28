@@ -287,6 +287,17 @@ export class PluginLoader {
    * Validate that all declared dependencies of a plugin are installed and active.
    * Throws if any dependency is missing or inactive.
    */
+  /** Find SDK definition by scanning all registered plugins (slug/name match) */
+  private findSdkDefByName(name: string): SdkPluginDefinition | undefined {
+    const normalized = name.toLowerCase().replace(/\s+/g, '-');
+    for (const [key, def] of this.sdkPlugins) {
+      if (key === normalized || def.name === name || def.name === normalized) {
+        return def;
+      }
+    }
+    return undefined;
+  }
+
   /** Find SDK definition by DB name or metadata slug */
   private findSdkDef(
     dbName: string,
@@ -1715,7 +1726,7 @@ export class PluginLoader {
     const results: Array<{ pluginName: string; healthy: boolean; message?: string }> = [];
 
     for (const [pluginName, state] of this.activeStates) {
-      const sdkDef = this.sdkPlugins.get(pluginName);
+      const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
       if (!sdkDef) {
         results.push({ pluginName, healthy: true, message: 'Legacy plugin (no health check)' });
         continue;
@@ -1853,7 +1864,7 @@ export class PluginLoader {
     // 1. Route path conflicts
     const routePaths = new Map<string, string[]>();
     for (const [pluginName] of this.pluginRouteRegistrars) {
-      const sdkDef = this.sdkPlugins.get(pluginName);
+      const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
       if (!sdkDef?.routes) continue;
       // Extract route paths by running the registrar against a fake router
       const paths: string[] = [];
@@ -1972,7 +1983,7 @@ export class PluginLoader {
     }
 
     // Find the plugin's directory — use tracked path first, then search
-    const sdkDef = this.sdkPlugins.get(pluginName);
+    const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
     if (!sdkDef) {
       return { watching: false, reason: `Plugin '${pluginName}' not found` };
     }
@@ -2104,7 +2115,7 @@ export class PluginLoader {
     fromVersion: string,
     toVersion: string,
   ): Promise<void> {
-    const sdkDef = this.sdkPlugins.get(pluginName);
+    const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
     if (!sdkDef) return;
 
     logger.info({ pluginName, fromVersion, toVersion }, 'Plugin version update detected');
@@ -2171,7 +2182,7 @@ export class PluginLoader {
     }> = [];
 
     for (const [pluginName] of this.activeStates) {
-      const sdkDef = this.sdkPlugins.get(pluginName);
+      const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
       if (sdkDef?.adminPages && sdkDef.adminPages.length > 0) {
         result.push({
           pluginName,
@@ -2193,7 +2204,7 @@ export class PluginLoader {
 
   /** Get the HTML content for a specific plugin admin page */
   getPluginAdminPageContent(pluginName: string, pagePath: string): string | null {
-    const sdkDef = this.sdkPlugins.get(pluginName);
+    const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
     if (!sdkDef?.adminPages) return null;
 
     // Normalize path for comparison
@@ -2205,7 +2216,7 @@ export class PluginLoader {
 
   /** Get the API route for a specific plugin admin page (if configured) */
   getPluginAdminPageApiRoute(pluginName: string, pagePath: string): string | null {
-    const sdkDef = this.sdkPlugins.get(pluginName);
+    const sdkDef = this.sdkPlugins.get(pluginName) ?? this.findSdkDefByName(pluginName);
     if (!sdkDef?.adminPages) return null;
 
     const normalizedPath = pagePath.startsWith('/') ? pagePath : `/${pagePath}`;
