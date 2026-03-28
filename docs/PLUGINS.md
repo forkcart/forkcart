@@ -1294,6 +1294,29 @@ routes: (router) => {
 },
 ```
 
+### Calling the API from Admin Pages
+
+The admin panel runs on a different port (default 3001) than the API (default 4000). **Do not use relative URLs** like `/api/v1/...` in your admin page scripts — they will hit the admin server instead of the API.
+
+Use `window.__FORKCART_API_URL` which is automatically set by the admin app:
+
+```ts
+content: `
+  <div id="stats">Loading...</div>
+  <script>
+    const API = window.__FORKCART_API_URL || 'http://localhost:4000';
+    fetch(API + '/api/v1/public/plugins/my-plugin/stats')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('stats').innerHTML =
+          '<p>Total: ' + data.total + '</p>';
+      });
+  </script>
+`,
+```
+
+> **Important:** Always use `window.__FORKCART_API_URL` as the base URL for API calls in admin page scripts. The value is set from the `NEXT_PUBLIC_API_URL` environment variable (falls back to `http://localhost:4000`).
+
 ### Admin Page Properties
 
 | Property   | Type     | Required | Description                                                           |

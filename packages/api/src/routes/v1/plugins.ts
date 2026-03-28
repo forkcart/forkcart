@@ -466,63 +466,149 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
   return router;
 }
 
-/** Mount plugin custom routes under /api/v1/plugins/<pluginName>/ */
+/**
+ * Build a Hono sub-router for a plugin's custom routes.
+ */
+function buildPluginRouter(
+  pluginName: string,
+  registrar: (router: unknown) => void,
+  pluginLoader: PluginLoader,
+): Hono {
+  const pluginRouter = new Hono();
+
+  const pluginContext = pluginLoader.getPluginContext(pluginName) as {
+    settings?: Record<string, unknown>;
+    db?: unknown;
+    logger?: unknown;
+  } | null;
+
+  const wrap = (handler: (c: unknown) => unknown) => (c: Context) => {
+    if (pluginContext) {
+      c.set('pluginSettings', pluginContext.settings || {});
+      c.set('db', pluginContext.db);
+      c.set('logger', pluginContext.logger);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return handler(c) as any;
+  };
+
+  const routerAdapter = {
+    get: (path: string, handler: (c: unknown) => unknown) => pluginRouter.get(path, wrap(handler)),
+    post: (path: string, handler: (c: unknown) => unknown) =>
+      pluginRouter.post(path, wrap(handler)),
+    put: (path: string, handler: (c: unknown) => unknown) => pluginRouter.put(path, wrap(handler)),
+    delete: (path: string, handler: (c: unknown) => unknown) =>
+      pluginRouter.delete(path, wrap(handler)),
+    patch: (path: string, handler: (c: unknown) => unknown) =>
+      pluginRouter.patch(path, wrap(handler)),
+  };
+
+  registrar(routerAdapter);
+  return pluginRouter;
+}
+
+/** Slugify a plugin name for URL use (e.g., "FOMO Badges" -> "fomo-badges") */
+function slugifyPluginName(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+/**
+ * Mount plugin custom routes dynamically using a wildcard catch-all handler.
+ *
+ * Instead of statically mounting each plugin's routes at startup (which means
+ * plugins installed/activated AFTER startup won't have their routes available),
+ * this registers a single wildcard route that resolves the correct plugin router
+ * at request time. Plugin routers are cached and invalidated when the set of
+ * registered route registrars changes (e.g., after plugin activation/deactivation/reload).
+ */
 export function mountPluginRoutes(
   parentRouter: Hono,
   pluginLoader: PluginLoader,
   basePath: string = '',
 ): void {
-  const registrars = pluginLoader.getPluginRouteRegistrars();
+  // Cache: slug -> built Hono router
+  const routerCache = new Map<string, Hono>();
+  // Snapshot of registrar keys to detect changes
+  let lastRegistrarSnapshot = '';
 
-  for (const [pluginName, registrar] of registrars) {
-    const pluginRouter = new Hono();
+  const invalidateStaleCaches = () => {
+    const registrars = pluginLoader.getPluginRouteRegistrars();
+    const currentSnapshot = [...registrars.keys()].map(slugifyPluginName).sort().join(',');
 
-    // Slugify plugin name for URL (e.g., "FOMO Badges" -> "fomo-badges")
-    const pluginSlug = pluginName
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '');
-
-    // Get the plugin context (settings, db, etc.) from the loader
-    const pluginContext = pluginLoader.getPluginContext(pluginName) as {
-      settings?: Record<string, unknown>;
-      db?: unknown;
-      logger?: unknown;
-    } | null;
-
-    // Create a wrapper that injects plugin context into Hono context
-    const wrap = (handler: (c: unknown) => unknown) => (c: Context) => {
-      // Inject plugin-specific context variables
-      if (pluginContext) {
-        c.set('pluginSettings', pluginContext.settings || {});
-        c.set('db', pluginContext.db);
-        c.set('logger', pluginContext.logger);
-      }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return handler(c) as any;
-    };
-
-    const routerAdapter = {
-      get: (path: string, handler: (c: unknown) => unknown) =>
-        pluginRouter.get(path, wrap(handler)),
-      post: (path: string, handler: (c: unknown) => unknown) =>
-        pluginRouter.post(path, wrap(handler)),
-      put: (path: string, handler: (c: unknown) => unknown) =>
-        pluginRouter.put(path, wrap(handler)),
-      delete: (path: string, handler: (c: unknown) => unknown) =>
-        pluginRouter.delete(path, wrap(handler)),
-      patch: (path: string, handler: (c: unknown) => unknown) =>
-        pluginRouter.patch(path, wrap(handler)),
-    };
-
-    try {
-      registrar(routerAdapter);
-      // Mount under /api/v1/public/plugins/<pluginSlug>/
-      const routePath = basePath ? `${basePath}/plugins/${pluginSlug}` : `/plugins/${pluginSlug}`;
-      parentRouter.route(routePath, pluginRouter);
-      console.log(`[plugins] Mounted custom routes for plugin: ${pluginName} at ${routePath}`);
-    } catch (error) {
-      console.error(`[plugins] Failed to mount routes for plugin: ${pluginName}`, error);
+    if (currentSnapshot !== lastRegistrarSnapshot) {
+      routerCache.clear();
+      lastRegistrarSnapshot = currentSnapshot;
     }
-  }
+  };
+
+  const routePath = basePath ? `${basePath}/plugins/:slug/*` : `/plugins/:slug/*`;
+
+  parentRouter.all(routePath, async (c) => {
+    const slug = c.req.param('slug');
+    if (!slug) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin slug required' } }, 404);
+    }
+
+    // Invalidate stale caches if registrars changed (lightweight key comparison)
+    invalidateStaleCaches();
+
+    // Check cache
+    let pluginRouter = routerCache.get(slug);
+
+    if (!pluginRouter) {
+      // Find the registrar for this slug
+      const registrars = pluginLoader.getPluginRouteRegistrars();
+      let matchedName: string | undefined;
+      let matchedRegistrar: ((router: unknown) => void) | undefined;
+
+      for (const [pluginName, registrar] of registrars) {
+        if (slugifyPluginName(pluginName) === slug) {
+          matchedName = pluginName;
+          matchedRegistrar = registrar;
+          break;
+        }
+      }
+
+      if (!matchedName || !matchedRegistrar) {
+        return c.json(
+          { error: { code: 'NOT_FOUND', message: `No routes registered for plugin: ${slug}` } },
+          404,
+        );
+      }
+
+      try {
+        pluginRouter = buildPluginRouter(matchedName, matchedRegistrar, pluginLoader);
+        routerCache.set(slug, pluginRouter);
+        console.log(`[plugins] Built dynamic router for plugin: ${matchedName} (slug: ${slug})`);
+      } catch (error) {
+        console.error(`[plugins] Failed to build router for plugin: ${matchedName}`, error);
+        return c.json(
+          { error: { code: 'PLUGIN_ROUTE_ERROR', message: 'Failed to initialize plugin routes' } },
+          500,
+        );
+      }
+    }
+
+    // Strip prefix so the plugin router sees clean sub-paths
+    const fullPath = c.req.path;
+    const pluginPrefix = basePath ? `${basePath}/plugins/${slug}` : `/plugins/${slug}`;
+    const subPath = fullPath.slice(fullPath.indexOf(pluginPrefix) + pluginPrefix.length) || '/';
+
+    const url = new URL(c.req.url);
+    url.pathname = subPath;
+
+    const subRequest = new Request(url.toString(), {
+      method: c.req.method,
+      headers: c.req.raw.headers,
+      body: c.req.raw.body,
+      duplex: 'half',
+    } as RequestInit);
+
+    return pluginRouter.fetch(subRequest);
+  });
+
+  console.log(`[plugins] Dynamic plugin route handler registered at ${routePath}`);
 }

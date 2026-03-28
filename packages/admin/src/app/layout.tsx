@@ -15,6 +15,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.png" type="image/png" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.__FORKCART_API_URL = "${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}";`,
+          }}
+        />
       </head>
       <body className={inter.className}>
         <Providers>{children}</Providers>
