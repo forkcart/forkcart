@@ -55,6 +55,87 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
     return c.json({ data: fallbacks });
   });
 
+  /** List all registered storefront pages */
+  router.get('/pages', async (c) => {
+    const pages = pluginLoader.getStorefrontPages();
+    return c.json({ data: pages });
+  });
+
+  /** Get content for a specific storefront page */
+  router.get('/pages/*', async (c) => {
+    // Extract path from the URL after /pages
+    const fullPath = c.req.path;
+    const pagesIdx = fullPath.indexOf('/pages/');
+    const pagePath = pagesIdx >= 0 ? fullPath.slice(pagesIdx + '/pages'.length) : '/';
+
+    const page = pluginLoader.getStorefrontPage(pagePath);
+    if (!page) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Page not found' } }, 404);
+    }
+
+    // If page has static content, return it directly
+    if (page.content) {
+      return c.json({
+        data: {
+          ...page,
+          html: page.content,
+          source: 'static',
+        },
+      });
+    }
+
+    // If page has a contentRoute, call the plugin's route internally
+    if (page.contentRoute) {
+      try {
+        const pluginSlug = page.pluginName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const routePath = page.contentRoute.startsWith('/')
+          ? page.contentRoute
+          : `/${page.contentRoute}`;
+        const internalUrl = `${c.req.url.split('/api/')[0]}/api/v1/public/plugins/${pluginSlug}${routePath}`;
+
+        const response = await fetch(internalUrl, {
+          headers: { Accept: 'application/json' },
+        });
+
+        if (response.ok) {
+          const result = (await response.json()) as { html?: string };
+          return c.json({
+            data: {
+              ...page,
+              html: result.html ?? '',
+              source: 'api',
+            },
+          });
+        }
+
+        return c.json(
+          {
+            error: {
+              code: 'CONTENT_FETCH_FAILED',
+              message: `contentRoute returned HTTP ${response.status}`,
+            },
+          },
+          502,
+        );
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : 'Unknown error';
+        return c.json({ error: { code: 'CONTENT_FETCH_FAILED', message: errMsg } }, 502);
+      }
+    }
+
+    // No content configured
+    return c.json({
+      data: {
+        ...page,
+        html: '',
+        source: 'empty',
+      },
+    });
+  });
+
   /** List all available slots (for debugging/admin preview) */
   router.get('/slots', async (c) => {
     const allSlots = pluginLoader.getAllStorefrontSlots();

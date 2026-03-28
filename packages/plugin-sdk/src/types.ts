@@ -180,6 +180,34 @@ export type PluginFilters = {
   [K in PluginFilterName]?: PluginFilterHandler;
 };
 
+// ─── Storefront pages (plugin-owned frontend pages) ─────────────────────────
+
+/** A full storefront page owned by a plugin */
+export interface PluginStorefrontPage {
+  /** URL path (without locale prefix), e.g. '/wishlist' or '/loyalty/rewards' */
+  path: string;
+  /** Page title for <title> tag and breadcrumbs */
+  title: string;
+  /** Static HTML content to render */
+  content?: string;
+  /** API route path (relative to plugin routes) that returns { html: string } for dynamic content */
+  contentRoute?: string;
+  /** Additional JS scripts to load (inline or URLs) */
+  scripts?: string[];
+  /** Additional CSS to inject */
+  styles?: string;
+  /** Show link in storefront navigation header */
+  showInNav?: boolean;
+  /** Navigation label (defaults to title) */
+  navLabel?: string;
+  /** Navigation icon (optional) */
+  navIcon?: string;
+  /** Require authentication to access */
+  requireAuth?: boolean;
+  /** Meta description for SEO */
+  metaDescription?: string;
+}
+
 // ─── Storefront slots (frontend extension points) ───────────────────────────
 
 /** Storefront slot positions for injecting custom content */
@@ -386,6 +414,9 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
 
   /** Storefront slots for injecting custom frontend content */
   storefrontSlots?: StorefrontSlotContent[];
+
+  /** Full storefront pages owned by this plugin (rendered under /ext/<path>) */
+  storefrontPages?: PluginStorefrontPage[];
 
   /** PageBuilder blocks — custom blocks that appear in the Craft.js PageBuilder.
    *  Blocks with a `defaultSlot` will automatically fall back to that slot

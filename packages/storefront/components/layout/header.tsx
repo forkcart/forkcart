@@ -9,6 +9,7 @@ import { LocaleLink } from '@/components/locale-link';
 import { StorefrontLanguageSwitcher } from '@/components/i18n/language-switcher';
 import { CurrencySwitcher } from '@/components/currency/currency-switcher';
 import { SearchOverlay } from './search-overlay';
+import { usePluginNavPages } from '@/hooks/use-plugin-nav-pages';
 
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -16,6 +17,7 @@ export function Header() {
   const { itemCount, setCartOpen } = useCart();
   const { customer } = useAuth();
   const { t } = useTranslation();
+  const pluginNavPages = usePluginNavPages();
 
   const openSearch = useCallback(() => setSearchOpen(true), []);
   const closeSearch = useCallback(() => setSearchOpen(false), []);
@@ -56,6 +58,15 @@ export function Header() {
               >
                 {t('nav.shop')}
               </LocaleLink>
+              {pluginNavPages.map((page) => (
+                <LocaleLink
+                  key={page.path}
+                  href={`/ext${page.path}`}
+                  className="text-sm font-medium text-gray-600 transition hover:text-gray-900"
+                >
+                  {page.navLabel || page.title}
+                </LocaleLink>
+              ))}
             </nav>
 
             {/* Actions */}
@@ -120,6 +131,16 @@ export function Header() {
               >
                 {t('nav.shop')}
               </LocaleLink>
+              {pluginNavPages.map((page) => (
+                <LocaleLink
+                  key={page.path}
+                  href={`/ext${page.path}`}
+                  onClick={() => setMobileOpen(false)}
+                  className="block py-2 text-sm font-medium text-gray-600"
+                >
+                  {page.navLabel || page.title}
+                </LocaleLink>
+              ))}
               <div className="flex gap-2 pt-2">
                 <CurrencySwitcher className="flex-1 rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />
                 <StorefrontLanguageSwitcher className="flex-1 rounded-md border bg-transparent px-2 py-1.5 text-sm text-gray-600" />

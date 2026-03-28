@@ -89,6 +89,19 @@ interface SdkPluginDefinition {
   }>;
   routes?: (router: unknown) => void;
   storefrontSlots?: Array<{ slot: string; content: string; order?: number; pages?: string[] }>;
+  storefrontPages?: Array<{
+    path: string;
+    title: string;
+    content?: string;
+    contentRoute?: string;
+    scripts?: string[];
+    styles?: string;
+    showInNav?: boolean;
+    navLabel?: string;
+    navIcon?: string;
+    requireAuth?: boolean;
+    metaDescription?: string;
+  }>;
   pageBuilderBlocks?: Array<{
     name: string;
     label: string;
@@ -205,6 +218,25 @@ export class PluginLoader {
   private storefrontSlots = new Map<
     string,
     Array<{ pluginName: string; content: string; order: number; pages?: string[] }>
+  >();
+
+  // ─── Storefront Pages Registry ───────────────────────────────────────────────
+  private storefrontPages = new Map<
+    string,
+    {
+      pluginName: string;
+      path: string;
+      title: string;
+      content?: string;
+      contentRoute?: string;
+      scripts?: string[];
+      styles?: string;
+      showInNav?: boolean;
+      navLabel?: string;
+      navIcon?: string;
+      requireAuth?: boolean;
+      metaDescription?: string;
+    }
   >();
 
   // ─── CLI Commands Registry ─────────────────────────────────────────────────
@@ -852,6 +884,13 @@ export class PluginLoader {
       }
     }
 
+    // Unregister storefront pages
+    for (const [path, page] of this.storefrontPages) {
+      if (page.pluginName === plugin.name) {
+        this.storefrontPages.delete(path);
+      }
+    }
+
     // Unregister pageBuilderBlocks
     for (const [key] of this.pageBuilderBlocks) {
       if (key.startsWith(`${plugin.name}:`)) {
@@ -960,6 +999,28 @@ export class PluginLoader {
         });
         existing.sort((a, b) => a.order - b.order);
         this.storefrontSlots.set(slot.slot, existing);
+      }
+    }
+
+    // Register storefront pages
+    if (def.storefrontPages) {
+      for (const page of def.storefrontPages) {
+        const normalizedPath = page.path.startsWith('/') ? page.path : `/${page.path}`;
+        this.storefrontPages.set(normalizedPath, {
+          pluginName,
+          path: normalizedPath,
+          title: page.title,
+          content: page.content,
+          contentRoute: page.contentRoute,
+          scripts: page.scripts,
+          styles: page.styles,
+          showInNav: page.showInNav,
+          navLabel: page.navLabel,
+          navIcon: page.navIcon,
+          requireAuth: page.requireAuth,
+          metaDescription: page.metaDescription,
+        });
+        logger.debug({ pluginName, path: normalizedPath }, 'Storefront page registered');
       }
     }
 
@@ -1461,6 +1522,50 @@ export class PluginLoader {
     Array<{ pluginName: string; content: string; order: number }>
   > {
     return this.storefrontSlots;
+  }
+
+  // ─── Storefront Pages API ───────────────────────────────────────────────────
+
+  /** Get all registered storefront pages */
+  getStorefrontPages(): Array<{
+    pluginName: string;
+    path: string;
+    title: string;
+    showInNav?: boolean;
+    navLabel?: string;
+    navIcon?: string;
+    requireAuth?: boolean;
+    metaDescription?: string;
+  }> {
+    return [...this.storefrontPages.values()].map((p) => ({
+      pluginName: p.pluginName,
+      path: p.path,
+      title: p.title,
+      showInNav: p.showInNav,
+      navLabel: p.navLabel,
+      navIcon: p.navIcon,
+      requireAuth: p.requireAuth,
+      metaDescription: p.metaDescription,
+    }));
+  }
+
+  /** Get a specific storefront page by path */
+  getStorefrontPage(path: string): {
+    pluginName: string;
+    path: string;
+    title: string;
+    content?: string;
+    contentRoute?: string;
+    scripts?: string[];
+    styles?: string;
+    showInNav?: boolean;
+    navLabel?: string;
+    navIcon?: string;
+    requireAuth?: boolean;
+    metaDescription?: string;
+  } | null {
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return this.storefrontPages.get(normalizedPath) ?? null;
   }
 
   // ─── PageBuilder Blocks API ─────────────────────────────────────────────────
