@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+
+# Rebuild dist to prevent stale-dist bugs
+# (Node loads dist/, not source — changes are invisible without rebuild)
+pnpm build 2>/dev/null || true
+
+# Format check
+pnpm format:check

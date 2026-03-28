@@ -274,7 +274,9 @@ export function createPluginStoreRoutes(
         const dbUrl =
           process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
         const escapeSql = (s: string) => s.replace(/'/g, "''");
-        const insertSql = `INSERT INTO plugins (id, name, version, description, author, is_active, entry_point, metadata, installed_at, updated_at) VALUES (gen_random_uuid(), '${escapeSql(String(plugin.name))}', '${escapeSql(String(latestVersion.version))}', '${escapeSql(String(plugin.shortDescription || plugin.description || ''))}', '${escapeSql(String(plugin.author || 'Community'))}', true, '${escapeSql(String(plugin.packageName || ''))}', '${escapeSql(JSON.stringify({ source: 'registry', slug: String(plugin.slug) }))}', NOW(), NOW()) ON CONFLICT DO NOTHING;`;
+        // Use slug as DB name (matches definePlugin technical name), store display name in metadata
+        const dbName = String(plugin.slug || plugin.name);
+        const insertSql = `INSERT INTO plugins (id, name, version, description, author, is_active, entry_point, metadata, installed_at, updated_at) VALUES (gen_random_uuid(), '${escapeSql(dbName)}', '${escapeSql(String(latestVersion.version))}', '${escapeSql(String(plugin.shortDescription || plugin.description || ''))}', '${escapeSql(String(plugin.author || 'Community'))}', true, '${escapeSql(String(plugin.packageName || ''))}', '${escapeSql(JSON.stringify({ source: 'registry', slug: String(plugin.slug), displayName: String(plugin.name), installedTo: targetDir }))}', NOW(), NOW()) ON CONFLICT DO NOTHING;`;
         try {
           execSync(`psql "${dbUrl}" -c "${insertSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
         } catch {
@@ -403,7 +405,7 @@ export function createPluginStoreRoutes(
         const mod = (await import(cacheBustUrl)) as Record<string, unknown>;
         const def = (mod['default'] ?? mod) as Record<string, unknown>;
 
-        if (def.name && def.version) {
+        if (def.name && def.version && pluginLoader) {
           pluginLoader.registerSdkPlugin(def as never);
           const settings: Record<string, unknown> = {};
           await pluginLoader.activateSdkPlugin(String(def.name), def as never, settings);

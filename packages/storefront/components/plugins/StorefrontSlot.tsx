@@ -7,6 +7,7 @@
 
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from './sanitize-plugin-html';
+import { ScriptExecutor } from './script-executor';
 
 export interface StorefrontSlotProps {
   /** The slot name to render (e.g., 'header-after', 'footer-before') */
@@ -81,12 +82,10 @@ export async function StorefrontSlot({ slotName, currentPage, className }: Store
           <div key={`${item.pluginName}-${index}`} data-plugin={item.pluginName}>
             {/* Render HTML content */}
             <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
-            {/* Render scripts separately so they execute */}
+            {/* Use ScriptExecutor instead of <script> tags — inline scripts inside
+                React Suspense hidden boundaries are NOT executed by the browser */}
             {inlineScripts.map((scriptContent, i) => (
-              <script
-                key={`${item.pluginName}-script-${i}`}
-                dangerouslySetInnerHTML={{ __html: scriptContent }}
-              />
+              <ScriptExecutor key={`${item.pluginName}-script-${i}`} content={scriptContent} />
             ))}
           </div>
         );

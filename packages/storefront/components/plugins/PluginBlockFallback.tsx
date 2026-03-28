@@ -11,6 +11,7 @@
 
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from './sanitize-plugin-html';
+import { ScriptExecutor } from './script-executor';
 
 export interface PluginBlockFallbackProps {
   /** The slot to render fallbacks for (e.g., 'product-page-bottom') */
@@ -98,10 +99,12 @@ export async function PluginBlockFallback({
             data-fallback
           >
             <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
+            {/* Use ScriptExecutor instead of <script> tags — inline scripts inside
+                React Suspense hidden boundaries are NOT executed by the browser */}
             {inlineScripts.map((scriptContent, i) => (
-              <script
+              <ScriptExecutor
                 key={`${block.pluginName}-${block.name}-fallback-script-${i}`}
-                dangerouslySetInnerHTML={{ __html: scriptContent }}
+                content={scriptContent}
               />
             ))}
           </div>
