@@ -9,6 +9,7 @@
 
 import { API_URL } from '@/lib/config';
 import { sanitizePluginHtml } from '@/components/plugins/sanitize-plugin-html';
+import { ScriptExecutor } from '@/components/plugins/script-executor';
 
 interface PluginBlockProps {
   pluginName: string;
@@ -79,11 +80,10 @@ export async function PluginBlockRenderer({ pluginName, blockName }: PluginBlock
   return (
     <div data-plugin-block={`${pluginName}:${blockName}`} data-plugin={pluginName}>
       <div dangerouslySetInnerHTML={{ __html: sanitizePluginHtml(htmlWithoutScripts) }} />
+      {/* Use ScriptExecutor instead of <script> tags — inline scripts inside
+          React Suspense hidden boundaries are NOT executed by the browser */}
       {inlineScripts.map((scriptContent, i) => (
-        <script
-          key={`${pluginName}-${blockName}-script-${i}`}
-          dangerouslySetInnerHTML={{ __html: scriptContent }}
-        />
+        <ScriptExecutor key={`${pluginName}-${blockName}-script-${i}`} content={scriptContent} />
       ))}
     </div>
   );
