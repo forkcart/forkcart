@@ -504,7 +504,9 @@ export async function createApp(db: Database) {
   app.use('/api/v1/payments/*', rateLimit('payments', 10)); // 10/min
   app.use('/api/v1/public/search/*', rateLimit('search', 60)); // 60/min
   app.use('/api/v1/search/*', rateLimit('search-admin', 60));
-  app.use('/api/v1/public/*', rateLimit('public', 500)); // 500/min for storefront
+  // Public storefront endpoints — no rate limit (SSR + client hydration = too many requests)
+  // Rate limiting should be handled at the reverse proxy (Caddy/nginx) level instead
+  // app.use('/api/v1/public/*', rateLimit('public', 500));
   // Global rate limit — skip for /public/* (already covered above)
   app.use('/api/v1/*', async (c, next) => {
     if (c.req.path.startsWith('/api/v1/public/')) return next();
