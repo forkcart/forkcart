@@ -1,101 +1,151 @@
-# ForkCart Plugin Development Guide
+# ForkCart Plugin Developer Guide
 
-Build plugins that extend ForkCart — payment providers, marketplaces, email services, shipping, analytics, and custom features.
+Build plugins that extend ForkCart — payment providers, marketplaces, email services, shipping, analytics, and custom features. This guide covers everything from your first plugin to publishing on the Plugin Store.
+
+---
 
 ## Table of Contents
 
-- [Quick Start](#quick-start)
+- [Introduction](#introduction)
+- [Quick Start: Your First Plugin in 5 Minutes](#quick-start-your-first-plugin-in-5-minutes)
 - [Plugin Types](#plugin-types)
-- [Plugin Installation & Loading](#plugin-installation--loading)
-- [Package.json Requirements](#packagejson-requirements)
-- [Settings Schema](#settings-schema)
-- [Event Hooks](#event-hooks)
-- [Filters (Data Transformation)](#filters-data-transformation)
-- [Storefront Slots](#storefront-slots)
-- [Storefront Integration](#storefront-integration)
-- [PageBuilder Blocks](#pagebuilder-blocks)
+- [Plugin Structure](#plugin-structure)
+  - [Directory Layout](#directory-layout)
+  - [package.json Requirements](#packagejson-requirements)
+  - [forkcart-plugin.json Manifest](#forkcart-pluginjson-manifest)
+- [Plugin Definition (definePlugin)](#plugin-definition-defineplugin)
+- [Settings & Configuration](#settings--configuration)
+  - [Setting Types](#setting-types)
+  - [Secret Settings Encryption](#secret-settings-encryption)
+  - [Required Settings Validation](#required-settings-validation)
+- [Lifecycle Hooks](#lifecycle-hooks)
+  - [Plugin Context](#plugin-context)
+  - [Activation Order](#activation-order)
+- [Event Hooks & Filters](#event-hooks--filters)
+  - [Event Hooks](#event-hooks)
+  - [Event Payloads](#event-payloads)
+  - [Filters (Data Transformation)](#filters-data-transformation)
+- [Database Migrations](#database-migrations)
+  - [Migration Helpers: ref() and schema](#migration-helpers-ref-and-schema)
+  - [Core Schema Reference](#core-schema-reference)
+  - [The product_categories Junction Table](#the-product_categories-junction-table)
+  - [ScopedDatabase.execute() in Migrations](#scopeddatabaseexecute-in-migrations)
+  - [How Migrations Work](#how-migrations-work)
+  - [Common Migration Mistakes](#common-migration-mistakes)
 - [Custom API Routes](#custom-api-routes)
-- [Admin Pages](#admin-pages)
+- [Storefront Integration](#storefront-integration)
+  - [Storefront Slots](#storefront-slots)
+  - [How Slots Are Rendered](#how-slots-are-rendered)
+  - [ScriptExecutor — Why This Exists](#scriptexecutor--why-this-exists)
+  - [window.FORKCART Context](#windowforkcart-context)
+  - [Accessing Plugin Settings from the Storefront](#accessing-plugin-settings-from-the-storefront)
+  - [Storefront Slot API Endpoint](#storefront-slot-api-endpoint)
+- [PageBuilder Blocks](#pagebuilder-blocks)
+  - [Registering Blocks](#registering-blocks)
+  - [Block Definition Reference](#block-definition-reference)
+  - [The Fallback Mechanism](#the-fallback-mechanism)
+  - [Block Fetch Deduplication](#block-fetch-deduplication)
+  - [Admin PageBuilder Integration](#admin-pagebuilder-integration)
+  - [Storefront Usage](#storefront-usage)
+  - [How PluginBlock Works in Craft.js](#how-pluginblock-works-in-craftjs)
+  - [Block API Endpoints](#block-api-endpoints)
+- [Admin Pages & Widgets](#admin-pages--widgets)
+  - [Static Content](#static-content)
+  - [Dynamic Content via API Route](#dynamic-content-via-api-route)
+  - [Admin Page Properties](#admin-page-properties)
 - [CLI Commands](#cli-commands)
 - [Scheduled Tasks](#scheduled-tasks)
-- [Database Migrations](#database-migrations)
-- [Lifecycle Hooks](#lifecycle-hooks)
-- [Plugin Context](#plugin-context)
 - [Permissions](#permissions)
-- [Security Model](#security-model)
+  - [Permission → Table Mapping](#permission--table-mapping)
 - [Plugin Dependencies](#plugin-dependencies)
-- [Health Check API](#health-check-api)
-- [Dev Mode & Hot Reload](#dev-mode--hot-reload)
-- [Conflict Detection](#conflict-detection)
-- [Query Stats & Rate Limiting](#query-stats--rate-limiting)
+- [Plugin Installation & Loading](#plugin-installation--loading)
+  - [Discovery Directories](#discovery-directories)
+  - [How Plugins Are Loaded](#how-plugins-are-loaded)
+  - [Nested Directory Support](#nested-directory-support)
+  - [Plugin Registration in Database](#plugin-registration-in-database)
+  - [Installation Methods](#installation-methods)
+- [Plugin Dev CLI (plugin:dev)](#plugin-dev-cli-plugindev)
+- [Plugin Preview & Sandbox](#plugin-preview--sandbox)
+  - [The 3 Tabs](#the-3-tabs)
+  - [Viewport Switcher](#viewport-switcher)
+- [Hot Reload (Dev Mode)](#hot-reload-dev-mode)
+- [Plugin Store (Publishing & Installation)](#plugin-store-publishing--installation)
+  - [Publishing to the Marketplace](#publishing-to-the-marketplace)
+  - [Publishing as npm Package](#publishing-as-npm-package)
+  - [Installation from Store](#installation-from-store)
+  - [Updates](#updates)
+- [Security Model](#security-model)
+  - [ScopedDatabase](#scopeddatabase)
+  - [Table Naming Convention (Enforced)](#table-naming-convention-enforced)
+  - [Storefront HTML Sanitization](#storefront-html-sanitization)
+  - [Package Name Validation](#package-name-validation)
+  - [Query Stats & Rate Limiting](#query-stats--rate-limiting)
+- [Health Checks & Conflict Detection](#health-checks--conflict-detection)
+  - [Health Checks](#health-checks)
+  - [Conflict Detection](#conflict-detection)
 - [Provider Implementations](#provider-implementations)
-- [Full Example: Discount Codes Plugin](#full-example-discount-codes-plugin)
-- [Publishing](#publishing)
+  - [Payment Provider](#payment-provider)
+  - [Marketplace Provider](#marketplace-provider)
+  - [Email Provider](#email-provider)
+  - [Shipping Provider](#shipping-provider)
 - [Best Practices](#best-practices)
-- [Troubleshooting](#troubleshooting)
+- [Troubleshooting & Common Gotchas](#troubleshooting--common-gotchas)
+- [Full API Reference](#full-api-reference)
+  - [Plugin Management Endpoints](#plugin-management-endpoints)
+  - [Plugin Store Endpoints](#plugin-store-endpoints)
+  - [Public Plugin Endpoints](#public-plugin-endpoints)
+  - [Scheduled Task Endpoints](#scheduled-task-endpoints)
+  - [Available Events](#available-events)
+  - [Available Filters](#available-filters)
+  - [Available Storefront Slots](#available-storefront-slots)
+- [Full Examples](#full-examples)
+  - [Discount Codes Plugin](#discount-codes-plugin)
+  - [Nyx Recommendations Plugin](#nyx-recommendations-plugin)
 - [Need Help?](#need-help)
 
 ---
 
-## Quick Start
+## Introduction
 
-### 1. Create Plugin Structure
+ForkCart plugins are self-contained ES modules that extend every part of the platform — from storefront UI to payment processing, from admin dashboards to scheduled background tasks. The plugin system is inspired by WordPress, Shopware, and WooCommerce, but built for modern TypeScript with full type safety.
 
-```
-my-plugin/
-├── src/
-│   └── index.ts          # Plugin definition
-├── forkcart-plugin.json  # Plugin manifest (required for marketplace)
-├── package.json          # NPM package info (must have "type": "module")
-├── README.md             # Documentation
-└── tsconfig.json
-```
+**Key concepts:**
 
-### 2. Create the Manifest (`forkcart-plugin.json`)
+- **`definePlugin()`** — A single function that declares everything your plugin does
+- **ScopedDatabase** — Permission-aware database access (plugins never touch the raw DB)
+- **Storefront Slots** — Inject HTML/JS into predefined storefront positions
+- **PageBuilder Blocks** — Drag-and-drop blocks with automatic fallback rendering
+- **Plugin Store** — One-click install, auto-compilation, and hot reload
 
-```json
-{
-  "name": "My Awesome Plugin",
-  "slug": "my-awesome-plugin",
-  "packageName": "forkcart-plugin-my-awesome",
-  "version": "1.0.0",
-  "type": "general",
-  "description": "Does awesome things",
-  "author": "Your Name",
-  "license": "MIT",
-  "minForkcartVersion": "0.5.0",
-  "entryPoint": "dist/index.js"
-}
+---
+
+## Quick Start: Your First Plugin in 5 Minutes
+
+```bash
+mkdir forkcart-plugin-my-widget && cd forkcart-plugin-my-widget
+npm init -y
+npm install --save-dev @forkcart/plugin-sdk typescript
 ```
 
-| Field                | Required | Description                                      |
-| -------------------- | -------- | ------------------------------------------------ |
-| `name`               | ✅       | Human-readable plugin name                       |
-| `slug`               | ✅       | URL-safe identifier (lowercase, hyphens)         |
-| `packageName`        | ✅       | NPM package name                                 |
-| `version`            | ✅       | Semver version                                   |
-| `type`               | ✅       | Plugin type (see below)                          |
-| `description`        |          | Short description for marketplace                |
-| `author`             |          | Author name                                      |
-| `license`            |          | License (MIT, GPL-3.0, etc.)                     |
-| `minForkcartVersion` |          | Minimum ForkCart version required                |
-| `entryPoint`         |          | Path to compiled JS entry point (default: dist/) |
+Create `src/index.ts`:
 
-### 3. Define Your Plugin
-
-```typescript
-// src/index.ts
+```ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
-  name: 'my-awesome-plugin',
+  name: 'my-widget',
   version: '1.0.0',
   type: 'general',
-  description: 'Does awesome things',
-  author: 'Your Name',
+  description: 'My first ForkCart plugin',
+  author: 'You',
 
   settings: {
-    apiKey: { type: 'string', label: 'API Key', required: true, secret: true },
+    apiKey: {
+      type: 'string',
+      label: 'API Key',
+      required: true,
+      secret: true,
+    },
     enabled: { type: 'boolean', label: 'Enabled', default: true },
   },
 
@@ -104,127 +154,57 @@ export default definePlugin({
       ctx.logger.info('New order!', { orderId: event.payload.orderId });
     },
   },
+
+  onActivate: async (ctx) => {
+    ctx.logger.info('Hello from my-widget!');
+  },
 });
 ```
+
+Build, copy to `data/plugins/my-widget/`, and activate from the admin panel. That's it — you have a working plugin.
 
 ---
 
 ## Plugin Types
 
-| Type          | Purpose                                    |
-| ------------- | ------------------------------------------ |
-| `payment`     | Payment gateways (Stripe, PayPal, Klarna)  |
-| `marketplace` | External marketplaces (Amazon, eBay, Otto) |
-| `email`       | Email providers (Mailgun, SendGrid, SMTP)  |
-| `shipping`    | Shipping & carriers (DHL, FedEx, UPS)      |
-| `analytics`   | Tracking & analytics (GA4, Plausible)      |
-| `general`     | Everything else                            |
+Every plugin declares a `type` that determines which provider interfaces it can implement:
+
+| Type          | Purpose                                    | Provider Interface    |
+| ------------- | ------------------------------------------ | --------------------- |
+| `payment`     | Payment gateways (Stripe, PayPal, Klarna)  | `PaymentProvider`     |
+| `marketplace` | External marketplaces (Amazon, eBay, Otto) | `MarketplaceProvider` |
+| `email`       | Email providers (Mailgun, SendGrid, SMTP)  | `EmailProvider`       |
+| `shipping`    | Shipping & carriers (DHL, FedEx, UPS)      | `ShippingProvider`    |
+| `analytics`   | Tracking & analytics (GA4, Plausible)      | —                     |
+| `general`     | Everything else                            | —                     |
 
 ---
 
-## Plugin Installation & Loading
+## Plugin Structure
 
-ForkCart discovers and loads plugins from multiple sources. Understanding this flow is essential for local plugin development.
+### Directory Layout
 
-### Discovery Directories
-
-The `PluginLoader.discoverPlugins()` method scans these directories in order:
-
-1. **`node_modules/`** — npm-installed plugins
-   - Top-level `forkcart-plugin-*` packages
-   - Scoped `@forkcart/plugin-*` packages
-2. **`packages/plugins/`** — monorepo local plugins (development)
-3. **`data/plugins/`** — registry-installed plugins (downloaded ZIPs)
-4. **`plugins/`** — standalone local plugins (alternative directory)
-
-Each directory is scanned for subdirectories containing a `package.json` with either:
-
-- The `"forkcart-plugin"` keyword in `keywords`
-- A package name starting with `forkcart-plugin-` or `@forkcart/plugin-`
-
-### How Plugins Are Loaded
-
-**npm packages** are imported via `import('package-name')` (standard Node.js resolution).
-
-**Local plugins** (from `packages/plugins/`, `data/plugins/`, or `plugins/`) are loaded using `file://` URL imports:
+Plugins live in `data/plugins/<slug>/`. This is the primary path the loader scans.
 
 ```
-file:///path/to/plugin/dist/index.js
+data/plugins/my-widget/
+├── forkcart-plugin.json    # Optional manifest (slug, display name, category)
+├── package.json            # Must have "forkcart-plugin" keyword or matching name prefix
+├── README.md               # Documentation (required for marketplace)
+├── src/
+│   └── index.ts            # Source (auto-compiled on install from Plugin Store)
+├── dist/
+│   └── index.js            # Entry point (package.json "main" field)
+└── tsconfig.json
 ```
 
-This means your local plugin must:
+### package.json Requirements
 
-- Have `"type": "module"` in `package.json`
-- Export a valid ES module from the entry point specified in `"main"`
-- Be compiled to JS (the `dist/` directory must exist)
-
-### Nested Directory Support
-
-When plugins are installed from the registry (ZIP downloads), they may extract into nested structures like:
-
-```
-packages/plugins/fomo-badges/forkcart-plugin-fomo-badges/
-```
-
-The loader handles this automatically by checking:
-
-1. `plugins/<slug>/` (direct)
-2. `plugins/<slug>/forkcart-plugin-<slug>/` (nested from ZIP)
-3. Any `forkcart-plugin-*` subfolder inside `plugins/<slug>/`
-
-### Plugin Registration in Database
-
-Once discovered, plugins are registered in the `plugins` DB table via `ensurePluginInDb()`. This stores:
-
-- Plugin name, version, description, author
-- Active/inactive state
-- Settings (with encrypted secrets)
-- Installation timestamp
-
-### Installation Methods
-
-**From Admin UI (Plugin Store):**
-
-1. Go to **Plugins** → **Marketplace**
-2. Browse or search plugins
-3. Click **Install** (downloads ZIP from registry, extracts to `packages/plugins/`)
-
-**From CLI (npm):**
-
-```bash
-forkcart plugin install forkcart-plugin-my-awesome
-forkcart plugin activate my-awesome
-```
-
-**From API:**
-
-```bash
-# Install via npm
-POST /api/v1/plugins/install
-Body: { "packageName": "forkcart-plugin-my-awesome" }
-
-# Discover local plugins
-POST /api/v1/plugins/discover
-
-# Install from registry
-POST /api/v1/store/:slug/install
-```
-
-**Manual (Local Development):**
-
-1. Create your plugin in `packages/plugins/my-plugin/`
-2. Run `POST /api/v1/plugins/discover` to register it
-3. Activate via the Admin UI or API
-
----
-
-## Package.json Requirements
-
-Your plugin's `package.json` must meet these requirements for the loader to import it:
+Your plugin's `package.json` must meet these requirements for the loader to discover and import it:
 
 ```json
 {
-  "name": "forkcart-plugin-my-awesome",
+  "name": "forkcart-plugin-my-widget",
   "version": "1.0.0",
   "type": "module",
   "main": "dist/index.js",
@@ -251,107 +231,288 @@ Your plugin's `package.json` must meet these requirements for the loader to impo
 | `exports`  | ✅       | Proper ESM exports map for Node.js resolution            |
 | `keywords` | ✅       | Must include `"forkcart-plugin"` for auto-discovery      |
 
-**Naming convention:** Package name should be `forkcart-plugin-<slug>` or `@forkcart/plugin-<slug>`.
+The loader identifies ForkCart plugins by:
+
+1. `keywords` array containing `"forkcart-plugin"`, **OR**
+2. Package name starting with `forkcart-plugin-` or `@forkcart/plugin-`
+
+### forkcart-plugin.json Manifest
+
+An optional (but recommended for marketplace) manifest file:
+
+```json
+{
+  "name": "My Widget",
+  "slug": "my-widget",
+  "packageName": "forkcart-plugin-my-widget",
+  "version": "1.0.0",
+  "type": "general",
+  "description": "Does awesome things",
+  "author": "Your Name",
+  "license": "MIT",
+  "category": "Marketing",
+  "minForkcartVersion": "0.5.0",
+  "entryPoint": "dist/index.js"
+}
+```
+
+| Field                | Required | Description                                      |
+| -------------------- | -------- | ------------------------------------------------ |
+| `name`               | ✅       | Human-readable plugin name                       |
+| `slug`               | ✅       | URL-safe identifier (lowercase, hyphens)         |
+| `packageName`        | ✅       | npm package name                                 |
+| `version`            | ✅       | Semver version                                   |
+| `type`               | ✅       | Plugin type (see above)                          |
+| `description`        |          | Short description for marketplace                |
+| `author`             |          | Author name                                      |
+| `license`            |          | License (MIT, GPL-3.0, etc.)                     |
+| `category`           |          | Category in the Plugin Store                     |
+| `minForkcartVersion` |          | Minimum ForkCart version required                |
+| `entryPoint`         |          | Path to compiled JS entry point (default: dist/) |
+
+The `slug` is used for DB lookups and URL routing. If absent, the loader derives it from the plugin name.
 
 ---
 
-## Settings Schema
+## Plugin Definition (definePlugin)
 
-Define settings that auto-generate admin UI forms:
+The SDK's `definePlugin()` is a typed identity function — it validates the shape at compile time and returns the definition as-is at runtime.
 
-```typescript
+```ts
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  // ─── Required ──────────────────────────────────────
+  name: 'my-widget', // Technical name (kebab-case)
+  version: '1.0.0', // Semver
+  type: 'general', // 'payment' | 'marketplace' | 'email' | 'shipping' | 'analytics' | 'general'
+  description: 'What it does',
+  author: 'Who made it',
+
+  // ─── Optional metadata ─────────────────────────────
+  homepage: 'https://example.com',
+  repository: 'https://github.com/you/my-widget',
+  license: 'MIT',
+  keywords: ['widget', 'storefront'],
+  minVersion: '0.1.0', // Minimum ForkCart version required
+
+  // ─── Features (all optional) ───────────────────────
+  settings: {}, // Admin-configurable settings
+  hooks: {}, // Event listeners
+  filters: {}, // Data transformation (like WordPress apply_filters)
+  routes: (router) => {}, // Custom API endpoints
+  adminPages: [], // Admin panel pages
+  storefrontSlots: [], // Inject HTML into storefront
+  pageBuilderBlocks: [], // Craft.js PageBuilder blocks
+  migrations: [], // Database schema changes
+  cli: [], // CLI commands
+  scheduledTasks: [], // Cron jobs
+  provider: {}, // Payment/shipping/email/marketplace provider methods
+  dependencies: [], // Other plugins that must be active
+  permissions: [], // Required capabilities
+
+  // ─── Lifecycle hooks ───────────────────────────────
+  onInstall: async (ctx) => {},
+  onActivate: async (ctx) => {},
+  onDeactivate: async (ctx) => {},
+  onUninstall: async (ctx) => {},
+  onUpdate: async (ctx, fromVersion) => {},
+  onReady: async (ctx) => {},
+  onError: async (error, source, ctx) => {},
+});
+```
+
+---
+
+## Settings & Configuration
+
+Settings are declared as a typed schema. The admin panel auto-generates a form from this schema — no UI code required.
+
+### Setting Types
+
+```ts
 settings: {
   // Text input
   apiKey: {
     type: 'string',
     label: 'API Key',
     required: true,
-    secret: true,        // Masked in UI, encrypted in DB
+    secret: true,           // Encrypted at rest, shown as •••••••• in admin
     placeholder: 'sk_...',
-    description: 'Your secret API key',
+    description: 'Your payment gateway API key',
   },
 
   // Number input
-  timeout: {
+  maxItems: {
     type: 'number',
-    label: 'Timeout (seconds)',
-    default: 30,
+    label: 'Max Items',
+    default: 10,
     min: 1,
-    max: 300,
+    max: 100,
   },
 
   // Checkbox
-  sandboxMode: {
+  enabled: {
     type: 'boolean',
-    label: 'Sandbox Mode',
-    default: false,
+    label: 'Enable Widget',
+    default: true,
   },
 
   // Dropdown
-  region: {
+  theme: {
     type: 'select',
-    label: 'Region',
-    options: ['US', 'EU', 'APAC'],
-    default: 'US',
+    label: 'Theme',
+    options: ['light', 'dark', 'auto'],
+    default: 'auto',
   },
-}
+},
 ```
+
+**Available types:** `string`, `number`, `boolean`, `select`.
+
+Settings are available in every lifecycle hook and route handler via `ctx.settings`. You never deal with encryption or storage yourself — the framework handles everything.
 
 ### Secret Settings Encryption
 
-Settings marked with `secret: true` are automatically encrypted at rest using AES-256-GCM. They are:
+Settings marked with `secret: true` are automatically encrypted at rest using AES-256-GCM:
 
-- Encrypted before being stored in the database
-- Decrypted when passed to plugin handlers via `ctx.settings`
-- Displayed as `••••••••` in the Admin API responses
+- **Encrypted** before being stored in the database
+- **Decrypted** when passed to plugin handlers via `ctx.settings`
+- **Displayed** as `••••••••` in Admin API responses
+
+When the admin saves settings, the loader only encrypts values that aren't already encrypted — so round-tripping the masked value won't corrupt the actual secret.
+
+### Required Settings Validation
+
+If a setting has `required: true`, the plugin **cannot be activated** until that setting is filled in. The loader checks this before calling `onActivate`, and the admin panel shows an error if required settings are missing.
 
 ---
 
-## Event Hooks
+## Lifecycle Hooks
 
-React to domain events:
+All lifecycle hooks receive a [Plugin Context](#plugin-context) object.
 
-```typescript
-hooks: {
-  // Order lifecycle
-  'order:created': async (event, ctx) => { },
-  'order:paid': async (event, ctx) => { },
-  'order:shipped': async (event, ctx) => { },
-  'order:cancelled': async (event, ctx) => { },
-  'order:refunded': async (event, ctx) => { },
+```ts
+onInstall: async (ctx) => {
+  // First-time setup
+  ctx.logger.info('Plugin installed!');
+},
 
-  // Product events
-  'product:created': async (event, ctx) => { },
-  'product:updated': async (event, ctx) => { },
-  'product:deleted': async (event, ctx) => { },
+onActivate: async (ctx) => {
+  // Start background tasks, register resources
+  // Called AFTER hooks, filters, slots, and migrations are registered
+},
 
-  // Cart events
-  'cart:created': async (event, ctx) => { },
-  'cart:updated': async (event, ctx) => { },
-  'cart:item-added': async (event, ctx) => { },
-  'cart:item-removed': async (event, ctx) => { },
+onDeactivate: async (ctx) => {
+  // Stop background tasks, clean up
+},
 
-  // Customer events
-  'customer:registered': async (event, ctx) => { },
-  'customer:updated': async (event, ctx) => { },
+onUninstall: async (ctx) => {
+  // Remove data, clean up completely
+},
 
-  // Checkout events
-  'checkout:started': async (event, ctx) => { },
-  'checkout:completed': async (event, ctx) => { },
+onUpdate: async (ctx, fromVersion) => {
+  // Handle version-specific migrations
+  if (fromVersion < '2.0.0') {
+    // Migrate old data format
+  }
+},
 
-  // Inventory events
-  'inventory:updated': async (event, ctx) => { },
-  'inventory:low': async (event, ctx) => { },
+onReady: async (ctx) => {
+  // Runs on EVERY server startup for active plugins
+  // Use for: cache warming, connection pools, health checks
+  ctx.logger.info('Plugin ready — warming caches...');
+},
 
-  // Plugin events
-  'plugin:activated': async (event, ctx) => { },
-  'plugin:deactivated': async (event, ctx) => { },
+onError: async (error, source, ctx) => {
+  // source = { type: 'hook' | 'route' | 'task' | 'filter', name: string }
+  ctx.logger.error(`Error in ${source.type}:${source.name}: ${error.message}`);
+  // Return true to suppress the error (prevent propagation)
+  // Return void/false to let it propagate normally
+},
+```
+
+| Hook           | When it's called                                   |
+| -------------- | -------------------------------------------------- |
+| `onInstall`    | Plugin is installed for the first time             |
+| `onActivate`   | Plugin is activated (toggled on)                   |
+| `onDeactivate` | Plugin is deactivated (toggled off)                |
+| `onUninstall`  | Plugin is being removed                            |
+| `onUpdate`     | A new version is detected (receives `fromVersion`) |
+| `onReady`      | Every API server startup, after activation         |
+| `onError`      | Unhandled error in a hook, route, or task          |
+
+> **`onReady` vs `onActivate`:** `onActivate` runs when the plugin is toggled on. `onReady` runs on **every server startup** for already-active plugins. Use `onReady` for anything that needs to happen after a server restart (cache warmup, health checks, connection pools).
+
+### Plugin Context
+
+Every handler receives a context object:
+
+```ts
+interface PluginContext {
+  /** Resolved settings values (secrets are decrypted) */
+  settings: ResolvedSettings;
+  /** Scoped database — permission-aware proxy (see Security Model) */
+  db: ScopedDatabase;
+  /** Scoped logger (prefixed with plugin name) */
+  logger: PluginLogger;
+  /** Event bus for subscribing / emitting */
+  eventBus: PluginEventBus;
 }
 ```
 
+The `db` field is a `ScopedDatabase` instance, **not** the raw Drizzle database handle. See [Security Model](#security-model) for details.
+
+### Activation Order
+
+When a plugin is activated, the following happens in order:
+
+1. Dependencies are validated (all required plugins must be installed and active)
+2. Required settings are validated (missing required settings block activation)
+3. Event hooks are registered on the EventBus
+4. Filters are registered
+5. Storefront slots are registered
+6. CLI commands are registered
+7. Scheduled tasks are registered
+8. Custom routes are registered
+9. Pending migrations are run (passing `db` + `{ ref, schema }` helpers)
+10. `onActivate` is called
+11. `onReady` is called (also on every server restart)
+12. Provider bridges are registered (payment, email, marketplace, shipping)
+
+---
+
+## Event Hooks & Filters
+
+### Event Hooks
+
+React to domain events. The full event list is in `@forkcart/plugin-sdk` → `events.ts`.
+
+```ts
+hooks: {
+  'order:paid': async (event, ctx) => {
+    const { orderId, total } = event.payload;
+    ctx.logger.info('Order paid!', { orderId, total });
+  },
+  'product:created': async (event, ctx) => {
+    // Sync new product to external marketplace
+  },
+},
+```
+
+You can import typed event constants from the SDK:
+
+```ts
+import { PLUGIN_EVENTS } from '@forkcart/plugin-sdk';
+
+// Use PLUGIN_EVENTS.ORDER_CREATED instead of 'order:created'
+```
+
+See [Available Events](#available-events) for the full list.
+
 ### Event Payloads
 
-```typescript
+```ts
 // order:created
 interface OrderCreatedPayload {
   orderId: string;
@@ -386,160 +547,334 @@ interface InventoryLowPayload {
 }
 ```
 
-You can import typed event constants from the SDK:
-
-```typescript
-import { PLUGIN_EVENTS } from '@forkcart/plugin-sdk';
-
-// Use PLUGIN_EVENTS.ORDER_CREATED instead of 'order:created'
-```
-
----
-
-## Filters (Data Transformation)
+### Filters (Data Transformation)
 
 Transform data as it flows through the system (inspired by WordPress `apply_filters`):
 
-```typescript
+```ts
 filters: {
-  // Modify product price
-  'product:price': (price, ctx) => {
-    return price * 0.9; // 10% off everything
+  'product:price': async (price, ctx) => {
+    return Math.round(price * 0.9); // 10% off everything
   },
-
-  // Filter search results
-  'search:results': (results, ctx) => {
+  'cart:total': async (total, ctx) => {
+    return total + 500; // +5.00 in cents
+  },
+  'search:results': async (results, ctx) => {
     return results.filter(p => p.isAvailable);
   },
-
-  // Modify cart totals
-  'cart:total': (total, ctx) => total,
-  'cart:shipping': (shipping, ctx) => shipping,
-  'cart:tax': (tax, ctx) => tax,
-
-  // Checkout customization
-  'checkout:payment-methods': (methods, ctx) => methods,
-  'checkout:shipping-methods': (methods, ctx) => methods,
-
-  // Order confirmation
-  'order:confirmation-email': (email, ctx) => email,
-
-  // Search
-  'search:query': (query, ctx) => query,
-
-  // Admin menu customization
-  'admin:menu': (menu, ctx) => menu,
-
-  // Storefront injection
-  'storefront:head': (html, ctx) => html,
-  'storefront:footer': (html, ctx) => html,
-}
+},
 ```
 
 Filters are applied in priority order (default priority: 10). If a filter handler throws, the data is returned unmodified.
 
+See [Available Filters](#available-filters) for the full list.
+
 ---
 
-## Storefront Slots
+## Database Migrations
 
-Inject HTML into the storefront:
+Plugins can create custom tables. Table names **must** be prefixed with `plugin_<name>_` (the ScopedDatabase enforces this).
 
-```typescript
-storefrontSlots: [
+```ts
+migrations: [
   {
-    slot: 'header-after',
-    content: '<div class="announcement">Free shipping over $50!</div>',
-    order: 10,
+    version: "1.0.0",
+    description: "Create widget_logs table",
+    up: async (db, helpers) => {
+      const r = helpers?.ref || (() => "UUID");
+
+      await db.execute(`
+        CREATE TABLE IF NOT EXISTS plugin_my_widget_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          product_id ${r("products.id")} NOT NULL,
+          customer_id ${r("customers.id")},
+          action VARCHAR(50) NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_widget_logs_product
+          ON plugin_my_widget_logs(product_id);
+      `);
+    },
+    down: async (db) => {
+      await db.execute("DROP TABLE IF EXISTS plugin_my_widget_logs;");
+    },
   },
-  {
-    slot: 'product-page-bottom',
-    content: '<img src="/trust-badge.png" alt="Trusted" />',
-    pages: ['/product/*'],
-  },
-];
+],
 ```
 
-**Available slots:**
+**Always provide a `down()` function** for rollback support, even if it's just `DROP TABLE`.
 
-| Slot                      | Location                |
-| ------------------------- | ----------------------- |
-| `head`                    | Inside `<head>`         |
-| `body-start`              | Start of `<body>`       |
-| `body-end`                | End of `<body>`         |
-| `header-before`           | Before header           |
-| `header-after`            | After header            |
-| `footer-before`           | Before footer           |
-| `footer-after`            | After footer            |
-| `product-page-top`        | Top of product page     |
-| `product-page-bottom`     | Bottom of product page  |
-| `product-page-sidebar`    | Product page sidebar    |
-| `cart-page-top`           | Top of cart page        |
-| `cart-page-bottom`        | Bottom of cart page     |
-| `checkout-before-payment` | Before payment form     |
-| `checkout-after-payment`  | After payment form      |
-| `category-page-top`       | Top of category page    |
-| `category-page-bottom`    | Bottom of category page |
+### Migration Helpers: ref() and schema
 
-### How Slots Are Rendered
+The second argument to `up()` provides two helpers:
 
-The `StorefrontSlot` component is a **Next.js Server Component** that:
+- **`ref(path)`** — Returns the SQL type for a core table column. This prevents you from guessing column types and keeps your migrations aligned with core schema changes.
 
-1. Fetches slot content from the API: `GET /api/v1/public/plugins/slots/:slotName`
-2. Separates HTML from `<script>` tags
-3. Sanitizes the HTML through `sanitize-html` (see [Security Model](#security-model))
-4. Renders the HTML via `dangerouslySetInnerHTML`
-5. Renders scripts separately via `<script dangerouslySetInnerHTML>` so they execute
+  ```ts
+  ref('products.id'); // → 'UUID'
+  ref('products.name'); // → 'VARCHAR(255)'
+  ref('products.price'); // → 'INTEGER'
+  ref('customers.email'); // → 'VARCHAR(255)'
+  ```
 
-Slot content is cached with `revalidate: 60` (1 minute) by Next.js.
+- **`schema`** — The full `coreSchema` object for programmatic introspection:
+
+  ```ts
+  up: async (db, { ref, schema }) => {
+    const productIdType = ref('products.id'); // 'UUID'
+    const orderCols = Object.keys(schema.orders); // ['id', 'order_number', 'status', ...]
+  };
+  ```
+
+The `ref()` function provides full IDE autocomplete for all valid `table.column` paths.
+
+You can also import these directly:
+
+```ts
+import { ref, coreSchema } from '@forkcart/plugin-sdk';
+
+// Use in template literals for migrations:
+`source_product_id ${ref('products.id')} NOT NULL`;
+// expands to: "source_product_id UUID NOT NULL"
+```
+
+### Core Schema Reference
+
+| Table                | Primary Key | Common Columns                                         |
+| -------------------- | ----------- | ------------------------------------------------------ |
+| `products`           | `UUID`      | name, slug, sku, price, currency, category_id, status  |
+| `variants`           | `UUID`      | product_id, sku, name, price, stock_quantity           |
+| `orders`             | `UUID`      | order_number, status, customer_id, email, total_amount |
+| `order_items`        | `UUID`      | order_id, product_id, variant_id, quantity, unit_price |
+| `customers`          | `UUID`      | email, first_name, last_name, phone                    |
+| `categories`         | `UUID`      | name, slug, parent_id, sort_order                      |
+| `product_categories` | Composite   | product_id, category_id (many-to-many junction)        |
+| `media`              | `UUID`      | filename, mime_type, url                               |
+| `payments`           | `UUID`      | order_id, provider, status, amount                     |
+| `product_images`     | `UUID`      | product_id, url, alt_text, sort_order                  |
+| `product_reviews`    | `UUID`      | product_id, customer_id, rating, title                 |
+
+To inspect the full schema at runtime:
+
+```ts
+import { coreSchema } from '@forkcart/plugin-sdk';
+
+console.log(coreSchema.products);
+// { id: { sqlType: 'UUID', nullable: false, primaryKey: true }, name: { sqlType: 'VARCHAR(255)', ... }, ... }
+```
+
+### The product_categories Junction Table
+
+The `product_categories` table is a **many-to-many junction table** linking products to categories. While `products.category_id` holds the _primary_ category, `product_categories` is the canonical table for **all** category assignments (including the primary one). It has a composite primary key:
+
+| Column        | Type   | Notes               |
+| ------------- | ------ | ------------------- |
+| `product_id`  | `UUID` | PK, FK → products   |
+| `category_id` | `UUID` | PK, FK → categories |
+
+Use it in migrations when you need to reference multi-category assignments:
+
+```ts
+up: async (db, { ref }) => {
+  await db.execute(`
+    CREATE TABLE plugin_my_widget_category_stats (
+      category_id ${ref('product_categories.category_id')} NOT NULL,
+      product_count INTEGER DEFAULT 0,
+      PRIMARY KEY (category_id)
+    );
+  `);
+};
+```
+
+### ScopedDatabase.execute() in Migrations
+
+The `execute()` method supports both Drizzle SQL template tags and raw SQL strings:
+
+```ts
+// Drizzle sql tag (from drizzle-orm)
+await db.execute(sql`CREATE TABLE IF NOT EXISTS ...`);
+
+// Raw SQL string (no params)
+await db.execute('CREATE TABLE IF NOT EXISTS plugin_my_plugin_data (id SERIAL PRIMARY KEY)');
+
+// Raw SQL string with positional params ($1, $2, ...)
+await db.execute('INSERT INTO plugin_my_plugin_data (name) VALUES ($1)', ['test']);
+```
+
+### How Migrations Work
+
+1. Applied migrations are tracked in the `plugin_migrations` table
+2. On plugin activation, `MigrationRunner.runPendingMigrations()` compares defined vs. applied migrations
+3. Pending migrations run in version order (semver string comparison)
+4. The `up` function receives two arguments: `db` (ScopedDatabase) and `helpers` (`{ ref, schema }`)
+5. On plugin version update, new migrations are automatically run
+6. A migration validator warns if you use VARCHAR for columns that reference UUID core tables
+
+### Common Migration Mistakes
+
+| ❌ Wrong                                | ✅ Right                                      | Why                                                     |
+| --------------------------------------- | --------------------------------------------- | ------------------------------------------------------- |
+| `product_id VARCHAR(255)`               | `product_id ${ref('products.id')}`            | products.id is UUID, not VARCHAR                        |
+| `JOIN products ON products.id = my_col` | `JOIN products ON products.id::text = my_col` | Type mismatch without cast (if you used VARCHAR)        |
+| Hardcoding `UUID`                       | Using `ref('products.id')`                    | Future-proof — if we change the type, ref() updates too |
+| No `down()` function                    | Always include `down()`                       | Required for rollback support                           |
+
+---
+
+## Custom API Routes
+
+Plugins can register custom HTTP endpoints. Routes are mounted at `/api/v1/public/plugins/<plugin-slug>/`.
+
+```ts
+routes: (router) => {
+  // GET /api/v1/public/plugins/my-widget/hello
+  router.get('/hello', async (c) => {
+    const db = c.get('db'); // ScopedDatabase
+    const settings = c.get('pluginSettings'); // Your settings
+    const logger = c.get('logger'); // Scoped logger
+    return c.json({ message: 'Hello from my-widget!' });
+  });
+
+  // POST /api/v1/public/plugins/my-widget/webhook
+  router.post('/webhook', async (c) => {
+    const body = await c.req.json();
+    // Handle incoming webhook...
+    return c.json({ ok: true });
+  });
+};
+```
+
+The `router` is a Hono-compatible interface with `get`, `post`, `put`, `delete`, and `patch` methods. Plugin context (db, settings, logger) is automatically injected into every request via `c.get()`.
+
+**Important:** The plugin slug in the URL is derived from `name` — kebab-cased, lowercased, non-alphanumeric chars replaced with hyphens. So `"FOMO Badges"` becomes `/plugins/fomo-badges/`.
 
 ---
 
 ## Storefront Integration
 
-### `window.FORKCART` Global Object
+### Storefront Slots
 
-ForkCart exposes a global `window.FORKCART` object that plugins can use to access page context:
+Inject HTML into predefined storefront positions:
 
-**Available on all pages:**
-
-```javascript
-window.FORKCART.apiUrl; // The API base URL (e.g., "http://localhost:3001")
+```ts
+storefrontSlots: [
+  {
+    slot: "product-page-bottom",
+    content: '<div class="my-widget">Hello from the product page!</div>',
+    order: 10, // Lower = earlier
+    pages: ["/product/*"], // Optional page filter (supports * wildcards)
+  },
+],
 ```
 
-**Available on product pages:**
+See [Available Storefront Slots](#available-storefront-slots) for the full list of slot positions.
 
-```javascript
-window.FORKCART.productId; // Current product ID (UUID)
-window.FORKCART.productSlug; // Current product slug (e.g., "blue-widget")
+### How Slots Are Rendered
+
+`StorefrontSlot` is a **Next.js Server Component** that:
+
+1. Fetches slot content from `/api/v1/public/plugins/slots/<slotName>`
+2. Sanitizes HTML through a liberal allowlist (scripts, styles, iframes, forms, SVG are all allowed — see [Security Model](#storefront-html-sanitization))
+3. Separates `<script>` tags from the HTML
+4. Renders HTML via `dangerouslySetInnerHTML`
+5. Executes scripts via `ScriptExecutor` (see below)
+
+Slot content is cached with `revalidate: 60` (1 minute) by Next.js.
+
+### ScriptExecutor — Why This Exists
+
+**This is critical to understand.** Regular `<script>` tags inside `dangerouslySetInnerHTML` do **not** execute in React. Worse: when content is inside a React Suspense boundary (which Next.js uses heavily), even injected scripts in the hidden DOM won't run.
+
+`ScriptExecutor` is a client component that solves this:
+
+```tsx
+'use client';
+import { useEffect, useRef } from 'react';
+
+export function ScriptExecutor({ content }: { content: string }) {
+  const executed = useRef(false);
+  useEffect(() => {
+    if (executed.current || !content) return;
+    executed.current = true;
+    try {
+      new Function(content)();
+    } catch (err) {
+      console.error('[ScriptExecutor] Plugin script error:', err);
+    }
+  }, [content]);
+  return null;
+}
 ```
 
-The product data is set via a `useEffect` in the product content component and cleaned up on unmount.
+It runs your inline scripts via `new Function()` after mount. This means:
+
+- ✅ Scripts run reliably regardless of Suspense boundaries
+- ✅ Scripts run exactly once (guarded by ref)
+- ⚠️ Scripts don't have access to the `<script>` element itself
+- ⚠️ External script `src` attributes won't be loaded — use inline code that creates script elements dynamically if you need external scripts
+
+`PluginBlockFallback` uses the same script handling for PageBuilder blocks.
+
+### window.FORKCART Context
+
+Every storefront page sets `window.FORKCART` with page-specific data that your plugin scripts can read. This is the primary way to get context about the current page without parsing URLs yourself.
+
+The root layout always provides:
+
+```ts
+window.FORKCART.apiUrl; // Base API URL (e.g. "http://localhost:3000")
+```
+
+**Properties per page type:**
+
+| Page     | `pageType`   | Additional properties                            |
+| -------- | ------------ | ------------------------------------------------ |
+| Product  | `"product"`  | `productId` (UUID), `productSlug`                |
+| Category | `"category"` | `categorySlug`, `categoryId` (UUID, if resolved) |
+| Cart     | `"cart"`     | —                                                |
+| Checkout | `"checkout"` | —                                                |
+| Search   | `"search"`   | `query` (the search string, if present)          |
+| Account  | `"account"`  | —                                                |
+
+**Usage in plugin scripts:**
+
+```ts
+// Inside your storefrontSlot or pageBuilderBlock <script>:
+const fc = window.FORKCART || {};
+
+if (fc.pageType === 'product') {
+  fetch(`${fc.apiUrl}/api/v1/public/plugins/my-widget/recs?product=${fc.productId}`)
+    .then((r) => r.json())
+    .then((data) => {
+      // Render recommendations
+    });
+}
+```
+
+> **Note:** On SSR pages (product, category, search), `window.FORKCART` is set via an inline `<script>` tag that runs before your plugin scripts. On client-rendered pages (cart, checkout, account), it's set via `useEffect` — so it's available by the time the DOM settles, but not during the very first synchronous tick.
 
 ### Accessing Plugin Settings from the Storefront
 
 Don't hardcode settings in inline JS. Use the injected config pattern:
 
-```typescript
-// ✅ CORRECT — use injected settings
+```ts
 storefrontSlots: [
   {
-    slot: 'product-page-bottom',
+    slot: "product-page-bottom",
     content: `
     <script>
       const settings = window.FORKCART?.pluginSettings?.['my-plugin'] || {};
       const minViewers = settings.minViewers || 2;
-      // Use the product context
       const productId = window.FORKCART?.productId;
       if (productId) {
-        // Fetch data for this product from your plugin API
-        fetch(window.FORKCART.apiUrl + '/api/v1/plugins/my-plugin/stats?product=' + productId)
+        fetch(window.FORKCART.apiUrl + '/api/v1/public/plugins/my-plugin/stats?product=' + productId)
           .then(r => r.json())
           .then(data => { /* render widget */ });
       }
     </script>
   `,
   },
-];
+],
 ```
 
 ### Storefront Slot API Endpoint
@@ -556,46 +891,35 @@ This is a **public** endpoint (no auth required) so the storefront can fetch it 
 
 ## PageBuilder Blocks
 
-Plugins can register custom blocks that appear in the admin's Craft.js PageBuilder. The killer feature: blocks have a **fallback mechanism** — if the admin hasn't placed your block in the page template, it automatically renders at a default slot position. Plugins work out of the box, but admins get full control.
+Plugins can register custom blocks for the Craft.js-based PageBuilder. The killer feature: blocks have a **fallback mechanism** — if the admin hasn't placed your block in the page template, it automatically renders at a default slot position.
 
 ### Registering Blocks
 
-```typescript
-import { definePlugin } from '@forkcart/plugin-sdk';
-
-export default definePlugin({
-  name: 'fomo-badges',
-  version: '1.0.0',
-  type: 'general',
-  description: 'Social proof badges for products',
-  author: 'Acme Corp',
-
-  pageBuilderBlocks: [
-    {
-      name: 'fomo-widget',
-      label: 'FOMO Widget',
-      icon: '🔥',
-      category: 'Social Proof',
-      description: 'Shows recent purchases and visitor count',
-      content: `
-        <div class="fomo-widget" id="fomo-widget-root">
-          <p>Loading social proof...</p>
-        </div>
-        <script>
-          // Your widget JS runs here
-          document.getElementById('fomo-widget-root').innerHTML =
-            '<p>🔥 12 people bought this in the last hour</p>';
-        </script>
-      `,
-      defaultSlot: 'product-page-bottom', // Fallback if not placed by admin
-      defaultOrder: 5,
-      pages: ['/product/*'], // Only on product pages
-    },
-  ],
-});
+```ts
+pageBuilderBlocks: [
+  {
+    name: "fomo-widget",
+    label: "FOMO Widget",
+    icon: "🔥",
+    category: "Social Proof",
+    description: "Shows recent purchases and visitor count",
+    content: `
+      <div class="fomo-widget" id="fomo-widget-root">
+        <p>Loading social proof...</p>
+      </div>
+      <script>
+        document.getElementById('fomo-widget-root').innerHTML =
+          '<p>🔥 12 people bought this in the last hour</p>';
+      </script>
+    `,
+    defaultSlot: "product-page-bottom",
+    defaultOrder: 5,
+    pages: ["/product/*"],
+  },
+],
 ```
 
-### Block Definition
+### Block Definition Reference
 
 | Field          | Type       | Required | Description                                                                |
 | -------------- | ---------- | -------- | -------------------------------------------------------------------------- |
@@ -620,24 +944,28 @@ This is the key innovation. Here's how it works:
    - **Admin places the block** → It renders where they put it. No fallback.
    - **Admin doesn't place it** → It automatically renders at `product-page-bottom` via the fallback system.
 
-This means plugins work immediately after installation with no admin setup, but admins can customize placement whenever they want.
+This means **plugins work immediately after installation** with no admin setup, but admins get full control over placement whenever they want.
 
-### API Endpoints
+### Block Fetch Deduplication
 
-```
-GET /api/v1/public/plugins/blocks
-```
+When multiple `PluginBlock` components render concurrently (common with several blocks on one page), the storefront **deduplicates the API call**. Only **one** request to `/api/v1/public/plugins/blocks` is made — all concurrent renders share the same in-flight promise. Results are cached in memory for 5 minutes and also leverage the Next.js fetch cache (`revalidate: 300`).
 
-Returns all registered PageBuilder blocks (used by the admin block picker).
+You don't need to do anything special — this is automatic.
 
-```
-GET /api/v1/public/plugins/blocks/fallbacks?page=/product/xyz&placed=fomo-badges:fomo-widget
-```
+### Admin PageBuilder Integration
 
-Returns blocks that need fallback rendering. Parameters:
+Plugin blocks automatically appear in the admin PageBuilder's block picker under a **🧩 Plugins** section. No admin configuration is required — as soon as a plugin with `pageBuilderBlocks` is active, its blocks show up.
 
-- `page` — Current page path (for page filtering)
-- `placed` — Comma-separated `pluginName:blockName` keys already in the template
+**How it works:**
+
+1. The Component Panel fetches registered blocks from `GET /api/v1/public/plugins/blocks`
+2. Each plugin block appears in the "🧩 Plugins" category with a purple-accented border
+3. Admins can **drag and drop** plugin blocks into the page canvas just like built-in blocks
+4. In the editor, plugin blocks display a preview placeholder showing the block name, plugin name, and icon
+5. The Settings Panel shows read-only plugin block info (plugin name, block name, description)
+6. On the storefront, the `PluginBlockRenderer` fetches and renders the block's actual HTML content
+
+Plugin blocks are visually distinct from built-in blocks (purple styling vs green) so admins can easily identify which blocks come from plugins.
 
 ### Storefront Usage
 
@@ -649,7 +977,6 @@ import { PluginBlockFallback } from '@/components/plugins/PluginBlockFallback';
 import { extractPlacedPluginBlocks } from '@/components/plugins/extract-placed-blocks';
 
 export default async function ProductPage({ pageContent }) {
-  // Extract which plugin blocks the admin already placed in the template
   const placedBlocks = extractPlacedPluginBlocks(pageContent);
 
   return (
@@ -659,7 +986,7 @@ export default async function ProductPage({ pageContent }) {
       {/* Existing slot-based plugin content */}
       <StorefrontSlot slotName="product-page-bottom" />
 
-      {/* Plugin blocks that weren't placed in PageBuilder → render at default slot */}
+      {/* Plugin blocks not placed in PageBuilder → render at default slot */}
       <PluginBlockFallback
         slotName="product-page-bottom"
         currentPage="/product/my-product"
@@ -688,73 +1015,39 @@ When an admin drags a plugin block into the page template, the Craft.js JSON sto
 
 The `PageRenderer` detects `PluginBlock` nodes and renders them via `PluginBlockRenderer`, which fetches the block's HTML content from the API.
 
-### Admin PageBuilder Integration
+### Block API Endpoints
 
-Plugin blocks automatically appear in the admin PageBuilder's block picker under a **🧩 Plugins** section. No admin configuration is required — as soon as a plugin with `pageBuilderBlocks` is installed, its blocks show up.
+```
+GET /api/v1/public/plugins/blocks
+```
 
-**How it works:**
+Returns all registered PageBuilder blocks (used by the admin block picker).
 
-1. The Component Panel fetches registered blocks from `GET /api/v1/public/plugins/blocks`
-2. Each plugin block appears in the "🧩 Plugins" category with a purple-accented border
-3. Admins can **drag and drop** plugin blocks into the page canvas just like built-in blocks
-4. In the editor, plugin blocks display a preview placeholder showing the block name, plugin name, and icon
-5. The Settings Panel shows read-only plugin block info (plugin name, block name, description)
-6. On the storefront, the `PluginBlockRenderer` fetches and renders the block's actual HTML content
+```
+GET /api/v1/public/plugins/blocks/fallbacks?page=/product/xyz&placed=fomo-badges:fomo-widget
+```
 
-Plugin blocks are visually distinct from built-in blocks (purple styling vs green) so admins can easily identify which blocks come from plugins.
+Returns blocks that need fallback rendering. Parameters:
+
+- `page` — Current page path (for page filtering)
+- `placed` — Comma-separated `pluginName:blockName` keys already in the template
 
 ---
 
-## Custom API Routes
+## Admin Pages & Widgets
 
-Add custom HTTP endpoints:
-
-```typescript
-routes: (router) => {
-  router.get('/status', (c) => {
-    return c.json({ status: 'ok' });
-  });
-
-  router.post('/webhook', async (c) => {
-    const body = await c.req.json();
-    // Handle webhook
-    return c.json({ received: true });
-  });
-};
-// Routes are mounted at: /api/v1/public/plugins/<plugin-slug>/
-```
-
-Plugin routes receive injected context via Hono's `c.get()`:
-
-```typescript
-routes: (router) => {
-  router.get('/data', (c) => {
-    const settings = c.get('pluginSettings'); // Resolved plugin settings
-    const db = c.get('db'); // ScopedDatabase instance
-    const logger = c.get('logger'); // Scoped logger
-    return c.json({ ok: true });
-  });
-};
-```
-
-The plugin slug is auto-generated from the plugin name: `"FOMO Badges"` → `fomo-badges`.
-
----
-
-## Admin Pages
-
-Add custom pages to the admin panel with rendered content. Plugins can provide either **static HTML** via `content` or **dynamic HTML** via `apiRoute`.
+Plugins can add pages to the admin panel. Two content strategies are available. Admin pages automatically appear in the admin sidebar under a **Plugins** section when the plugin is active.
 
 ### Static Content
 
 Provide an HTML string directly. Scripts are extracted and executed after render (same trust model as storefront slots):
 
-```typescript
+```ts
 adminPages: [
   {
-    path: '/dashboard',
-    label: 'My Dashboard',
-    icon: 'chart-bar',
+    path: "/dashboard",
+    label: "My Dashboard",
+    icon: "chart-bar",
     order: 10,
     content: `
       <div id="my-dashboard">
@@ -771,14 +1064,14 @@ adminPages: [
       </div>
     `,
   },
-];
+],
 ```
 
 ### Dynamic Content via API Route
 
 Point to a route within your plugin's custom routes that returns `{ html: string }`:
 
-```typescript
+```ts
 adminPages: [
   {
     path: '/reports',
@@ -806,262 +1099,76 @@ routes: (router) => {
 | ---------- | -------- | -------- | --------------------------------------------------------------------- |
 | `path`     | `string` | ✅       | URL path (e.g., `/dashboard`)                                         |
 | `label`    | `string` | ✅       | Display name in sidebar and page header                               |
-| `icon`     | `string` | ❌       | Icon name (for future use)                                            |
-| `order`    | `number` | ❌       | Sort order in navigation (default: 10)                                |
-| `parent`   | `string` | ❌       | Parent page path for nesting                                          |
-| `content`  | `string` | ❌       | Static HTML content to render                                         |
-| `apiRoute` | `string` | ❌       | Plugin route path that returns `{ html: string }` for dynamic content |
-
-Admin pages automatically appear in the admin sidebar under a **Plugins** section when the plugin is active.
+| `icon`     | `string` | —        | Icon name (for future use)                                            |
+| `order`    | `number` | —        | Sort order in navigation (default: 10)                                |
+| `parent`   | `string` | —        | Parent page path for nesting                                          |
+| `content`  | `string` | —        | Static HTML content to render                                         |
+| `apiRoute` | `string` | —        | Plugin route path that returns `{ html: string }` for dynamic content |
 
 ---
 
 ## CLI Commands
 
-Add custom CLI commands:
+Register commands accessible via the ForkCart CLI:
 
-```typescript
+```ts
 cli: [
   {
-    name: 'sync',
-    description: 'Sync products to marketplace',
-    args: [{ name: 'sku', description: 'Product SKU', required: false }],
+    name: "sync",
+    description: "Sync products to marketplace",
+    args: [{ name: "sku", description: "Product SKU", required: false }],
     options: [
       {
-        name: 'force',
-        alias: 'f',
-        description: 'Force sync',
-        type: 'boolean',
+        name: "force",
+        alias: "f",
+        description: "Force sync",
+        type: "boolean",
         default: false,
+      },
+      {
+        name: "format",
+        alias: "F",
+        description: "Output format",
+        type: "string",
+        default: "table",
       },
     ],
     handler: async (args, ctx) => {
-      ctx.logger.info('Syncing...', args);
+      ctx.logger.info("Syncing...", args);
     },
   },
-];
-// Run with: forkcart plugin run <plugin-name>:sync
+],
 ```
+
+Run with: `forkcart plugin run <plugin-name>:sync`
 
 ---
 
 ## Scheduled Tasks
 
-Run tasks on a schedule:
+Cron-style background tasks:
 
-```typescript
+```ts
 scheduledTasks: [
   {
-    name: 'daily-sync',
-    schedule: '0 3 * * *', // 3 AM daily
+    name: "cleanup-old-data",
+    schedule: "0 3 * * *", // Daily at 3 AM (standard cron)
     enabled: true,
     handler: async (ctx) => {
-      await syncInventory(ctx);
+      await ctx.db.execute(
+        "DELETE FROM plugin_my_widget_logs WHERE created_at < NOW() - INTERVAL '90 days'",
+      );
+      ctx.logger.info("Cleaned up old logs");
     },
   },
-];
+],
 ```
 
 Tasks are managed by the `PluginScheduler` and can be:
 
-- Listed: `GET /api/v1/plugins/tasks`
-- Manually triggered: `POST /api/v1/plugins/tasks/:taskKey/run`
-- Enabled/disabled: `PUT /api/v1/plugins/tasks/:taskKey/toggle`
-
----
-
-## Database Migrations
-
-Add custom tables for your plugin:
-
-```typescript
-migrations: [
-  {
-    version: '1.0.0',
-    description: 'Create analytics table',
-    up: async (db, { ref }) => {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS plugin_my_plugin_events (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          product_id ${ref('products.id')} NOT NULL,
-          customer_id ${ref('customers.id')},
-          event_type TEXT NOT NULL,
-          data JSONB,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-      `);
-    },
-    down: async (db) => {
-      await db.execute('DROP TABLE IF EXISTS plugin_my_plugin_events;');
-    },
-  },
-];
-```
-
-### Type-Safe Column References with `ref()`
-
-When your plugin tables reference core ForkCart tables, **always use `ref()`** to get the correct column type:
-
-```typescript
-import { ref, coreSchema } from '@forkcart/plugin-sdk';
-
-// ref() returns the SQL type as a string
-ref('products.id'); // → 'UUID'
-ref('products.name'); // → 'VARCHAR(255)'
-ref('products.price'); // → 'INTEGER'
-ref('orders.id'); // → 'UUID'
-ref('customers.email') // → 'VARCHAR(255)'
-// Use in template literals for migrations:
-`source_product_id ${ref('products.id')} NOT NULL`;
-// expands to: "source_product_id UUID NOT NULL"
-```
-
-**Why this matters:** ForkCart uses UUID for all primary keys. If you use `VARCHAR(255)` instead, PostgreSQL will reject JOINs between your tables and core tables with `operator does not exist: uuid = character varying`. Using `ref()` prevents this entirely.
-
-The `ref()` function provides full IDE autocomplete for all valid `table.column` paths.
-
-#### Available Tables in `coreSchema`
-
-| Table             | Primary Key | Common Columns                                         |
-| ----------------- | ----------- | ------------------------------------------------------ |
-| `products`        | `UUID`      | name, slug, sku, price, currency, category_id, status  |
-| `variants`        | `UUID`      | product_id, sku, name, price, stock_quantity           |
-| `orders`          | `UUID`      | order_number, status, customer_id, email, total_amount |
-| `order_items`     | `UUID`      | order_id, product_id, variant_id, quantity, unit_price |
-| `customers`       | `UUID`      | email, first_name, last_name, phone                    |
-| `categories`      | `UUID`      | name, slug, parent_id, sort_order                      |
-| `media`           | `UUID`      | filename, mime_type, url                               |
-| `payments`        | `UUID`      | order_id, provider, status, amount                     |
-| `product_images`  | `UUID`      | product_id, url, alt_text, sort_order                  |
-| `product_reviews` | `UUID`      | product_id, customer_id, rating, title                 |
-
-To inspect the full schema at runtime:
-
-```typescript
-import { coreSchema } from '@forkcart/plugin-sdk';
-
-// Get all columns for a table
-console.log(coreSchema.products);
-// { id: { sqlType: 'UUID', nullable: false, primaryKey: true }, name: { sqlType: 'VARCHAR(255)', ... }, ... }
-```
-
-### How Migrations Work
-
-1. Applied migrations are tracked in the `plugin_migrations` table
-2. On plugin activation, `MigrationRunner.runPendingMigrations()` compares defined vs. applied migrations
-3. Pending migrations run in version order (semver string comparison)
-4. The `up` function receives two arguments: `db` (ScopedDatabase) and `helpers` (`{ ref, schema }`)
-5. On plugin version update, new migrations are automatically run
-6. A migration validator warns if you use VARCHAR for columns that reference UUID core tables
-
-### `ScopedDatabase.execute()` in Migrations
-
-The `execute()` method supports both Drizzle SQL template tags and raw SQL strings:
-
-```typescript
-// Drizzle sql tag (from drizzle-orm)
-await db.execute(sql`CREATE TABLE IF NOT EXISTS ...`);
-
-// Raw SQL string (no params)
-await db.execute('CREATE TABLE IF NOT EXISTS plugin_my_plugin_data (id SERIAL PRIMARY KEY)');
-
-// Raw SQL string with positional params ($1, $2, ...)
-await db.execute('INSERT INTO plugin_my_plugin_data (name) VALUES ($1)', ['test']);
-```
-
-### ⚠️ Common Migration Mistakes
-
-| ❌ Wrong                                | ✅ Right                                      | Why                                                     |
-| --------------------------------------- | --------------------------------------------- | ------------------------------------------------------- |
-| `product_id VARCHAR(255)`               | `product_id ${ref('products.id')}`            | products.id is UUID, not VARCHAR                        |
-| `JOIN products ON products.id = my_col` | `JOIN products ON products.id::text = my_col` | Type mismatch without cast (if you used VARCHAR)        |
-| Hardcoding `UUID`                       | Using `ref('products.id')`                    | Future-proof — if we change the type, ref() updates too |
-
----
-
-## Lifecycle Hooks
-
-```typescript
-onInstall: async (ctx) => {
-  // First-time setup
-  ctx.logger.info('Plugin installed!');
-},
-
-onUninstall: async (ctx) => {
-  // Cleanup
-},
-
-onActivate: async (ctx) => {
-  // Start background tasks, register resources
-  // Called AFTER hooks, filters, slots, and migrations are registered
-},
-
-onDeactivate: async (ctx) => {
-  // Stop background tasks
-},
-
-onUpdate: async (ctx, fromVersion) => {
-  // Handle version migrations
-  if (fromVersion < '2.0.0') {
-    // Migrate old data
-  }
-},
-
-// Called when an unhandled error occurs in a hook, route, or task.
-// Great for error tracking (Sentry, etc.). Return true to suppress the error.
-onError: async (error, source, ctx) => {
-  ctx.logger.error(`Error in ${source.type}:${source.name}: ${error.message}`);
-  // Sentry.captureException(error);
-},
-
-// Called on every server startup after activation.
-// Use for cache warming, connection pools, health checks, etc.
-onReady: async (ctx) => {
-  ctx.logger.info('Plugin ready — warming caches...');
-},
-```
-
-### Required Settings Validation
-
-If a setting has `required: true`, the plugin **cannot be activated** until that setting is configured. The admin panel will show an error if required settings are missing.
-
-### Activation Order
-
-When a plugin is activated, the following happens in order:
-
-1. Dependencies are validated (all required plugins must be installed and active)
-2. **Required settings are validated** (missing required settings block activation)
-3. Event hooks are registered on the EventBus
-4. Filters are registered
-5. Storefront slots are registered
-6. CLI commands are registered
-7. Scheduled tasks are registered
-8. Custom routes are registered
-9. **Pending migrations are run** (passing `db` + `{ ref, schema }` helpers)
-10. **`onActivate` is called**
-11. **`onReady` is called** (also on every server restart)
-12. Provider bridges are registered (payment, email, marketplace, shipping)
-
----
-
-## Plugin Context
-
-Every handler receives a context object:
-
-```typescript
-interface PluginContext {
-  /** Resolved settings values (secrets are decrypted) */
-  settings: Record<string, unknown>;
-  /** Scoped database — permission-aware proxy (see Security Model) */
-  db: ScopedDatabase;
-  /** Scoped logger (prefixed with plugin name) */
-  logger: PluginLogger;
-  /** Event bus for subscribing / emitting */
-  eventBus: PluginEventBus;
-}
-```
-
-The `db` field is a `ScopedDatabase` instance, **not** the raw Drizzle database handle. See [Security Model](#security-model) for details.
+- **Listed:** `GET /api/v1/plugins/tasks`
+- **Manually triggered:** `POST /api/v1/plugins/tasks/:taskKey/run`
+- **Enabled/disabled:** `PUT /api/v1/plugins/tasks/:taskKey/toggle`
 
 ---
 
@@ -1069,31 +1176,15 @@ The `db` field is a `ScopedDatabase` instance, **not** the raw Drizzle database 
 
 Declare what your plugin needs access to:
 
-```typescript
-permissions: [
-  'orders:read',
-  'orders:write',
-  'products:read',
-  'products:write',
-  'customers:read',
-  'customers:write',
-  'settings:read',
-  'settings:write',
-  'email:send',
-  'payments:process',
-  'inventory:read',
-  'inventory:write',
-  'analytics:read',
-  'files:read',
-  'files:write',
-  'webhooks:manage',
-  'admin:full', // Grants unrestricted DB access — use sparingly!
-];
+```ts
+permissions: ['products:read', 'orders:read', 'customers:read'];
 ```
 
-### Permission → Table Mapping
+The `ScopedDatabase` enforces these at runtime — attempts to access tables outside your permissions throw an error. Plugin-owned tables (`plugin_<name>_*`) are always accessible regardless of permissions.
 
-Each permission grants access to specific database tables:
+The scoped database also enforces a **rate limit** (default 100 queries/second) and logs slow queries (>500ms).
+
+### Permission → Table Mapping
 
 | Permission         | Tables                                                           | Write |
 | ------------------ | ---------------------------------------------------------------- | ----- |
@@ -1117,6 +1208,297 @@ Each permission grants access to specific database tables:
 
 ---
 
+## Plugin Dependencies
+
+Require other plugins to be installed and active before your plugin can be activated:
+
+```ts
+dependencies: ['stripe', 'mailgun'];
+minVersion: '0.5.0'; // Minimum ForkCart version
+```
+
+Dependencies are validated on activation. If any required plugin is missing or inactive, activation fails with a descriptive error listing all unmet dependencies.
+
+---
+
+## Plugin Installation & Loading
+
+ForkCart discovers and loads plugins from multiple sources. Understanding this flow is essential for local plugin development.
+
+### Discovery Directories
+
+The `PluginLoader.discoverPlugins()` method scans these directories in order:
+
+1. **`node_modules/`** — npm-installed plugins (top-level `forkcart-plugin-*` and scoped `@forkcart/plugin-*`)
+2. **`packages/plugins/`** — monorepo local plugins (development)
+3. **`data/plugins/`** — registry-installed plugins (downloaded ZIPs)
+4. **`plugins/`** — standalone local plugins (alternative directory)
+
+Each directory is scanned for subdirectories containing a `package.json` with the `"forkcart-plugin"` keyword or a matching name prefix.
+
+### How Plugins Are Loaded
+
+**npm packages** are imported via `import('package-name')` (standard Node.js resolution).
+
+**Local plugins** (from `packages/plugins/`, `data/plugins/`, or `plugins/`) are loaded using `file://` URL imports:
+
+```
+file:///path/to/plugin/dist/index.js
+```
+
+This means your local plugin must:
+
+- Have `"type": "module"` in `package.json`
+- Export a valid ES module from the entry point specified in `"main"`
+- Be compiled to JS (the `dist/` directory must exist)
+
+### Nested Directory Support
+
+When plugins are installed from the registry (ZIP downloads), they may extract into nested structures:
+
+```
+data/plugins/fomo-badges/forkcart-plugin-fomo-badges/
+```
+
+The loader handles this automatically by checking:
+
+1. `plugins/<slug>/` (direct)
+2. `plugins/<slug>/forkcart-plugin-<slug>/` (nested from ZIP)
+3. Any `forkcart-plugin-*` subfolder inside `plugins/<slug>/`
+
+### Plugin Registration in Database
+
+Once discovered, plugins are registered in the `plugins` DB table via `ensurePluginInDb()`. This stores:
+
+- Plugin name, version, description, author
+- Active/inactive state
+- Settings (with encrypted secrets)
+- Installation timestamp
+
+### Installation Methods
+
+**From Admin UI (Plugin Store):**
+
+1. Go to **Plugins** → **Marketplace**
+2. Browse or search plugins
+3. Click **Install** (downloads ZIP from registry, extracts to `data/plugins/`)
+
+**From CLI (npm):**
+
+```bash
+forkcart plugin install forkcart-plugin-my-awesome
+forkcart plugin activate my-awesome
+```
+
+**From API:**
+
+```bash
+# Install via npm
+POST /api/v1/plugins/install
+Body: { "packageName": "forkcart-plugin-my-awesome" }
+
+# Discover local plugins
+POST /api/v1/plugins/discover
+
+# Install from registry
+POST /api/v1/store/:slug/install
+```
+
+**Manual (Local Development):**
+
+1. Create your plugin in `data/plugins/my-plugin/` (or `packages/plugins/my-plugin/`)
+2. Run `POST /api/v1/plugins/discover` to register it
+3. Activate via the Admin UI or API
+
+---
+
+## Plugin Dev CLI (plugin:dev)
+
+The `plugin:dev` command gives you a watch-build-reload loop for local plugin development:
+
+```bash
+npx forkcart plugin:dev <slug>
+```
+
+This will:
+
+1. **Resolve** your plugin directory in `data/plugins/<slug>/`
+2. **Build** `src/index.ts` → `dist/index.js` using esbuild (ESM, Node platform, bundled)
+3. **Watch** the `src/` directory for `.ts`, `.js`, `.json`, and `.mjs` changes (200ms debounce)
+4. **Rebuild** on every change
+5. **Hot-reload** the plugin on the running server via `POST /api/v1/plugins/:id/reload`
+
+### Options
+
+| Option        | Default            | Description                                |
+| ------------- | ------------------ | ------------------------------------------ |
+| `-p, --port`  | `3000`             | ForkCart server port                       |
+| `--host`      | `http://localhost` | ForkCart server host                       |
+| `--no-reload` | —                  | Only rebuild on change, skip server reload |
+
+### Example
+
+```bash
+# Watch and auto-reload on the default server
+npx forkcart plugin:dev my-widget
+
+# Custom port, no auto-reload (manual testing)
+npx forkcart plugin:dev my-widget --port 4000 --no-reload
+```
+
+If the server isn't running, the CLI still builds — it just skips the reload step and prints a warning. You can use `--no-reload` for a pure build-watch workflow without a running ForkCart instance.
+
+> **Tip:** The build creates a temporary `@forkcart/plugin-sdk` shim in `node_modules/` so esbuild can bundle without the SDK installed as a real dependency. This is the same approach the Plugin Store uses for server-side compilation.
+
+---
+
+## Plugin Preview & Sandbox
+
+The admin panel includes a **Plugin Preview** modal that lets you inspect everything a plugin registers — without visiting the storefront.
+
+**Opening the Preview:** In the admin **Plugins** list, click the preview (👁) button on any plugin. The modal opens as a full-screen overlay.
+
+### The 3 Tabs
+
+| Tab                    | Shows                                                                                                                           |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **Storefront Slots**   | Every slot the plugin injects content into (e.g. `product-page-bottom`). Click a slot to expand and preview its rendered HTML.  |
+| **PageBuilder Blocks** | All blocks the plugin provides for the drag-and-drop PageBuilder, with their icon, description, default slot, and page filters. |
+| **Admin Widgets**      | Custom admin pages registered by the plugin. Click a page to load and preview its content inline.                               |
+
+Each tab shows a count badge so you can see at a glance what a plugin contributes.
+
+### Viewport Switcher
+
+The top-right corner has a **Desktop / Tablet / Mobile** toggle (Monitor, Tablet, Smartphone icons). Switching viewport resizes the preview content area to `100%`, `768px`, or `375px` width — useful for checking how plugin output looks on different screen sizes.
+
+> **Note:** If the plugin is inactive, the preview shows a warning instead of content. Inactive plugins don't register their slots, blocks, or admin pages — activate first.
+
+---
+
+## Hot Reload (Dev Mode)
+
+In development (`NODE_ENV !== 'production'`), the loader can watch plugin directories for changes and auto-reload.
+
+### How It Works
+
+1. `fs.watch` monitors the plugin directory recursively
+2. On `.js`, `.ts`, `.json`, or `.mjs` file changes, a debounced reload triggers (300ms)
+3. The plugin is deactivated, its module is re-imported (cache-busted with timestamp), and it's reactivated
+4. All hooks, routes, filters, and slots are re-registered
+
+**Hot reload is disabled in production** (`NODE_ENV === 'production'`).
+
+### Manual Reload Endpoint
+
+Trigger a reload without file watching:
+
+```
+POST /api/v1/plugins/:id/reload
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "success": true,
+    "pluginName": "my-plugin",
+    "reloadedAt": "2026-03-28T00:00:00.000Z"
+  }
+}
+```
+
+### Programmatic API
+
+```ts
+// Start watching
+pluginLoader.watchPlugin('my-plugin');
+
+// Stop watching
+pluginLoader.unwatchPlugin('my-plugin');
+
+// Stop all watchers
+pluginLoader.unwatchAll();
+```
+
+---
+
+## Plugin Store (Publishing & Installation)
+
+### Publishing to the Marketplace
+
+Your ZIP must contain:
+
+```
+my-plugin/
+├── forkcart-plugin.json  ← Required manifest
+├── package.json          ← Required (with "type": "module")
+├── README.md             ← Required
+├── dist/                 ← Compiled JS
+│   └── index.js
+└── src/                  ← Source (optional)
+    └── index.ts
+```
+
+**Steps:**
+
+1. Build your plugin: `pnpm build`
+2. Create ZIP with all required files
+3. Go to [ForkCart Developer Portal](https://developers.forkcart.com)
+4. Upload your ZIP
+5. Set pricing (free or paid — ForkCart takes 10%, you keep 90%)
+
+**API methods:**
+
+1. Submit via `POST /api/v1/store/submit` with plugin metadata
+2. Publish versions via `PUT /api/v1/store/:slug/versions`
+3. If a central registry is configured (`PLUGIN_REGISTRY_URL`), listings are synced
+
+### Publishing as npm Package
+
+```json
+{
+  "name": "forkcart-plugin-my-awesome",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "keywords": ["forkcart-plugin"],
+  "peerDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0"
+  }
+}
+```
+
+### Installation from Store
+
+When a user installs from the Plugin Store:
+
+1. ZIP is downloaded from the registry
+2. Extracted to `data/plugins/<slug>/`
+3. If source contains TypeScript (`src/index.ts`), it's auto-compiled via esbuild
+4. Plugin is registered in the database with `metadata.source = 'registry'`
+5. Plugin is auto-activated
+
+### Updates
+
+`POST /api/v1/store/:slug/update`:
+
+1. Downloads latest ZIP from registry
+2. Overwrites plugin directory
+3. Re-compiles TypeScript if needed
+4. Updates version in database
+5. Hot-reloads the module (cache-busted `import()` with timestamp)
+
+---
+
 ## Security Model
 
 ForkCart's plugin system is designed with defense-in-depth. Understanding these security boundaries is important for both plugin authors and store administrators.
@@ -1131,7 +1513,7 @@ Plugins **never** receive the raw database handle. Instead, they get a `ScopedDa
 - All queries are logged for audit purposes
 - Unauthorized access throws an error and is logged as a warning
 
-```typescript
+```ts
 // Plugin with permissions: ['orders:read']
 await ctx.db.query.orders.findMany(); // ✅ Works
 await ctx.db.insert(orders).values({}); // ❌ Throws: no 'orders:write'
@@ -1148,7 +1530,7 @@ plugin_<plugin-name>_<table>
 
 The plugin name is sanitized (non-alphanumeric characters replaced with `_`). For example, plugin `fomo-badges` gets prefix `plugin_fomo_badges_`.
 
-**This is enforced by `ScopedDatabase`** — the proxy always allows access to tables matching your plugin's prefix, regardless of declared permissions.
+This is enforced by `ScopedDatabase` — the proxy always allows access to tables matching your plugin's prefix, regardless of declared permissions.
 
 ### Storefront HTML Sanitization
 
@@ -1174,10 +1556,6 @@ Plugin slot content is sanitized via `sanitize-html` before rendering. The sanit
 
 **Security rationale:** This mirrors the trust model of Shopware, WooCommerce, and Magento — plugins are installed by store admins who review them, and marketplace plugins go through review before publishing. Future versions may add CSP nonce support for stricter environments.
 
-### Secret Settings Encryption
-
-Settings marked `secret: true` in the schema are encrypted with AES-256-GCM before database storage and decrypted transparently when passed to plugin handlers.
-
 ### Package Name Validation
 
 The `installPlugin()` method validates package names against a strict regex to prevent command injection:
@@ -1186,32 +1564,43 @@ The `installPlugin()` method validates package names against a strict regex to p
 /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*(@[a-zA-Z0-9._-]+)?$/
 ```
 
+### Query Stats & Rate Limiting
+
+The `ScopedDatabase` tracks query metrics per plugin and enforces rate limits to prevent runaway plugins from degrading performance.
+
+**Rate Limiting:** Each plugin is limited to **100 queries per second** by default. Exceeding this throws:
+
+```
+Plugin 'my-plugin' exceeded query rate limit (100/s)
+```
+
+**Slow Query Logging:** Any query taking longer than **500ms** is logged as a warning:
+
+```
+WARN [scoped-database] Slow plugin query detected { pluginName: 'my-plugin', operation: 'execute', durationMs: 1234 }
+```
+
+**Query Statistics:** Access stats from the plugin context:
+
+```ts
+const stats = ctx.db.getStats();
+// { totalQueries: 42, slowQueries: 1, lastQueryAt: Date }
+```
+
+All operations are tracked: `execute`, `insert`, `update`, `delete`, and `select`.
+
 ---
 
-## Plugin Dependencies
+## Health Checks & Conflict Detection
 
-Require other plugins to be installed:
-
-```typescript
-dependencies: ['stripe', 'mailgun'],
-minVersion: '0.5.0', // Minimum ForkCart version
-```
-
-Dependencies are validated on activation. If any required plugin is missing or inactive, activation fails with a descriptive error listing all unmet dependencies.
-
----
-
-## Health Check API
-
-Get a detailed health report for any installed plugin. Useful for debugging activation issues, missing settings, or failed migrations.
-
-### Endpoint
+### Health Checks
 
 ```
-GET /api/v1/plugins/:id/health
+GET /api/v1/plugins/health          — All active plugins
+GET /api/v1/plugins/:id/health      — Detailed report for one plugin
 ```
 
-### Response
+The detailed report includes:
 
 ```json
 {
@@ -1246,8 +1635,6 @@ GET /api/v1/plugins/:id/health
 }
 ```
 
-**Fields:**
-
 | Field          | Description                                                                     |
 | -------------- | ------------------------------------------------------------------------------- |
 | `healthy`      | `true` if migrations are applied, required settings are filled, and deps are OK |
@@ -1257,75 +1644,13 @@ GET /api/v1/plugins/:id/health
 | `dependencies` | Whether all declared dependencies are installed and active                      |
 | `lastError`    | First detected issue, or `null` if healthy                                      |
 
-There's also a bulk health check for all active plugins:
-
-```
-GET /api/v1/plugins/health
-```
-
----
-
-## Dev Mode & Hot Reload
-
-During development, ForkCart can watch your plugin's directory and automatically reload it when files change.
-
-### How It Works
-
-1. `fs.watch` monitors the plugin directory recursively
-2. On `.js`, `.ts`, `.json`, or `.mjs` file changes, a debounced reload triggers
-3. The plugin is deactivated, its module is re-imported, and it's reactivated
-4. All hooks, routes, filters, and slots are re-registered
-
-**Hot reload is disabled in production** (`NODE_ENV === 'production'`).
-
-### Programmatic API
-
-```typescript
-// Start watching (returns { watching: boolean, reason?: string })
-pluginLoader.watchPlugin('my-plugin');
-
-// Stop watching
-pluginLoader.unwatchPlugin('my-plugin');
-
-// Stop all watchers
-pluginLoader.unwatchAll();
-```
-
-### Manual Reload Endpoint
-
-Trigger a reload without file watching:
-
-```
-POST /api/v1/plugins/:id/reload
-```
-
-Response:
-
-```json
-{
-  "data": {
-    "success": true,
-    "pluginName": "my-plugin",
-    "reloadedAt": "2026-03-28T00:00:00.000Z"
-  }
-}
-```
-
-This deactivates the plugin, re-imports the module from disk, and reactivates it. Useful for CI/CD deployments or when you've manually updated plugin files.
-
----
-
-## Conflict Detection
-
-When multiple plugins are active, they may conflict by registering the same routes, claiming the same storefront slots, or using the same PageBuilder block names.
-
-### Endpoint
+### Conflict Detection
 
 ```
 GET /api/v1/plugins/conflicts
 ```
 
-### Response
+Detects and returns an array of conflicts:
 
 ```json
 {
@@ -1334,79 +1659,35 @@ GET /api/v1/plugins/conflicts
       "type": "route",
       "plugins": ["plugin-a", "plugin-b"],
       "detail": "Multiple plugins register route: GET /status"
-    },
-    {
-      "type": "slot",
-      "plugins": ["plugin-a", "plugin-c"],
-      "detail": "Multiple plugins claim slot 'header-after' with order 10"
     }
   ],
   "hasConflicts": true
 }
 ```
 
-### Conflict Types
+| Conflict Type | Description                                                    |
+| ------------- | -------------------------------------------------------------- |
+| `route`       | Two plugins register the same HTTP method + path               |
+| `hook`        | Two plugins hook and filter the same event                     |
+| `slot`        | Two plugins claim the same storefront slot with the same order |
+| `block`       | Two plugins register a PageBuilder block with the same name    |
 
-| Type    | Description                                                    |
-| ------- | -------------------------------------------------------------- |
-| `route` | Two plugins register the same HTTP method + path               |
-| `hook`  | Two plugins hook and filter the same event                     |
-| `slot`  | Two plugins claim the same storefront slot with the same order |
-| `block` | Two plugins register a PageBuilder block with the same name    |
+**Programmatic API:**
 
-### Programmatic API
-
-```typescript
+```ts
 const conflicts = pluginLoader.detectConflicts();
 // Returns: Array<{ type: string, plugins: string[], detail: string }>
 ```
 
 ---
 
-## Query Stats & Rate Limiting
-
-The `ScopedDatabase` tracks query metrics per plugin and enforces rate limits to prevent runaway plugins from degrading performance.
-
-### Rate Limiting
-
-Each plugin is limited to **100 queries per second** by default. Exceeding this throws an error:
-
-```
-Plugin 'my-plugin' exceeded query rate limit (100/s)
-```
-
-The limit is configurable per `ScopedDatabase` instance (set via constructor).
-
-### Slow Query Logging
-
-Any query taking longer than **500ms** is logged as a warning:
-
-```
-WARN [scoped-database] Slow plugin query detected { pluginName: 'my-plugin', operation: 'execute', durationMs: 1234 }
-```
-
-### Query Statistics
-
-Access stats from the plugin context's `db` instance:
-
-```typescript
-const stats = ctx.db.getStats();
-// {
-//   totalQueries: 42,
-//   slowQueries: 1,
-//   lastQueryAt: Date
-// }
-```
-
-All operations are tracked: `execute`, `insert`, `update`, `delete`, and `select`.
-
----
-
 ## Provider Implementations
+
+Plugins with specific `type` values can implement provider interfaces for payment, marketplace, email, and shipping.
 
 ### Payment Provider
 
-```typescript
+```ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
@@ -1483,7 +1764,7 @@ export default definePlugin({
 
 ### Marketplace Provider
 
-```typescript
+```ts
 export default definePlugin({
   name: 'amazon',
   version: '1.0.0',
@@ -1519,7 +1800,6 @@ export default definePlugin({
     async testConnection() {
       return { ok: true };
     },
-
     async listProduct(product) {
       return {
         id: 'listing_123',
@@ -1531,7 +1811,6 @@ export default definePlugin({
         updatedAt: new Date(),
       };
     },
-
     async updateListing(listingId, product) {},
     async deleteListing(listingId) {},
     async fetchOrders(since) {
@@ -1550,7 +1829,7 @@ export default definePlugin({
 
 ### Email Provider
 
-```typescript
+```ts
 export default definePlugin({
   name: 'mailgun',
   version: '1.0.0',
@@ -1579,12 +1858,8 @@ export default definePlugin({
     isConfigured() {
       return true;
     },
-
     async sendEmail(input) {
-      return {
-        messageId: 'msg_xxx',
-        accepted: true,
-      };
+      return { messageId: 'msg_xxx', accepted: true };
     },
   },
 });
@@ -1592,7 +1867,7 @@ export default definePlugin({
 
 ### Shipping Provider
 
-```typescript
+```ts
 export default definePlugin({
   name: 'dhl',
   version: '1.0.0',
@@ -1655,9 +1930,268 @@ export default definePlugin({
 
 ---
 
-## Full Example: Discount Codes Plugin
+## Best Practices
 
-```typescript
+1. **Use TypeScript** — Better DX, catches errors early, full IDE autocomplete with `definePlugin()`
+2. **Handle errors gracefully** — Don't crash the main app (hook/filter errors are caught automatically). Use `onError` for error tracking (Sentry, etc.)
+3. **Use the settings schema** — Don't hardcode configuration. The admin panel auto-generates forms for you
+4. **Mark secrets as `secret: true`** — They'll be encrypted at rest with AES-256-GCM
+5. **Document your plugin** — Include a README.md (required for marketplace publishing)
+6. **Test thoroughly** — Especially payment/order flows
+7. **Version your migrations** — Never modify existing ones, always add new versions
+8. **Declare permissions** — Only request what you need. Avoid `admin:full` unless truly necessary
+9. **Clean up on uninstall** — Remove data and tables when plugin is removed via `onUninstall`
+10. **Use `"type": "module"`** — Required for local plugin loading
+11. **Use `ref()` in migrations** — Never hardcode column types when referencing core tables
+12. **Keep plugin names consistent** — The `name` in `definePlugin()` should be a kebab-case slug. Use `forkcart-plugin.json` for the pretty display name
+
+### Naming Conventions
+
+**Database Tables:** Always prefix with `plugin_<your-plugin-name>_`
+
+```ts
+// ✅ CORRECT — table name matches plugin name
+name: 'fomo-badges',
+migrations: [{
+  up: async (db) => {
+    await db.execute(`CREATE TABLE plugin_fomo_badges_stats (...)`);
+  }
+}]
+
+// ❌ WRONG — table name doesn't match plugin name
+name: 'fomo-badges',
+migrations: [{
+  up: async (db) => {
+    await db.execute(`CREATE TABLE plugin_social_proof_stats (...)`);  // Wrong prefix!
+  }
+}]
+```
+
+**Route Endpoints:** Auto-mounted at `/api/v1/public/plugins/<plugin-slug>/`
+
+---
+
+## Troubleshooting & Common Gotchas
+
+### Plugin Not Discovered
+
+**Symptom:** `POST /api/v1/plugins/discover` doesn't find your plugin.
+
+**Checklist:**
+
+1. Is your plugin in one of the scanned directories? (`data/plugins/`, `packages/plugins/`, `plugins/`, or `node_modules/`)
+2. Does `package.json` exist in the plugin root?
+3. Does `package.json` have `"keywords": ["forkcart-plugin"]` or a name starting with `forkcart-plugin-`?
+4. Is the plugin already registered? (The loader skips already-known plugins)
+
+### Plugin Fails to Load (ES Module Errors)
+
+**Symptom:** `ERR_REQUIRE_ESM` or `Cannot use import statement outside a module`
+
+**Fix:** Ensure your `package.json` has:
+
+```json
+{
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": { ".": { "import": "./dist/index.js" } }
+}
+```
+
+Also ensure your compiled output (`dist/`) uses ES module syntax (`export default`, not `module.exports`).
+
+### "Invalid plugin definition — missing name/version/type"
+
+**Fix:** Your default export must include `name`, `version`, and `type`:
+
+```ts
+export default definePlugin({
+  name: 'my-plugin',
+  version: '1.0.0',
+  type: 'general',
+  description: '...',
+  author: '...',
+});
+```
+
+### The `dist/` Stale Problem
+
+If you edit `src/index.ts` but forget to rebuild, the loader imports the old `dist/index.js`. Always rebuild before testing. Use `npx forkcart plugin:dev <slug>` for automatic watch-build-reload, or the Plugin Store auto-compiles with esbuild.
+
+### Display Name vs Technical Name
+
+The DB stores the **display name** (e.g., "Nyx Recommendations") from the first registration. The SDK uses the **technical name** (e.g., "nyx-recommendations") from `definePlugin({ name: ... })`. The loader tries both when looking up plugins, plus the `slug` from `forkcart-plugin.json`. But if they diverge badly, things can break.
+
+**Rule of thumb:** Keep `name` in `definePlugin()` as a kebab-case slug. Use `forkcart-plugin.json` for the pretty display name.
+
+### ZIP Nested Directory Problem
+
+When extracting plugin ZIPs, the contents often end up nested: `data/plugins/my-widget/my-widget/`. The loader handles this by checking multiple paths, but deeply nested or unusually structured ZIPs can still cause "plugin code not found" errors.
+
+### Scripts in Suspense Boundaries Don't Execute
+
+Never rely on raw `<script>` tags in plugin HTML content. They **will not run** inside React Suspense boundaries. ForkCart handles this automatically via [ScriptExecutor](#scriptexecutor--why-this-exists) for `storefrontSlots` and `pageBuilderBlocks` content.
+
+### Plugin Table Naming
+
+Custom tables **must** use the `plugin_<name>_` prefix. The `ScopedDatabase` proxy blocks access to unprefixed tables unless you have the matching permission. Replace non-alphanumeric chars in the plugin name with underscores for the prefix.
+
+### Settings Re-initialization on Change
+
+When plugin settings are updated via the admin panel, the plugin is **deactivated and re-activated**. This means `onDeactivate` + `onActivate` fire, and all hooks/routes are re-registered. Design your plugin to handle this gracefully.
+
+### Secret Settings and the Admin API
+
+Settings marked `secret: true` are stored encrypted and returned as `"••••••••"` in the admin API response. When the admin saves settings, the loader only encrypts values that aren't already the masked string — so round-tripping won't corrupt the actual secret.
+
+### Migration Fails
+
+**Common causes:**
+
+- Table name doesn't have the `plugin_<name>_` prefix
+- SQL syntax error
+- Type mismatch: used `VARCHAR(255)` for a column that references a `UUID` core column — use `ref()` instead
+
+### Permission Denied on Database Access
+
+**Fix:** Add the required permission to your plugin definition:
+
+```ts
+permissions: ['orders:read']; // Add the permission you need
+```
+
+### Storefront Slot Content Not Showing
+
+**Checklist:**
+
+1. Is the plugin active?
+2. Is the slot name correct? (See [Available Storefront Slots](#available-storefront-slots))
+3. Does the slot have `pages` restrictions that don't match the current page?
+4. Check the API directly: `GET /api/v1/public/plugins/slots/<slot-name>`
+5. Storefront caches slot content for 60 seconds — wait or restart the dev server
+
+### Unmet Dependencies Error
+
+**Fix:** Install and activate the required plugins first, then retry activating your plugin.
+
+---
+
+## Full API Reference
+
+### Plugin Management Endpoints
+
+| Method | Endpoint                         | Description                       |
+| ------ | -------------------------------- | --------------------------------- |
+| GET    | `/api/v1/plugins`                | List all plugins                  |
+| GET    | `/api/v1/plugins/:id`            | Get plugin details                |
+| POST   | `/api/v1/plugins/discover`       | Discover local plugins            |
+| POST   | `/api/v1/plugins/install`        | Install plugin from npm           |
+| PUT    | `/api/v1/plugins/:id/activate`   | Activate a plugin                 |
+| PUT    | `/api/v1/plugins/:id/deactivate` | Deactivate a plugin               |
+| DELETE | `/api/v1/plugins/:id`            | Uninstall a plugin                |
+| POST   | `/api/v1/plugins/:id/reload`     | Hot-reload a plugin               |
+| GET    | `/api/v1/plugins/health`         | Health check (all active plugins) |
+| GET    | `/api/v1/plugins/:id/health`     | Health check (single plugin)      |
+| GET    | `/api/v1/plugins/conflicts`      | Detect conflicts between plugins  |
+
+### Plugin Store Endpoints
+
+| Method | Endpoint                       | Description              |
+| ------ | ------------------------------ | ------------------------ |
+| POST   | `/api/v1/store/submit`         | Submit plugin to store   |
+| PUT    | `/api/v1/store/:slug/versions` | Publish a new version    |
+| POST   | `/api/v1/store/:slug/install`  | Install from registry    |
+| POST   | `/api/v1/store/:slug/update`   | Update to latest version |
+
+### Public Plugin Endpoints
+
+| Method | Endpoint                                       | Description                    |
+| ------ | ---------------------------------------------- | ------------------------------ |
+| GET    | `/api/v1/public/plugins/slots/:slotName`       | Get slot content               |
+| GET    | `/api/v1/public/plugins/blocks`                | List all PageBuilder blocks    |
+| GET    | `/api/v1/public/plugins/blocks/fallbacks`      | Get fallback blocks for a page |
+| \*     | `/api/v1/public/plugins/<plugin-slug>/<route>` | Custom plugin routes           |
+
+### Scheduled Task Endpoints
+
+| Method | Endpoint                                | Description           |
+| ------ | --------------------------------------- | --------------------- |
+| GET    | `/api/v1/plugins/tasks`                 | List all tasks        |
+| POST   | `/api/v1/plugins/tasks/:taskKey/run`    | Manually trigger task |
+| PUT    | `/api/v1/plugins/tasks/:taskKey/toggle` | Enable/disable task   |
+
+### Available Events
+
+| Event                 | Payload includes                                  |
+| --------------------- | ------------------------------------------------- |
+| `order:created`       | orderId, customerId, totalAmount, currency, items |
+| `order:paid`          | orderId, paymentId, amount, currency, provider    |
+| `order:shipped`       | orderId, trackingNumber                           |
+| `order:cancelled`     | orderId, reason                                   |
+| `order:refunded`      | orderId, amount                                   |
+| `product:created`     | productId, name, sku                              |
+| `product:updated`     | productId, changes                                |
+| `product:deleted`     | productId                                         |
+| `cart:created`        | cartId                                            |
+| `cart:updated`        | cartId, items                                     |
+| `cart:item-added`     | cartId, productId, quantity                       |
+| `cart:item-removed`   | cartId, productId                                 |
+| `customer:registered` | customerId, email                                 |
+| `customer:updated`    | customerId, changes                               |
+| `checkout:started`    | cartId, customerId                                |
+| `checkout:completed`  | orderId, cartId                                   |
+| `inventory:updated`   | productId, variantId, quantity                    |
+| `inventory:low`       | productId, variantId, currentQuantity, threshold  |
+| `plugin:activated`    | pluginName                                        |
+| `plugin:deactivated`  | pluginName                                        |
+
+### Available Filters
+
+| Filter                      | Input type | Description                              |
+| --------------------------- | ---------- | ---------------------------------------- |
+| `product:price`             | `number`   | Modify product price                     |
+| `product:title`             | `string`   | Modify product title                     |
+| `product:description`       | `string`   | Modify product description               |
+| `cart:total`                | `number`   | Modify cart total                        |
+| `cart:shipping`             | `number`   | Modify shipping cost                     |
+| `cart:tax`                  | `number`   | Modify tax amount                        |
+| `checkout:payment-methods`  | `array`    | Filter/modify available payment methods  |
+| `checkout:shipping-methods` | `array`    | Filter/modify available shipping methods |
+| `order:confirmation-email`  | `object`   | Modify order confirmation email          |
+| `search:results`            | `array`    | Filter/transform search results          |
+| `search:query`              | `string`   | Modify search query                      |
+| `admin:menu`                | `array`    | Customize admin menu items               |
+| `storefront:head`           | `string`   | Inject into `<head>`                     |
+| `storefront:footer`         | `string`   | Inject into footer                       |
+
+### Available Storefront Slots
+
+| Slot                      | Location                |
+| ------------------------- | ----------------------- |
+| `head`                    | Inside `<head>`         |
+| `body-start`              | Start of `<body>`       |
+| `body-end`                | End of `<body>`         |
+| `header-before`           | Before header           |
+| `header-after`            | After header            |
+| `footer-before`           | Before footer           |
+| `footer-after`            | After footer            |
+| `product-page-top`        | Top of product page     |
+| `product-page-bottom`     | Bottom of product page  |
+| `product-page-sidebar`    | Product page sidebar    |
+| `cart-page-top`           | Top of cart page        |
+| `cart-page-bottom`        | Bottom of cart page     |
+| `checkout-before-payment` | Before payment form     |
+| `checkout-after-payment`  | After payment form      |
+| `category-page-top`       | Top of category page    |
+| `category-page-bottom`    | Bottom of category page |
+
+---
+
+## Full Examples
+
+### Discount Codes Plugin
+
+```ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
@@ -1695,7 +2229,6 @@ export default definePlugin({
   routes: (router) => {
     router.post('/validate', async (c) => {
       const { code } = await c.req.json();
-      // Validate discount code
       return c.json({ valid: true, discount: 10 });
     });
   },
@@ -1741,205 +2274,20 @@ export default definePlugin({
 });
 ```
 
----
+### Nyx Recommendations Plugin
 
-## Publishing
+See [`data/plugins/nyx-recommendations/`](../packages/api/data/plugins/nyx-recommendations/) for a full real-world plugin demonstrating:
 
-### To the ForkCart Plugin Marketplace
-
-Your ZIP must contain:
-
-```
-my-plugin/
-├── forkcart-plugin.json  ← Required manifest
-├── package.json          ← Required (with "type": "module")
-├── README.md             ← Required
-├── dist/                 ← Compiled JS
-│   └── index.js
-└── src/                  ← Source (optional)
-    └── index.ts
-```
-
-**Upload steps:**
-
-1. Build your plugin: `pnpm build`
-2. Create ZIP with all required files
-3. Go to [ForkCart Developer Portal](https://developers.forkcart.com)
-4. Upload your ZIP
-5. Set pricing (free or paid — ForkCart takes 10%, you keep 90%)
-
-### As npm Package
-
-```json
-{
-  "name": "forkcart-plugin-my-awesome",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "keywords": ["forkcart-plugin"],
-  "peerDependencies": {
-    "@forkcart/plugin-sdk": "^0.1.0"
-  }
-}
-```
-
----
-
-## Best Practices
-
-1. **Use TypeScript** — Better DX and catches errors early
-2. **Handle errors gracefully** — Don't crash the main app (hook/filter errors are caught automatically)
-3. **Use the settings schema** — Don't hardcode configuration
-4. **Mark secrets as `secret: true`** — They'll be encrypted at rest
-5. **Document your plugin** — Include a README.md
-6. **Test thoroughly** — Especially payment/order flows
-7. **Version your migrations** — Never modify existing ones, add new versions
-8. **Declare permissions** — Only request what you need
-9. **Clean up on uninstall** — Remove data when plugin is removed
-10. **Use `"type": "module"`** — Required for local plugin loading
-
-### ⚠️ Naming Conventions (Important!)
-
-**Database Tables:** Always prefix with `plugin_<your-plugin-name>_`
-
-```typescript
-// ✅ CORRECT — table name matches plugin name
-name: 'fomo-badges',
-// ...
-migrations: [{
-  up: async (db) => {
-    await db.execute(`
-      CREATE TABLE plugin_fomo_badges_stats (...)
-    `);
-  }
-}]
-
-// ❌ WRONG — table name doesn't match plugin name
-name: 'fomo-badges',
-// ...
-migrations: [{
-  up: async (db) => {
-    await db.execute(`
-      CREATE TABLE plugin_social_proof_stats (...)  // Wrong prefix!
-    `);
-  }
-}]
-```
-
-**Why:** The `ScopedDatabase` proxy allows plugins to access their own tables (`plugin_<name>_*`) without needing extra permissions. Mismatched names = permission errors.
-
-**Route API Endpoints:** Use your plugin name in the path:
-
-```typescript
-// Routes are auto-mounted at: /api/v1/public/plugins/<plugin-slug>/
-routes: (router) => {
-  router.get('/stats', ...);  // → /api/v1/public/plugins/fomo-badges/stats
-}
-```
-
----
-
-## Troubleshooting
-
-### Plugin Not Discovered
-
-**Symptom:** `POST /api/v1/plugins/discover` doesn't find your plugin.
-
-**Checklist:**
-
-1. Is your plugin in one of the scanned directories? (`packages/plugins/`, `data/plugins/`, `plugins/`, or `node_modules/`)
-2. Does `package.json` exist in the plugin root?
-3. Does `package.json` have `"keywords": ["forkcart-plugin"]` or a name starting with `forkcart-plugin-`?
-4. Is the plugin already registered? (The loader skips already-known plugins)
-
-### Plugin Fails to Load (ES Module Errors)
-
-**Symptom:** `ERR_REQUIRE_ESM` or `Cannot use import statement outside a module`
-
-**Fix:** Ensure your `package.json` has:
-
-```json
-{
-  "type": "module",
-  "main": "dist/index.js",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js"
-    }
-  }
-}
-```
-
-Also ensure your compiled output (`dist/`) uses ES module syntax (`export default`, not `module.exports`).
-
-### "Invalid plugin definition — missing name/version/type"
-
-**Symptom:** Plugin is found but not registered.
-
-**Fix:** Your default export must include `name`, `version`, and `type`:
-
-```typescript
-export default definePlugin({
-  name: 'my-plugin', // Required
-  version: '1.0.0', // Required
-  type: 'general', // Required
-  description: '...',
-  author: '...',
-});
-```
-
-### Migration Fails
-
-**Symptom:** `Migration X.X.X for plugin 'my-plugin' failed`
-
-**Common causes:**
-
-- Table name doesn't have the `plugin_<name>_` prefix
-- SQL syntax error in the migration
-- The `up()` function receives `db` (ScopedDatabase), not the full context — use `db.execute()` directly
-
-### Permission Denied on Database Access
-
-**Symptom:** `Plugin 'my-plugin' does not have permission to read/write table 'X'`
-
-**Fix:** Add the required permission to your plugin definition:
-
-```typescript
-permissions: ['orders:read'], // Add the permission you need
-```
-
-Or if you need unrestricted access: `permissions: ['admin:full']` (use sparingly).
-
-### Storefront Slot Content Not Showing
-
-**Symptom:** Plugin is active but slot content doesn't appear.
-
-**Checklist:**
-
-1. Is the plugin active? (Check `GET /api/v1/plugins`)
-2. Is the slot name correct? (Check the [Available Slots](#storefront-slots) table)
-3. Does the slot have `pages` restrictions that don't match the current page?
-4. Check the API directly: `GET /api/v1/public/plugins/slots/<slot-name>`
-5. Storefront caches slot content for 60 seconds — wait or restart the dev server
-
-### Plugin Settings Not Taking Effect
-
-**Symptom:** Changed settings in admin don't affect plugin behavior.
-
-**Explanation:** When settings are updated, the plugin is automatically deactivated and reactivated. If this process fails, the plugin may be running with stale settings. Check the API logs for errors during reactivation.
-
-### Unmet Dependencies Error
-
-**Symptom:** `Cannot activate plugin 'X': unmet dependencies. Missing plugins: Y, Z`
-
-**Fix:** Install and activate the required plugins first, then retry activating your plugin.
+- Settings with all types (string, number, boolean, select)
+- Event hooks (`order:paid`)
+- Custom API routes with database queries
+- Admin page with dynamic `apiRoute`
+- PageBuilder block with JavaScript widget
+- Database migrations using `ref()`
+- CLI commands
+- Scheduled tasks
+- Error handling via `onError`
+- Startup warmup via `onReady`
 
 ---
 
@@ -1948,3 +2296,7 @@ Or if you need unrestricted access: `permissions: ['admin:full']` (use sparingly
 - [GitHub Issues](https://github.com/forkcart/forkcart/issues)
 - [Discord Community](https://discord.gg/forkcart)
 - [API Documentation](./API.md)
+
+---
+
+_Built with 🦞 by the ForkCart team._
