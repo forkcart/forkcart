@@ -378,12 +378,17 @@ export class PluginLoader {
     const dataPluginsDir = join(process.cwd(), 'data', 'plugins');
 
     const slugPaths = slug
-      ? [join(dataPluginsDir, slug, `forkcart-plugin-${slug}`), join(dataPluginsDir, slug)]
+      ? [
+          join(dataPluginsDir, slug),
+          join(dataPluginsDir, slug, `forkcart-plugin-${slug}`),
+          join(dataPluginsDir, slug, slug), // ZIP wraps in same-name subfolder
+        ]
       : [];
 
     const namePaths = [
-      join(dataPluginsDir, dirName, `forkcart-plugin-${dirName}`),
       join(dataPluginsDir, dirName),
+      join(dataPluginsDir, dirName, `forkcart-plugin-${dirName}`),
+      join(dataPluginsDir, dirName, dirName), // ZIP wraps in same-name subfolder
       join(dataPluginsDir, pluginName),
     ];
 
@@ -433,11 +438,23 @@ export class PluginLoader {
             continue;
           }
 
-          // Check for any forkcart-plugin-* subfolder
+          // Check for same-name subfolder: plugins/<slug>/<slug>/
+          // (common when ZIP wraps contents in a folder matching the slug)
+          const sameNamePath = join(pluginsDir, entry.name, entry.name);
+          def = await this.tryLoadPluginFromPath(sameNamePath);
+          if (def) {
+            discovered.push(def);
+            continue;
+          }
+
+          // Check for any forkcart-plugin-* or other subfolder with package.json
           try {
             const subEntries = await readdir(join(pluginsDir, entry.name), { withFileTypes: true });
             for (const sub of subEntries) {
-              if (sub.isDirectory() && sub.name.startsWith('forkcart-plugin-')) {
+              if (
+                sub.isDirectory() &&
+                (sub.name.startsWith('forkcart-plugin-') || sub.name !== 'node_modules')
+              ) {
                 def = await this.tryLoadPluginFromPath(join(pluginsDir, entry.name, sub.name));
                 if (def) {
                   discovered.push(def);
