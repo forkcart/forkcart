@@ -1,0 +1,37 @@
+{
+  "name": "forkcart-plugin-smart-recs",
+  "version": "1.0.0",
+  "description": "Show smart product recommendations — manual picks and auto-detected from purchase patterns",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "author": "Tyto 🦉",
+  "license": "MIT",
+  "keywords": [
+    "forkcart-plugin",
+    "recommendations",
+    "related-products",
+    "cross-sell",
+    "upsell"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "peerDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0"
+  },
+  "devDependencies": {
+    "@forkcart/plugin-sdk": "^0.1.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

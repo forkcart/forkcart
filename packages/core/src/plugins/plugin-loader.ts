@@ -711,16 +711,21 @@ export class PluginLoader {
     // Decrypt secret settings before passing to the plugin
     const settings = this.decryptSettings(plugin.name, rawSettings);
 
-    // Try SDK plugin first, then legacy
+    // Try SDK plugin first, then try loading from data/plugins/
     if (sdkDef) {
       await this.activateSdkPlugin(plugin.name, sdkDef, settings);
     } else {
-      const legacyDef = this.legacyPlugins.get(plugin.name);
-      if (legacyDef) {
-        await this.activateLegacyPlugin(legacyDef, settings);
+      // Plugin not in memory — try loading from data/plugins/
+      const loadedDef = await this.tryLoadInstalledPlugin(
+        plugin.name,
+        plugin.metadata as Record<string, unknown> | null,
+      );
+      if (loadedDef) {
+        await this.activateSdkPlugin(plugin.name, loadedDef, settings);
       } else {
-        logger.warn({ pluginName: plugin.name }, 'No definition found for plugin');
-        return;
+        throw new Error(
+          `Cannot activate '${plugin.name}': plugin code not found in data/plugins/. Install it from the Plugin Store first.`,
+        );
       }
     }
 
