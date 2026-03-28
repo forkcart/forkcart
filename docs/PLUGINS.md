@@ -49,6 +49,13 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
   - [Storefront Usage](#storefront-usage)
   - [How PluginBlock Works in Craft.js](#how-pluginblock-works-in-craftjs)
   - [Block API Endpoints](#block-api-endpoints)
+- [Storefront Pages](#storefront-pages)
+  - [Registering Pages](#registering-pages)
+  - [PluginStorefrontPage Interface](#pluginstorefrontpage-interface)
+  - [Static vs Dynamic Content](#static-vs-dynamic-content)
+  - [Navigation Integration](#navigation-integration)
+  - [window.FORKCART Context on Plugin Pages](#windowforkcart-context-on-plugin-pages)
+  - [Storefront Page API Endpoints](#storefront-page-api-endpoints)
 - [Admin Pages & Widgets](#admin-pages--widgets)
   - [Static Content](#static-content)
   - [Dynamic Content via API Route](#dynamic-content-via-api-route)
@@ -1034,6 +1041,200 @@ Returns blocks that need fallback rendering. Parameters:
 
 ---
 
+## Storefront Pages
+
+Plugins can register their own full pages in the storefront. Unlike [Storefront Slots](#storefront-slots) (which inject content into existing pages), storefront pages are standalone routes — think `/wishlist`, `/loyalty/rewards`, or `/order-tracking`.
+
+All plugin pages are served under the `/ext/` prefix with locale:
+
+```
+https://your-store.com/en/ext/wishlist
+https://your-store.com/de/ext/loyalty/rewards
+```
+
+The catch-all route at `app/[locale]/ext/[...slug]/page.tsx` fetches the page content from the API and renders it with proper metadata, styles, scripts, and auth handling.
+
+### Registering Pages
+
+Add a `storefrontPages` array to your plugin definition:
+
+```typescript
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'wishlist',
+  version: '1.0.0',
+  type: 'general',
+  description: 'Customer wishlists',
+  author: 'Your Name',
+
+  storefrontPages: [
+    {
+      path: '/wishlist',
+      title: 'My Wishlist',
+      content: `
+        <div id="wishlist-root">
+          <h1>My Wishlist</h1>
+          <div id="wishlist-items">Loading...</div>
+        </div>
+      `,
+      scripts: [
+        `
+        fetch('/api/v1/public/plugins/wishlist/items')
+          .then(r => r.json())
+          .then(data => {
+            document.getElementById('wishlist-items').innerHTML =
+              data.data.map(item => '<div>' + item.name + '</div>').join('');
+          });
+        `,
+      ],
+      styles: '#wishlist-root { max-width: 800px; margin: 0 auto; padding: 2rem; }',
+      showInNav: true,
+      navLabel: 'Wishlist',
+      navIcon: '❤️',
+      requireAuth: true,
+      metaDescription: 'View and manage your wishlist',
+    },
+  ],
+});
+```
+
+### PluginStorefrontPage Interface
+
+| Property          | Type       | Required | Description                                                                |
+| ----------------- | ---------- | -------- | -------------------------------------------------------------------------- |
+| `path`            | `string`   | ✅       | URL path without locale prefix, e.g. `'/wishlist'` or `'/loyalty/rewards'` |
+| `title`           | `string`   | ✅       | Page title for `<title>` tag and breadcrumbs                               |
+| `content`         | `string`   | –        | Static HTML content to render                                              |
+| `contentRoute`    | `string`   | –        | API route (relative to plugin routes) returning `{ html: string }`         |
+| `scripts`         | `string[]` | –        | JavaScript to execute — inline code or URLs                                |
+| `styles`          | `string`   | –        | CSS to inject into the page                                                |
+| `showInNav`       | `boolean`  | –        | Show a link in the storefront header navigation                            |
+| `navLabel`        | `string`   | –        | Navigation label (defaults to `title`)                                     |
+| `navIcon`         | `string`   | –        | Navigation icon (emoji or icon class)                                      |
+| `requireAuth`     | `boolean`  | –        | Redirect unauthenticated visitors to login                                 |
+| `metaDescription` | `string`   | –        | SEO meta description                                                       |
+
+Provide either `content` (static HTML) or `contentRoute` (dynamic). If both are set, `content` takes precedence.
+
+### Static vs Dynamic Content
+
+**Static pages** use `content` — the HTML is returned directly:
+
+```typescript
+storefrontPages: [
+  {
+    path: '/about-rewards',
+    title: 'About Our Rewards Program',
+    content: '<div class="rewards-info"><h1>Earn Points</h1><p>...</p></div>',
+  },
+];
+```
+
+**Dynamic pages** use `contentRoute` — the storefront fetches HTML from your plugin's API route at render time:
+
+```typescript
+storefrontPages: [
+  {
+    path: '/loyalty/rewards',
+    title: 'My Rewards',
+    contentRoute: '/rewards/page',
+    requireAuth: true,
+  },
+],
+
+routes(router) {
+  router.get('/rewards/page', async (c) => {
+    // Build HTML dynamically (e.g. fetch customer data)
+    return c.json({ html: '<div>Your points: 420</div>' });
+  });
+},
+```
+
+When `contentRoute` is set, the API internally calls `GET /api/v1/public/plugins/<plugin-slug><contentRoute>` and returns the HTML in the response.
+
+### Navigation Integration
+
+Pages with `showInNav: true` automatically appear in the storefront header. The storefront fetches the page list from `GET /api/v1/public/plugins/pages` and renders nav links for pages that have `showInNav` enabled.
+
+```typescript
+storefrontPages: [
+  {
+    path: '/store-locator',
+    title: 'Store Locator',
+    content: '<div id="map">...</div>',
+    showInNav: true,
+    navLabel: 'Stores', // Shorter label for the nav bar
+    navIcon: '📍',
+  },
+];
+```
+
+### window.FORKCART Context on Plugin Pages
+
+On plugin pages, the `PluginPageContext` client component sets additional properties on `window.FORKCART`:
+
+```typescript
+window.FORKCART.pageType = 'plugin-page';
+window.FORKCART.pluginPage = '/wishlist'; // the page path
+```
+
+Use this in your scripts to detect that you're running on a plugin page:
+
+```javascript
+if (window.FORKCART?.pageType === 'plugin-page') {
+  console.log('Running on plugin page:', window.FORKCART.pluginPage);
+}
+```
+
+The standard `window.FORKCART` properties (`locale`, `apiBase`, `currency`, `storeName`) are also available — see [window.FORKCART Context](#windowforkcart-context).
+
+### Storefront Page API Endpoints
+
+| Method | Endpoint                              | Description                                               |
+| ------ | ------------------------------------- | --------------------------------------------------------- |
+| GET    | `/api/v1/public/plugins/pages`        | List all registered storefront pages (metadata only)      |
+| GET    | `/api/v1/public/plugins/pages/<path>` | Get page content — returns `html`, `source`, and metadata |
+
+**List pages response:**
+
+```json
+{
+  "data": [
+    {
+      "pluginName": "wishlist",
+      "path": "/wishlist",
+      "title": "My Wishlist",
+      "showInNav": true,
+      "navLabel": "Wishlist",
+      "navIcon": "❤️",
+      "requireAuth": true,
+      "metaDescription": "View and manage your wishlist"
+    }
+  ]
+}
+```
+
+**Get page content response:**
+
+```json
+{
+  "data": {
+    "pluginName": "wishlist",
+    "path": "/wishlist",
+    "title": "My Wishlist",
+    "html": "<div id=\"wishlist-root\">...</div>",
+    "scripts": ["fetch('/api/v1/public/plugins/wishlist/items')..."],
+    "styles": "#wishlist-root { max-width: 800px; ... }",
+    "source": "static"
+  }
+}
+```
+
+The `source` field indicates how content was resolved: `"static"` (from `content`), `"api"` (from `contentRoute`), or `"empty"` (no content configured).
+
+---
+
 ## Admin Pages & Widgets
 
 Plugins can add pages to the admin panel. Two content strategies are available. Admin pages automatically appear in the admin sidebar under a **Plugins** section when the plugin is active.
@@ -1227,20 +1428,15 @@ ForkCart discovers and loads plugins from multiple sources. Understanding this f
 
 ### Discovery Directories
 
-The `PluginLoader.discoverPlugins()` method scans these directories in order:
+The `PluginLoader.discoverPlugins()` method scans a single directory:
 
-1. **`node_modules/`** — npm-installed plugins (top-level `forkcart-plugin-*` and scoped `@forkcart/plugin-*`)
-2. **`packages/plugins/`** — monorepo local plugins (development)
-3. **`data/plugins/`** — registry-installed plugins (downloaded ZIPs)
-4. **`plugins/`** — standalone local plugins (alternative directory)
+1. **`data/plugins/`** — all plugins (registry-installed, uploaded ZIPs, and local development)
 
-Each directory is scanned for subdirectories containing a `package.json` with the `"forkcart-plugin"` keyword or a matching name prefix.
+Each subdirectory is scanned for a valid plugin entry point. The loader also checks nested paths like `data/plugins/<slug>/forkcart-plugin-<slug>/` and `data/plugins/<slug>/<slug>/` to handle common ZIP extraction structures.
 
 ### How Plugins Are Loaded
 
-**npm packages** are imported via `import('package-name')` (standard Node.js resolution).
-
-**Local plugins** (from `packages/plugins/`, `data/plugins/`, or `plugins/`) are loaded using `file://` URL imports:
+**Local plugins** (from `data/plugins/`) are loaded using `file://` URL imports:
 
 ```
 file:///path/to/plugin/dist/index.js
@@ -2110,6 +2306,8 @@ permissions: ['orders:read']; // Add the permission you need
 | GET    | `/api/v1/public/plugins/slots/:slotName`       | Get slot content               |
 | GET    | `/api/v1/public/plugins/blocks`                | List all PageBuilder blocks    |
 | GET    | `/api/v1/public/plugins/blocks/fallbacks`      | Get fallback blocks for a page |
+| GET    | `/api/v1/public/plugins/pages`                 | List all storefront pages      |
+| GET    | `/api/v1/public/plugins/pages/*`               | Get storefront page content    |
 | \*     | `/api/v1/public/plugins/<plugin-slug>/<route>` | Custom plugin routes           |
 
 ### Scheduled Task Endpoints
