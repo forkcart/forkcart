@@ -1,6 +1,16 @@
 // ─── Main entry ─────────────────────────────────────────────────────────────
 export { definePlugin } from './define.js';
 
+// ─── Schema & ref() ─────────────────────────────────────────────────────────
+export { ref, coreSchema } from './schema.js';
+export type {
+  ColumnInfo,
+  TableSchema,
+  CoreSchema,
+  CoreColumnPath,
+  MigrationHelpers,
+} from './schema.js';
+
 // ─── Types ──────────────────────────────────────────────────────────────────
 export type {
   // Core types

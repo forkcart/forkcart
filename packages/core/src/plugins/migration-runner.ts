@@ -7,8 +7,41 @@ const logger = createLogger('plugin-migration-runner');
 interface PluginMigration {
   version: string;
   description: string;
-  up: (db: unknown) => Promise<void>;
+  up: (
+    db: unknown,
+    helpers?: { ref: (path: string) => string; schema: Record<string, unknown> },
+  ) => Promise<void>;
   down?: (db: unknown) => Promise<void>;
+}
+
+// ─── Inline ref() + schema for migration context ────────────────────────────
+// We inline the core schema here to avoid a circular dep on plugin-sdk.
+// This maps core table.column → SQL types. Keep in sync with plugin-sdk/src/schema.ts.
+
+let _migrationHelpers: { ref: (path: string) => string; schema: Record<string, unknown> } | null =
+  null;
+
+function getMigrationHelpers() {
+  if (_migrationHelpers) return _migrationHelpers;
+
+  // Lazy-load to avoid startup cost
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { ref, coreSchema } = require('@forkcart/plugin-sdk');
+    _migrationHelpers = { ref, schema: coreSchema };
+  } catch {
+    // Fallback: plugin-sdk not available (shouldn't happen in practice)
+    logger.warn('Could not load @forkcart/plugin-sdk for migration helpers — ref() unavailable');
+    _migrationHelpers = {
+      ref: (path: string) => {
+        throw new Error(
+          `ref('${path}') unavailable — @forkcart/plugin-sdk not found. Use raw SQL types instead.`,
+        );
+      },
+      schema: {},
+    };
+  }
+  return _migrationHelpers;
 }
 
 /**
@@ -89,8 +122,9 @@ export class MigrationRunner {
       );
 
       try {
-        // Run the migration's up function with the scoped DB
-        await migration.up(scopedDb);
+        // Run the migration's up function with the scoped DB + helpers
+        const helpers = getMigrationHelpers();
+        await migration.up(scopedDb, helpers);
 
         // Record the migration as applied
         const { sql } = await import('drizzle-orm');

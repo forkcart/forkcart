@@ -247,8 +247,19 @@ export interface PluginMigration {
   version: string;
   /** Human-readable description */
   description: string;
-  /** SQL or Drizzle schema to run */
-  up: (db: unknown) => Promise<void>;
+  /**
+   * SQL or Drizzle schema to run.
+   * Second argument provides helpers like `ref()` for type-safe column references:
+   * ```ts
+   * up: async (db, { ref }) => {
+   *   await db.execute(`CREATE TABLE ... (product_id ${ref('products.id')} NOT NULL)`);
+   * }
+   * ```
+   */
+  up: (
+    db: unknown,
+    helpers?: { ref: (path: string) => string; schema: Record<string, unknown> },
+  ) => Promise<void>;
   /** Rollback SQL or Drizzle schema */
   down?: (db: unknown) => Promise<void>;
 }
