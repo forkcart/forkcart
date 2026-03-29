@@ -60,7 +60,8 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
 - [Storefront Pages](#storefront-pages)
   - [Registering Pages](#registering-pages)
   - [PluginStorefrontPage Interface](#pluginstorefrontpage-interface)
-  - [Static vs Dynamic Content](#static-vs-dynamic-content)
+  - [Static vs Dynamic Content (HTML Approach)](#static-vs-dynamic-content-html-approach)
+  - [React Components on Pages](#react-components-on-pages)
   - [Navigation Integration](#navigation-integration)
   - [window.FORKCART Context on Plugin Pages](#windowforkcart-context-on-plugin-pages)
   - [Storefront Page API Endpoints](#storefront-page-api-endpoints)
@@ -1280,6 +1281,18 @@ Returns blocks that need fallback rendering. Parameters:
 
 Plugins can register their own full pages in the storefront. Unlike [Storefront Slots](#storefront-slots) (which inject content into existing pages), storefront pages are standalone routes — think `/wishlist`, `/loyalty/rewards`, or `/order-tracking`.
 
+There are **three ways** to render page content:
+
+| Approach                                             | Best for                       | Interactivity | SEO   |
+| ---------------------------------------------------- | ------------------------------ | ------------- | ----- |
+| ✅ **React Components** (recommended)                | Interactive pages, complex UI  | Full          | Great |
+| 🟡 **`contentRoute`** — dynamic HTML from plugin API | Server-rendered content, no JS | Limited       | Great |
+| 🟡 **`content`** — static HTML string                | Simple informational pages     | Limited       | Great |
+
+**React Components are the recommended approach** for any page that needs interactivity — forms, live data, client-side state. They render server-side (SSR) for SEO and hydrate on the client for full interactivity. See [React Components on Pages](#react-components-on-pages) below.
+
+The `content` and `contentRoute` approaches are simpler but limited to raw HTML with optional `<script>` tags. They work well for static or server-rendered pages that don't need React.
+
 All plugin pages are served under the `/ext/` prefix with locale:
 
 ```
@@ -1352,7 +1365,9 @@ export default definePlugin({
 
 Provide either `content` (static HTML) or `contentRoute` (dynamic). If both are set, `content` takes precedence.
 
-### Static vs Dynamic Content
+### Static vs Dynamic Content (HTML Approach)
+
+> 💡 The examples below use raw HTML via `content` and `contentRoute`. This is the **simple approach** — great for static or server-rendered pages. For interactive pages with forms, live data, or complex UI, use [React Components](#react-components-on-pages) instead.
 
 **Static pages** use `content` — the HTML is returned directly:
 
@@ -1445,12 +1460,145 @@ routes(router) {
 },
 ```
 
-> 🔍 **SEO Best Practice:** Always render content server-side via `contentRoute` when possible. If your `contentRoute` returns an empty shell with a client-side `fetch()` script, search engines will only see "Loading..." — no content, no ranking.
+> 🔍 **SEO Best Practice:** Use React Components or `contentRoute` for server-side rendering. If you rely on client-side `fetch()` scripts, search engines will only see "Loading..." — no content, no ranking.
 >
-> | Approach                  | Google sees              | SEO   |
-> | ------------------------- | ------------------------ | ----- |
-> | ✅ SSR via contentRoute   | Full HTML with content   | Great |
-> | ❌ CSR via script + fetch | "Loading..." placeholder | Bad   |
+> | Approach                  | Google sees              | SEO   | Interactivity         |
+> | ------------------------- | ------------------------ | ----- | --------------------- |
+> | ✅ React Component (SSR)  | Full HTML with content   | Great | Full (hydrated React) |
+> | ✅ SSR via `contentRoute` | Full HTML with content   | Great | Limited (script tags) |
+> | ❌ CSR via script + fetch | "Loading..." placeholder | Bad   | Full (but invisible)  |
+
+### React Components on Pages
+
+Instead of building pages with raw HTML and `<script>` tags, you can use **React components** — the same `storefrontComponents` system described in [Storefront Components (React)](#storefront-components-react). This is the **recommended approach** for any page that needs interactivity.
+
+The idea is simple: register a `storefrontPage` for the route, and a `storefrontComponent` with a slot that targets that page. The storefront renders the React component inside the page layout with full SSR + hydration.
+
+**Example: Blog plugin with React component**
+
+```typescript
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'blog',
+  version: '1.0.0',
+  type: 'general',
+  description: 'Blog with rich post viewer',
+  author: 'Your Name',
+
+  // 1. Register the page route
+  storefrontPages: [
+    {
+      path: '/blog/*',
+      title: 'Blog',
+      showInNav: true,
+      navLabel: 'Blog',
+      navIcon: '📝',
+      metaDescription: 'Our blog',
+    },
+  ],
+
+  // 2. Attach a React component to render on the page
+  storefrontComponents: [
+    {
+      slot: 'plugin-page-content',
+      name: 'BlogPage',
+      pages: ['plugin-page'],
+      order: 1,
+    },
+  ],
+
+  routes: (router) => {
+    router.get('/posts', async (c) => {
+      const db = c.get('db');
+      const posts = await db.execute('SELECT * FROM plugin_blog_posts WHERE status = $1', [
+        'published',
+      ]);
+      return c.json({ data: posts.rows });
+    });
+  },
+});
+```
+
+**React component (`src/components/BlogPage.tsx`):**
+
+```tsx
+import { useState, useEffect } from 'react';
+
+export function BlogPage() {
+  const [posts, setPosts] = useState([]);
+
+  useEffect(() => {
+    fetch('/api/v1/public/plugins/blog/posts')
+      .then((r) => r.json())
+      .then((data) => setPosts(data.data));
+  }, []);
+
+  return (
+    <div className="max-w-4xl mx-auto py-8">
+      <h1 className="text-3xl font-bold mb-6">Blog</h1>
+      {posts.map((post: any) => (
+        <article key={post.id} className="mb-8 border-b pb-6">
+          <h2 className="text-xl font-semibold">{post.title}</h2>
+          <p className="text-gray-600 mt-2">{post.excerpt}</p>
+        </article>
+      ))}
+    </div>
+  );
+}
+```
+
+**Example: Payment page with Stripe Elements**
+
+```typescript
+storefrontPages: [
+  {
+    path: '/pay/:orderId',
+    title: 'Complete Payment',
+    requireAuth: true,
+  },
+],
+
+storefrontComponents: [
+  {
+    slot: 'plugin-page-content',
+    name: 'StripePaymentForm',
+    pages: ['plugin-page'],
+    props: ['orderId'],
+  },
+],
+```
+
+```tsx
+// src/components/StripePaymentForm.tsx
+import { useState } from 'react';
+
+export function StripePaymentForm({ orderId }: { orderId?: string }) {
+  const [status, setStatus] = useState<'idle' | 'processing' | 'done'>('idle');
+
+  const handleSubmit = async () => {
+    setStatus('processing');
+    const res = await fetch(`/api/v1/public/plugins/stripe-pay/charge`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ orderId }),
+    });
+    if (res.ok) setStatus('done');
+  };
+
+  return (
+    <div className="max-w-md mx-auto py-12">
+      <h1 className="text-2xl font-bold mb-4">Complete Payment</h1>
+      {/* Your Stripe Elements form here */}
+      <button onClick={handleSubmit} disabled={status === 'processing'}>
+        {status === 'processing' ? 'Processing...' : 'Pay Now'}
+      </button>
+    </div>
+  );
+}
+```
+
+> 📖 For full details on building React components, the build pipeline, and available slots, see [Storefront Components (React)](#storefront-components-react).
 
 ### Navigation Integration
 
