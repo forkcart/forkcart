@@ -221,6 +221,22 @@ export interface PluginStorefrontPage {
   useExtPrefix?: boolean;
 }
 
+// ─── Storefront components (React components from plugins) ──────────────────
+
+/** A React component that a plugin provides for rendering in the storefront */
+export interface PluginStorefrontComponent {
+  /** Slot where this component renders (e.g. 'checkout-payment', 'product-reviews') */
+  slot: string;
+  /** Exported component name from the plugin's components bundle */
+  name: string;
+  /** Props this component accepts (for documentation/validation) */
+  props?: string[];
+  /** Only render on specific page types (e.g. ['product', 'checkout']) */
+  pages?: string[];
+  /** Render order within the slot (lower = earlier, default: 10) */
+  order?: number;
+}
+
 // ─── Storefront slots (frontend extension points) ───────────────────────────
 
 /** Storefront slot positions for injecting custom content */
@@ -435,6 +451,11 @@ export interface PluginDefinition<TSettings extends PluginSettingsMap = PluginSe
 
   /** Full storefront pages owned by this plugin (rendered under /ext/<path>) */
   storefrontPages?: PluginStorefrontPage[];
+
+  /** React components to render natively in storefront slots.
+   *  Components are loaded from the plugin's `dist/components.js` ESM bundle.
+   *  React and React-DOM are external (provided by the storefront). */
+  storefrontComponents?: PluginStorefrontComponent[];
 
   /** PageBuilder blocks — custom blocks that appear in the Craft.js PageBuilder.
    *  Blocks with a `defaultSlot` will automatically fall back to that slot

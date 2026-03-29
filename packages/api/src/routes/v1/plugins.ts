@@ -3,7 +3,8 @@ import type { PluginLoader, PluginScheduler } from '@forkcart/core';
 import { IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
-import { rm } from 'node:fs/promises';
+import { rm, readFile } from 'node:fs/promises';
+import { resolve, join } from 'node:path';
 import type { Context } from 'hono';
 
 const UpdateSettingsSchema = z.record(z.string(), z.unknown());
@@ -181,6 +182,52 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
         source: 'empty',
       },
     });
+  });
+
+  /** List all registered storefront components (React components from plugins) */
+  router.get('/components', async (c) => {
+    const components = pluginLoader.getAllStorefrontComponents();
+    return c.json({ data: components });
+  });
+
+  /** Get storefront components for a specific slot */
+  router.get('/components/:slotName', async (c) => {
+    const slotName = c.req.param('slotName');
+    const currentPage = c.req.query('page');
+    const components = pluginLoader.getStorefrontComponents(slotName, currentPage);
+    return c.json({ data: components });
+  });
+
+  /** Serve the components.js ESM bundle for a plugin */
+  router.get('/:slug/components.js', async (c) => {
+    const slug = c.req.param('slug');
+
+    // Search for the plugin's dist/components.js in data/plugins/
+    const dataPluginsDir = resolve(process.cwd(), 'data', 'plugins');
+    const possiblePaths = [
+      join(dataPluginsDir, slug, 'dist', 'components.js'),
+      join(dataPluginsDir, slug, `forkcart-plugin-${slug}`, 'dist', 'components.js'),
+      join(dataPluginsDir, slug, slug, 'dist', 'components.js'),
+    ];
+
+    for (const bundlePath of possiblePaths) {
+      try {
+        const content = await readFile(bundlePath, 'utf-8');
+        return new Response(content, {
+          headers: {
+            'Content-Type': 'application/javascript',
+            'Cache-Control': 'public, max-age=300',
+          },
+        });
+      } catch {
+        // Try next path
+      }
+    }
+
+    return c.json(
+      { error: { code: 'NOT_FOUND', message: `No components bundle found for plugin: ${slug}` } },
+      404,
+    );
   });
 
   /** List all available slots (for debugging/admin preview) */

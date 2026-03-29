@@ -81,10 +81,64 @@ function buildPlugin(pluginDir: string): boolean {
   const outFile = resolve(distDir, 'index.js');
 
   try {
+    // Build backend bundle (server-side)
     execSync(
       `npx esbuild "${srcEntry}" --outfile="${outFile}" --format=esm --platform=node --bundle --external:hono --loader:.ts=ts`,
       { cwd: pluginDir, timeout: 15000, stdio: 'pipe' },
     );
+
+    // Build frontend components bundle (client-side) if src/components/ exists
+    const componentsDir = resolve(pluginDir, 'src', 'components');
+    if (existsSync(componentsDir)) {
+      const componentFiles: string[] = [];
+      try {
+        const files = require('node:fs').readdirSync(componentsDir) as string[];
+        for (const f of files) {
+          if (/\.(tsx?|jsx?)$/.test(f)) {
+            componentFiles.push(resolve(componentsDir, f));
+          }
+        }
+      } catch {
+        // ignore read errors
+      }
+
+      if (componentFiles.length > 0) {
+        // Create a barrel file that re-exports all components
+        const barrelLines = componentFiles.map((f) => {
+          const basename = f.replace(/\.[^.]+$/, '');
+          const relativePath = basename.replace(componentsDir, '.').replace(/\\/g, '/');
+          return `export * from '${relativePath}';`;
+        });
+        const barrelPath = resolve(componentsDir, '_barrel.ts');
+        writeFileSync(barrelPath, barrelLines.join('\n'));
+
+        const componentsOutFile = resolve(distDir, 'components.js');
+        try {
+          execSync(
+            `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --external:react --external:react-dom --external:react/jsx-runtime --loader:.ts=ts --loader:.tsx=tsx`,
+            { cwd: pluginDir, timeout: 15000, stdio: 'pipe' },
+          );
+          log('📦', chalk.cyan('Components bundle built'));
+        } catch (compError) {
+          const compErr = compError as { stderr?: Buffer };
+          const compStderr = compErr.stderr?.toString() ?? '';
+          log('⚠️', chalk.yellow('Components build failed (backend bundle OK)'));
+          if (compStderr) {
+            for (const line of compStderr.split('\n').filter(Boolean)) {
+              console.log(`   ${chalk.dim(line)}`);
+            }
+          }
+        } finally {
+          // Clean up barrel file
+          try {
+            require('node:fs').unlinkSync(barrelPath);
+          } catch {
+            // ignore
+          }
+        }
+      }
+    }
+
     return true;
   } catch (error) {
     const err = error as { stderr?: Buffer };

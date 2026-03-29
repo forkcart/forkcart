@@ -42,6 +42,8 @@ export type {
   // Storefront slots
   StorefrontSlot,
   StorefrontSlotContent,
+  // Storefront components (React)
+  PluginStorefrontComponent,
   // PageBuilder blocks
   PageBuilderBlock,
   // Database migrations

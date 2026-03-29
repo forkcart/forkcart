@@ -94,6 +94,13 @@ interface SdkPluginDefinition {
     description?: string;
     keys: string[];
   }>;
+  storefrontComponents?: Array<{
+    slot: string;
+    name: string;
+    props?: string[];
+    pages?: string[];
+    order?: number;
+  }>;
   storefrontPages?: Array<{
     path: string;
     title: string;
@@ -244,6 +251,19 @@ export class PluginLoader {
       metaDescription?: string;
       useExtPrefix?: boolean;
     }
+  >();
+
+  // ─── Storefront Components Registry (React components from plugins) ─────────
+  private storefrontComponents = new Map<
+    string,
+    Array<{
+      pluginName: string;
+      name: string;
+      slot: string;
+      props?: string[];
+      pages?: string[];
+      order: number;
+    }>
   >();
 
   // ─── CLI Commands Registry ─────────────────────────────────────────────────
@@ -891,6 +911,16 @@ export class PluginLoader {
       }
     }
 
+    // Unregister storefront components
+    for (const [slotName, comps] of this.storefrontComponents) {
+      const filtered = comps.filter((c) => c.pluginName !== plugin.name);
+      if (filtered.length === 0) {
+        this.storefrontComponents.delete(slotName);
+      } else {
+        this.storefrontComponents.set(slotName, filtered);
+      }
+    }
+
     // Unregister storefront pages
     for (const [path, page] of this.storefrontPages) {
       if (page.pluginName === plugin.name) {
@@ -1006,6 +1036,23 @@ export class PluginLoader {
         });
         existing.sort((a, b) => a.order - b.order);
         this.storefrontSlots.set(slot.slot, existing);
+      }
+    }
+
+    // Register storefront components (React components)
+    if (def.storefrontComponents) {
+      for (const comp of def.storefrontComponents) {
+        const existing = this.storefrontComponents.get(comp.slot) ?? [];
+        existing.push({
+          pluginName,
+          name: comp.name,
+          slot: comp.slot,
+          props: comp.props,
+          pages: comp.pages,
+          order: comp.order ?? 10,
+        });
+        existing.sort((a, b) => a.order - b.order);
+        this.storefrontComponents.set(comp.slot, existing);
       }
     }
 
@@ -1530,6 +1577,56 @@ export class PluginLoader {
     Array<{ pluginName: string; content: string; order: number }>
   > {
     return this.storefrontSlots;
+  }
+
+  // ─── Storefront Components API (React components from plugins) ──────────────
+
+  /** Get React components registered for a specific storefront slot */
+  getStorefrontComponents(
+    slotName: string,
+    currentPage?: string,
+  ): Array<{
+    pluginName: string;
+    name: string;
+    slot: string;
+    props?: string[];
+    order: number;
+  }> {
+    const comps = this.storefrontComponents.get(slotName) ?? [];
+    return comps
+      .filter(
+        (c) => !c.pages || c.pages.length === 0 || (currentPage && c.pages.includes(currentPage)),
+      )
+      .map((c) => ({
+        pluginName: c.pluginName,
+        name: c.name,
+        slot: c.slot,
+        props: c.props,
+        order: c.order,
+      }));
+  }
+
+  /** Get all registered storefront components across all slots */
+  getAllStorefrontComponents(): Array<{
+    pluginName: string;
+    name: string;
+    slot: string;
+    props?: string[];
+    pages?: string[];
+    order: number;
+  }> {
+    const result: Array<{
+      pluginName: string;
+      name: string;
+      slot: string;
+      props?: string[];
+      pages?: string[];
+      order: number;
+    }> = [];
+    for (const comps of this.storefrontComponents.values()) {
+      result.push(...comps);
+    }
+    return result;
   }
 
   // ─── Storefront Pages API ───────────────────────────────────────────────────
