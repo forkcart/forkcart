@@ -218,6 +218,7 @@ interface ActivePluginState {
 export class PluginLoader {
   private legacyPlugins = new Map<string, LegacyPluginDefinition>();
   private sdkPlugins = new Map<string, SdkPluginDefinition>();
+  private pluginSettingsCache = new Map<string, Record<string, unknown>>();
   private activeStates = new Map<string, ActivePluginState>();
 
   // ─── Settings Schema Registry (for secret detection) ───────────────────────
@@ -1451,9 +1452,11 @@ export class PluginLoader {
 
     if (!def) return null;
 
-    // Build settings from defaults
-    const settings: Record<string, unknown> = {};
-    if (def.settings) {
+    // Use cached settings from loadActivePlugins (includes DB values + decrypted secrets)
+    // Fall back to defaults if not cached (e.g., plugin loaded dynamically)
+    const cachedSettings = this.pluginSettingsCache.get(def.name);
+    const settings: Record<string, unknown> = cachedSettings ?? {};
+    if (!cachedSettings && def.settings) {
       for (const [key, config] of Object.entries(def.settings)) {
         settings[key] = (config as { default?: unknown }).default;
       }
@@ -1487,6 +1490,9 @@ export class PluginLoader {
 
       // Decrypt secret settings before passing to plugins
       const settings = this.decryptSettings(plugin.name, rawSettings);
+
+      // Cache settings for getPluginContext() (used by plugin routes)
+      this.pluginSettingsCache.set(plugin.name, settings);
 
       const sdkDef = this.findSdkDef(
         plugin.name,
