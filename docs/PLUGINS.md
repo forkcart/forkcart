@@ -931,7 +931,7 @@ While [Storefront Slots](#storefront-slots) inject raw HTML and JavaScript, **St
 
 Payment plugins ship their own React components and declare them via `storefrontComponents` + `pluginSlug`/`componentName` in `getClientConfig()`. The checkout page renders them dynamically via `<PluginComponent>` — **no direct imports of payment-specific code in the storefront**.
 
-> **Reference implementation:** The Stripe plugin at `data/plugins/stripe-payments/` is a complete example of this pattern.
+> **Reference implementation:** The **Stripe Payments** plugin is available in the ForkCart Plugin Store and demonstrates this pattern — storefrontComponents, webhookHeaders, and dynamic checkout loading.
 
 **Plugin definition (`src/index.ts`):**
 
@@ -2393,7 +2393,7 @@ Plugins with specific `type` values can implement provider interfaces for paymen
 
 Payment providers register `webhookHeaders` so ForkCart's generic webhook router can detect which provider an incoming webhook belongs to — no hardcoded header checks in core. Providers also return `pluginSlug` and `componentName` from `getClientConfig()` so the checkout page can dynamically load the provider's React component via `<PluginComponent>` without importing it directly.
 
-> **Reference implementation:** See `data/plugins/stripe-payments/` for a complete, production-ready Stripe plugin that demonstrates all of these patterns.
+> **Reference implementation:** The **Stripe Payments** plugin is available in the ForkCart Plugin Store as a complete, production-ready example of all these patterns.
 
 ```ts
 import { definePlugin } from '@forkcart/plugin-sdk';
