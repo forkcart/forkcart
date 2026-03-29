@@ -40,6 +40,14 @@ Build plugins that extend ForkCart — payment providers, marketplaces, email se
   - [window.FORKCART Context](#windowforkcart-context)
   - [Accessing Plugin Settings from the Storefront](#accessing-plugin-settings-from-the-storefront)
   - [Storefront Slot API Endpoint](#storefront-slot-api-endpoint)
+- [Storefront Components (React)](#storefront-components-react)
+  - [How It Works](#how-it-works)
+  - [PluginStorefrontComponent Interface](#pluginstorefrontcomponent-interface)
+  - [Example: Payment Provider with React Component](#example-payment-provider-with-react-component)
+  - [Using PluginComponentSlot in Pages](#using-plugincomponentslot-in-pages)
+  - [Component Build Process](#component-build-process)
+  - [Component API Endpoints](#component-api-endpoints)
+  - [Component Best Practices](#component-best-practices)
 - [PageBuilder Blocks](#pagebuilder-blocks)
   - [Registering Blocks](#registering-blocks)
   - [Block Definition Reference](#block-definition-reference)
@@ -893,6 +901,233 @@ GET /api/v1/public/plugins/slots/:slotName?page=<currentPage>
 ```
 
 This is a **public** endpoint (no auth required) so the storefront can fetch it server-side. The `page` query parameter filters slots that have `pages` restrictions.
+
+---
+
+## Storefront Components (React)
+
+While [Storefront Slots](#storefront-slots) inject raw HTML and JavaScript, **Storefront Components** let plugins deliver real React components that render natively in the storefront. Use this for complex, interactive UI — payment forms, review widgets, live search overlays, cart upsells — anything that benefits from React's state management and component model.
+
+### How It Works
+
+1. **Plugin defines `storefrontComponents`** — declares which slots the components render in, plus the exported component names
+2. **Plugin has `src/components/`** — React `.tsx` files with named exports
+3. **`plugin:dev` builds `dist/components.js`** — an ESM bundle with React and React-DOM marked as externals (provided by the storefront)
+4. **Storefront loads components via dynamic import + `React.lazy`** — the bundle is fetched from `/api/v1/public/plugins/<slug>/components.js` and cached in memory
+5. **Error Boundary protects the page** — if a plugin component crashes, it renders nothing instead of breaking the entire page
+
+### PluginStorefrontComponent Interface
+
+| Field   | Type       | Required | Default | Description                                                                        |
+| ------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------- |
+| `slot`  | `string`   | ✅       | —       | Slot where this component renders (e.g. `'checkout-payment'`, `'product-reviews'`) |
+| `name`  | `string`   | ✅       | —       | Named export from the plugin's `dist/components.js` bundle                         |
+| `props` | `string[]` | —        | —       | Props this component accepts (for documentation/validation)                        |
+| `pages` | `string[]` | —        | —       | Only render on specific page types (e.g. `['product', 'checkout']`)                |
+| `order` | `number`   | —        | `10`    | Render order within the slot (lower = earlier)                                     |
+
+### Example: Payment Provider with React Component
+
+**Plugin definition (`src/index.ts`):**
+
+```ts
+import { definePlugin } from '@forkcart/plugin-sdk';
+
+export default definePlugin({
+  name: 'klarna-pay',
+  version: '1.0.0',
+  type: 'payment',
+  description: 'Klarna payment integration with React checkout widget',
+  author: 'Your Name',
+
+  settings: {
+    clientId: { type: 'string', label: 'Client ID', required: true },
+    environment: {
+      type: 'select',
+      label: 'Environment',
+      options: ['sandbox', 'production'],
+      default: 'sandbox',
+    },
+  },
+
+  storefrontComponents: [
+    {
+      slot: 'checkout-payment',
+      name: 'KlarnaCheckout',
+      props: ['cartTotal', 'currency', 'locale'],
+      pages: ['checkout'],
+      order: 5,
+    },
+  ],
+
+  routes: (router) => {
+    router.post('/create-session', async (c) => {
+      const settings = c.get('pluginSettings');
+      // Create Klarna session...
+      return c.json({ sessionId: 'ks_xxx', clientToken: 'ct_xxx' });
+    });
+  },
+});
+```
+
+**React component (`src/components/KlarnaCheckout.tsx`):**
+
+```tsx
+import { useState, useEffect } from 'react';
+
+interface KlarnaCheckoutProps {
+  cartTotal?: number;
+  currency?: string;
+  locale?: string;
+}
+
+export function KlarnaCheckout({
+  cartTotal,
+  currency = 'EUR',
+  locale = 'en',
+}: KlarnaCheckoutProps) {
+  const [session, setSession] = useState<{ clientToken: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fc = (window as any).FORKCART || {};
+    fetch(`${fc.apiUrl}/api/v1/public/plugins/klarna-pay/create-session`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: cartTotal, currency }),
+    })
+      .then((r) => r.json())
+      .then((data) => setSession(data))
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  }, [cartTotal, currency]);
+
+  if (loading) return <div className="klarna-loading">Loading Klarna...</div>;
+  if (error) return <div className="klarna-error">Payment unavailable: {error}</div>;
+
+  return (
+    <div
+      className="klarna-checkout"
+      style={{ padding: '1rem', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+    >
+      <h3 style={{ margin: '0 0 1rem' }}>Pay with Klarna</h3>
+      <p>Session: {session?.clientToken?.slice(0, 8)}...</p>
+      {/* Klarna SDK widget would mount here */}
+      <button
+        style={{
+          background: '#FFB3C7',
+          padding: '0.75rem 1.5rem',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontWeight: 600,
+        }}
+      >
+        Complete with Klarna
+      </button>
+    </div>
+  );
+}
+```
+
+### Using PluginComponentSlot in Pages
+
+Place a `<PluginComponentSlot>` in your storefront page layout to render all plugin components registered for that slot:
+
+```tsx
+import { PluginComponentSlot } from '@/components/plugins/PluginComponentSlot';
+
+export default async function CheckoutPage() {
+  return (
+    <div>
+      {/* ... checkout form ... */}
+
+      {/* All plugin React components registered for 'checkout-payment' */}
+      <PluginComponentSlot slotName="checkout-payment" currentPage="checkout" />
+
+      {/* Pass shared props to all components in a slot */}
+      <PluginComponentSlot
+        slotName="product-reviews"
+        currentPage="product"
+        sharedProps={{ productId: 'abc-123', locale: 'de' }}
+        className="my-custom-wrapper"
+      />
+    </div>
+  );
+}
+```
+
+`PluginComponentSlot` is a **Server Component** that:
+
+1. Fetches registered components for the slot from the API (cached for 5 minutes)
+2. Filters by `currentPage` if plugins declared `pages` restrictions
+3. Renders a `<PluginComponent>` for each, sorted by `order`
+4. Passes `sharedProps` to every rendered component
+
+If no components are registered for a slot, `PluginComponentSlot` renders nothing (`null`).
+
+### Component Build Process
+
+When you run `npx forkcart plugin:dev <slug>`, the CLI automatically detects `src/components/` and builds a separate frontend bundle:
+
+1. All `.tsx`, `.ts`, `.jsx`, `.js` files in `src/components/` are collected
+2. A temporary barrel file re-exports everything: `export * from './KlarnaCheckout';`
+3. **esbuild** bundles them into `dist/components.js` with these settings:
+   - **Format:** ESM (`--format=esm`)
+   - **Platform:** Browser (`--platform=browser`)
+   - **Externals:** `react`, `react-dom`, `react/jsx-runtime` — these are provided by the storefront at runtime
+4. The barrel file is cleaned up after build
+
+The backend plugin bundle (`dist/index.js`) is built separately with `--platform=node`. This means your server-side plugin code and client-side React components live in the same plugin but are compiled as two distinct bundles.
+
+### Component API Endpoints
+
+| Method | Endpoint                                      | Description                                      |
+| ------ | --------------------------------------------- | ------------------------------------------------ |
+| GET    | `/api/v1/public/plugins/components`           | List all registered storefront components        |
+| GET    | `/api/v1/public/plugins/components/:slotName` | Get components for a specific slot               |
+| GET    | `/api/v1/public/plugins/:slug/components.js`  | Serve the plugin's compiled ESM component bundle |
+
+**List components for a slot:**
+
+```
+GET /api/v1/public/plugins/components/checkout-payment?page=checkout
+```
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "pluginName": "klarna-pay",
+      "name": "KlarnaCheckout",
+      "slot": "checkout-payment",
+      "props": ["cartTotal", "currency", "locale"],
+      "order": 5
+    }
+  ]
+}
+```
+
+The `components.js` bundle is served with `Content-Type: application/javascript` and cached for 5 minutes (`Cache-Control: public, max-age=300`). The storefront's `PluginComponent` loader caches imported modules in memory — each bundle is fetched only once per page load.
+
+### Component Best Practices
+
+1. **React is external** — Never bundle React into your component. Import from `'react'` normally; the storefront provides it at runtime. If you accidentally bundle React, you'll get duplicate React instances and hooks will break.
+
+2. **Handle errors gracefully** — The `PluginErrorBoundary` catches crashes and renders nothing, but your component should still handle its own error states (network failures, missing data, etc.) with user-friendly fallbacks.
+
+3. **CSS goes in the component** — Use inline styles or CSS-in-JS. There's no separate CSS pipeline for plugin components. If you need a stylesheet, dynamically inject a `<link>` or `<style>` tag in a `useEffect`.
+
+4. **Props come from `sharedProps`** — The page passes `sharedProps` to `PluginComponentSlot`, which forwards them to every component. Document your expected props in the `props` field so store admins know what data to provide.
+
+5. **Use `window.FORKCART` for context** — Access the API URL, product ID, locale, and other page context from `window.FORKCART` (see [window.FORKCART Context](#windowforkcart-context)).
+
+6. **Keep bundles small** — Each component bundle is loaded per page visit. Avoid heavy dependencies. If you need a large library, lazy-load it inside your component.
+
+7. **Name exports clearly** — The `name` field in `storefrontComponents` must match a named export from your `src/components/` files exactly. Use `export function MyWidget()` — not `export default`.
 
 ---
 
