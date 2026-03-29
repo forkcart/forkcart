@@ -929,6 +929,10 @@ While [Storefront Slots](#storefront-slots) inject raw HTML and JavaScript, **St
 
 ### Example: Payment Provider with React Component
 
+Payment plugins ship their own React components and declare them via `storefrontComponents` + `pluginSlug`/`componentName` in `getClientConfig()`. The checkout page renders them dynamically via `<PluginComponent>` — **no direct imports of payment-specific code in the storefront**.
+
+> **Reference implementation:** The Stripe plugin at `data/plugins/stripe-payments/` is a complete example of this pattern.
+
 **Plugin definition (`src/index.ts`):**
 
 ```ts
@@ -951,15 +955,28 @@ export default definePlugin({
     },
   },
 
-  storefrontComponents: [
-    {
-      slot: 'checkout-payment',
-      name: 'KlarnaCheckout',
-      props: ['cartTotal', 'currency', 'locale'],
-      pages: ['checkout'],
-      order: 5,
+  // Declare React components for dynamic loading
+  storefrontComponents: {
+    KlarnaCheckout: './components/KlarnaCheckout.tsx',
+  },
+
+  provider: {
+    // Headers for generic webhook detection
+    webhookHeaders: ['x-klarna-signature'],
+
+    getClientConfig() {
+      return {
+        provider: 'klarna',
+        displayName: 'Pay with Klarna',
+        // pluginSlug + componentName tell the checkout page which
+        // React component to load dynamically via <PluginComponent>
+        pluginSlug: 'klarna-pay',
+        componentName: 'KlarnaCheckout',
+        clientConfig: { clientId: this.clientId },
+      };
     },
-  ],
+    // ... other provider methods
+  },
 
   routes: (router) => {
     router.post('/create-session', async (c) => {
@@ -971,6 +988,20 @@ export default definePlugin({
 });
 ```
 
+**The checkout page loads this component dynamically — no hardcoded imports:**
+
+```tsx
+// In the checkout page (simplified):
+import { PluginComponent } from '@/components/plugins/PluginComponent';
+
+// paymentConfig comes from the active payment provider's getClientConfig()
+<PluginComponent
+  pluginSlug={paymentConfig.pluginSlug} // 'klarna-pay'
+  componentName={paymentConfig.componentName} // 'KlarnaCheckout'
+  props={{ cartTotal, currency, locale, ...paymentConfig.clientConfig }}
+/>;
+```
+
 **React component (`src/components/KlarnaCheckout.tsx`):**
 
 ```tsx
@@ -980,6 +1011,7 @@ interface KlarnaCheckoutProps {
   cartTotal?: number;
   currency?: string;
   locale?: string;
+  clientId?: string;
 }
 
 export function KlarnaCheckout({
@@ -2359,14 +2391,18 @@ Plugins with specific `type` values can implement provider interfaces for paymen
 
 ### Payment Provider
 
+Payment providers register `webhookHeaders` so ForkCart's generic webhook router can detect which provider an incoming webhook belongs to — no hardcoded header checks in core. Providers also return `pluginSlug` and `componentName` from `getClientConfig()` so the checkout page can dynamically load the provider's React component via `<PluginComponent>` without importing it directly.
+
+> **Reference implementation:** See `data/plugins/stripe-payments/` for a complete, production-ready Stripe plugin that demonstrates all of these patterns.
+
 ```ts
 import { definePlugin } from '@forkcart/plugin-sdk';
 
 export default definePlugin({
-  name: 'stripe',
+  name: 'my-payment-provider',
   version: '1.0.0',
   type: 'payment',
-  description: 'Accept payments via Stripe',
+  description: 'Accept payments via MyProvider',
   author: 'ForkCart',
 
   settings: {
@@ -2384,9 +2420,17 @@ export default definePlugin({
     webhookSecret: { type: 'string', label: 'Webhook Secret', secret: true },
   },
 
+  // Register React components for dynamic loading on the storefront
+  storefrontComponents: {
+    MyPaymentForm: './components/MyPaymentForm.tsx',
+  },
+
   provider: {
+    // Headers that identify webhooks from this provider (used by generic webhook router)
+    webhookHeaders: ['x-my-provider-signature'],
+
     async initialize(settings) {
-      // Initialize Stripe client
+      // Initialize payment client
     },
 
     isConfigured() {
@@ -2395,9 +2439,12 @@ export default definePlugin({
 
     getClientConfig() {
       return {
-        provider: 'stripe',
+        provider: 'my-payment-provider',
         displayName: 'Credit Card',
-        componentType: 'stripe-elements',
+        // pluginSlug + componentName drive dynamic React component loading
+        // The checkout page uses <PluginComponent> to render this — no direct imports needed
+        pluginSlug: 'my-payment-provider',
+        componentName: 'MyPaymentForm',
         clientConfig: { publishableKey: this.publishableKey },
       };
     },

@@ -59,12 +59,11 @@ export class PaymentProviderRegistry {
 
   /** Find a provider that can handle a webhook based on headers */
   findProviderForWebhook(headers: Record<string, string>): PaymentProvider | undefined {
-    // Stripe sends stripe-signature header
-    if (headers['stripe-signature']) {
-      return this.providers.get('stripe');
+    for (const provider of this.providers.values()) {
+      if (provider.webhookHeaders?.some((header) => !!headers[header])) {
+        return provider;
+      }
     }
-    // PayPal would send paypal-* headers, etc.
-    // Fallback: try all providers
     return undefined;
   }
 }

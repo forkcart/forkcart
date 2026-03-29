@@ -72,6 +72,10 @@ export interface PaymentProviderClientConfig {
   clientConfig: Record<string, unknown>;
   /** Which frontend component to render */
   componentType: string;
+  /** Plugin slug for dynamic component loading */
+  pluginSlug?: string;
+  /** Component name exported by the plugin */
+  componentName?: string;
 }
 
 /**
@@ -82,6 +86,9 @@ export interface PaymentProvider {
   readonly id: string;
   /** Display name (e.g. 'Stripe', 'PayPal') */
   readonly displayName: string;
+
+  /** HTTP headers that identify this provider's webhooks (e.g. ['stripe-signature']) */
+  readonly webhookHeaders?: string[];
 
   /** Initialize the provider with settings from the DB */
   initialize(settings: Record<string, unknown>): Promise<void>;

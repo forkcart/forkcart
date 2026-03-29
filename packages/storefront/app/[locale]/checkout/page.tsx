@@ -6,8 +6,8 @@ import { useCart } from '@/components/cart/cart-provider';
 import { useAuth } from '@/components/auth/auth-provider';
 import { useCurrency } from '@/components/currency/currency-provider';
 import { useTranslation } from '@forkcart/i18n/react';
-import { StripePayment } from '@/components/checkout/stripe-payment';
 import { PrepaymentForm } from '@/components/checkout/prepayment-form';
+import { PluginComponent } from '@/components/plugins/PluginComponent';
 import {
   Lock,
   CreditCard,
@@ -40,6 +40,8 @@ interface PaymentProviderConfig {
   provider: string;
   displayName: string;
   componentType: string;
+  pluginSlug?: string;
+  componentName?: string;
   clientConfig: Record<string, unknown>;
 }
 
@@ -709,14 +711,18 @@ function CheckoutPage() {
                   )}
 
                   {!fallbackMode &&
-                    currentProviderConfig?.componentType === 'stripe-payment-element' &&
-                    clientSecret &&
-                    publishableKey && (
-                      <StripePayment
-                        clientSecret={clientSecret}
-                        publishableKey={publishableKey}
-                        onSuccess={handleStripeSuccess}
-                        onError={setPaymentError}
+                    currentProviderConfig?.pluginSlug &&
+                    currentProviderConfig?.componentName &&
+                    clientSecret && (
+                      <PluginComponent
+                        pluginSlug={currentProviderConfig.pluginSlug}
+                        componentName={currentProviderConfig.componentName}
+                        props={{
+                          clientSecret,
+                          publishableKey,
+                          onSuccess: handleStripeSuccess,
+                          onError: setPaymentError,
+                        }}
                       />
                     )}
 

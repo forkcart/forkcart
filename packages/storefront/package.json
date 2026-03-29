@@ -13,8 +13,6 @@
   "dependencies": {
     "@forkcart/i18n": "workspace:*",
     "@forkcart/shared": "workspace:*",
-    "@stripe/react-stripe-js": "^5.6.1",
-    "@stripe/stripe-js": "^8.9.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.460.0",
     "next": "^16.2.1",
