@@ -180,7 +180,7 @@ export class ScopedDatabase {
             const placeholder = `$${i + 1}`;
             // Escape strings, leave numbers/booleans as-is
             const value =
-              param === null
+              param === null || param === undefined
                 ? 'NULL'
                 : typeof param === 'string'
                   ? `'${param.replace(/'/g, "''")}'`
