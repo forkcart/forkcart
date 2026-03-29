@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import type { PluginStoreService } from '@forkcart/core';
 import { requireRole } from '../../middleware/permissions';
+import { setRebuildNeeded } from './system';
 
 const ListPluginsQuerySchema = z.object({
   search: z.string().optional(),
@@ -283,6 +284,8 @@ export function createPluginStoreRoutes(
           console.error('Failed to register plugin in DB via psql');
         }
 
+        setRebuildNeeded(`Plugin installed: ${String(plugin.slug || plugin.name)}`);
+
         return c.json(
           {
             data: {
@@ -291,6 +294,7 @@ export function createPluginStoreRoutes(
               version: latestVersion.version,
               installedTo: targetDir,
               source: 'registry',
+              rebuildNeeded: true,
             },
           },
           201,
@@ -303,7 +307,8 @@ export function createPluginStoreRoutes(
     }
 
     const result = await pluginStoreService.installFromStore(slug);
-    return c.json({ data: result }, 201);
+    setRebuildNeeded(`Plugin installed: ${slug}`);
+    return c.json({ data: { ...result, rebuildNeeded: true } }, 201);
   });
 
   /** Update an installed plugin to latest version (admin) */
@@ -414,6 +419,8 @@ export function createPluginStoreRoutes(
         console.error('Hot-reload failed (restart API manually):', reloadErr);
       }
 
+      setRebuildNeeded(`Plugin updated: ${slug} → ${latestVersion.version}`);
+
       return c.json({
         data: {
           name: plugin.name,
@@ -422,6 +429,7 @@ export function createPluginStoreRoutes(
           updatedTo: pluginDir,
           source: 'registry',
           message: 'Plugin updated and reloaded!',
+          rebuildNeeded: true,
         },
       });
     } catch (err) {
@@ -434,7 +442,8 @@ export function createPluginStoreRoutes(
   router.delete('/:slug/uninstall', requireRole('admin', 'superadmin'), async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
     const result = await pluginStoreService.uninstallFromStore(slug);
-    return c.json({ data: result });
+    setRebuildNeeded(`Plugin uninstalled: ${slug}`);
+    return c.json({ data: { ...result, rebuildNeeded: true } });
   });
 
   /** Add a review (admin) */

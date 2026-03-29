@@ -6,6 +6,7 @@ import { sql } from 'drizzle-orm';
 import { rm, readFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import type { Context } from 'hono';
+import { setRebuildNeeded } from './system';
 
 const UpdateSettingsSchema = z.record(z.string(), z.unknown());
 
@@ -289,7 +290,19 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
       );
     }
     const pluginId = await pluginLoader.ensurePluginInDb(def);
-    return c.json({ data: { success: true, pluginId, name: def.name, version: def.version } }, 201);
+    setRebuildNeeded(`Plugin installed: ${def.name}`);
+    return c.json(
+      {
+        data: {
+          success: true,
+          pluginId,
+          name: def.name,
+          version: def.version,
+          rebuildNeeded: true,
+        },
+      },
+      201,
+    );
   });
 
   /** Uninstall a plugin */
@@ -331,7 +344,8 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     if (scheduler) {
       await scheduler.refresh();
     }
-    return c.json({ data: { success: true } });
+    setRebuildNeeded(`Plugin uninstalled: ${plugin.name}`);
+    return c.json({ data: { success: true, rebuildNeeded: true } });
   });
 
   /** Discover plugins in node_modules */

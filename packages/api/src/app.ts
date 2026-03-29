@@ -132,6 +132,7 @@ import {
   createCookieConsentRoutes,
   createPublicCookieConsentRoutes,
 } from './routes/v1/cookie-consent';
+import { createSystemRoutes } from './routes/v1/system';
 import { requireRole } from './middleware/permissions';
 import { rateLimit } from './middleware/rate-limit';
 import { autoCacheInvalidation } from './middleware/cache-invalidation';
@@ -579,6 +580,7 @@ export async function createApp(db: Database) {
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
   v1.route('/store', createPluginStoreRoutes(pluginStoreService, pluginLoader as never));
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
+  v1.route('/system', createSystemRoutes());
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));
   v1.route('/carts', createCartAssignRoute(cartService, customerAuthService));

@@ -36,6 +36,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.apiUrl = "${API_URL}";`,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // ChunkLoadError auto-recovery: reload once on stale chunk 404s
+              window.addEventListener('error', function(e) {
+                var msg = (e.message || '') + ' ' + ((e.error && e.error.message) || '');
+                if (msg.indexOf('ChunkLoadError') !== -1 || msg.indexOf('Loading chunk') !== -1
+                    || msg.indexOf('Failed to fetch dynamically imported module') !== -1) {
+                  var key = 'chunk_reload_' + location.pathname;
+                  if (!sessionStorage.getItem(key)) {
+                    sessionStorage.setItem(key, '1');
+                    location.reload();
+                  }
+                }
+              });
+            `,
+          }}
+        />
         {themeCSS && <style dangerouslySetInnerHTML={{ __html: themeCSS }} />}
         {/* Plugin slot: head (for custom CSS, meta tags, etc.) */}
         <StorefrontSlot slotName="head" />
