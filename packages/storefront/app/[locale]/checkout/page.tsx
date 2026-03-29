@@ -722,16 +722,21 @@ function CheckoutPage() {
                     </div>
                   )}
 
+                  {/* Embedded payment component (for providers that render inline, e.g. Solana Pay) */}
                   {!fallbackMode &&
                     currentProviderConfig?.pluginSlug &&
                     currentProviderConfig?.componentName &&
-                    clientSecret && (
+                    currentProviderConfig?.componentType !== 'stripe-elements' && (
                       <PluginComponent
                         pluginSlug={currentProviderConfig.pluginSlug}
                         componentName={currentProviderConfig.componentName}
                         props={{
-                          clientSecret,
-                          publishableKey,
+                          clientSecret: clientSecret || undefined,
+                          publishableKey: publishableKey || undefined,
+                          cartTotal: effectiveSubtotal + shippingCost,
+                          cartId: effectiveCartId,
+                          orderId: effectiveCartId,
+                          currency: 'EUR',
                           onSuccess: handleStripeSuccess,
                           onError: setPaymentError,
                         }}

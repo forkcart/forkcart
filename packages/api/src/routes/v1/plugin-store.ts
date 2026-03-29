@@ -295,8 +295,41 @@ export function createPluginStoreRoutes(
               const distDir = resolve(pluginDir, 'dist');
               mkdirSync(distDir, { recursive: true });
               const componentsOutFile = resolve(distDir, 'components.js');
+
+              // Create React shims that reference the host app's React (via window globals)
+              const reactShimDir = resolve(pluginDir, 'node_modules', 'react');
+              const reactDomShimDir = resolve(pluginDir, 'node_modules', 'react-dom');
+              const jsxShimDir = resolve(pluginDir, 'node_modules', 'react', 'jsx-runtime');
+              mkdirSync(reactShimDir, { recursive: true });
+              mkdirSync(reactDomShimDir, { recursive: true });
+              mkdirSync(jsxShimDir, { recursive: true });
+              writeFileSync(
+                resolve(reactShimDir, 'index.js'),
+                'const R=globalThis.__FORKCART_REACT;export default R;export const useState=R.useState,useEffect=R.useEffect,useRef=R.useRef,useCallback=R.useCallback,useMemo=R.useMemo,useContext=R.useContext,useReducer=R.useReducer,createContext=R.createContext,forwardRef=R.forwardRef,memo=R.memo,Fragment=R.Fragment,createElement=R.createElement,cloneElement=R.cloneElement,Children=R.Children,Suspense=R.Suspense,lazy=R.lazy;',
+              );
+              writeFileSync(
+                resolve(reactShimDir, 'package.json'),
+                '{"name":"react","main":"index.js","type":"module"}',
+              );
+              writeFileSync(
+                resolve(jsxShimDir, 'index.js'),
+                'const J=globalThis.__FORKCART_REACT_JSX;export const jsx=J.jsx,jsxs=J.jsxs,Fragment=J.Fragment,jsxDEV=J.jsxDEV||J.jsx;',
+              );
+              writeFileSync(
+                resolve(jsxShimDir, 'package.json'),
+                '{"name":"react/jsx-runtime","main":"index.js","type":"module"}',
+              );
+              writeFileSync(
+                resolve(reactDomShimDir, 'index.js'),
+                'const RD=globalThis.__FORKCART_REACT_DOM;export default RD;export const createPortal=RD.createPortal,flushSync=RD.flushSync;',
+              );
+              writeFileSync(
+                resolve(reactDomShimDir, 'package.json'),
+                '{"name":"react-dom","main":"index.js","type":"module"}',
+              );
+
               execSyncFn(
-                `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --external:react --external:react-dom --external:react/jsx-runtime --loader:.ts=ts --loader:.tsx=tsx`,
+                `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --loader:.ts=ts --loader:.tsx=tsx`,
                 { cwd: pluginDir, timeout: 15000 },
               );
 
@@ -452,9 +485,42 @@ export function createPluginStoreRoutes(
             const distDir = resolve(pluginDir, 'dist');
             mkdirSync(distDir, { recursive: true });
             const componentsOutFile = resolve(distDir, 'components.js');
+
+            // Create React shims for shared React instance
+            const reactShimDir = resolve(pluginDir, 'node_modules', 'react');
+            const reactDomShimDir = resolve(pluginDir, 'node_modules', 'react-dom');
+            const jsxShimDir = resolve(pluginDir, 'node_modules', 'react', 'jsx-runtime');
+            mkdirSync(reactShimDir, { recursive: true });
+            mkdirSync(reactDomShimDir, { recursive: true });
+            mkdirSync(jsxShimDir, { recursive: true });
+            writeFileSync(
+              resolve(reactShimDir, 'index.js'),
+              'const R=globalThis.__FORKCART_REACT;export default R;export const useState=R.useState,useEffect=R.useEffect,useRef=R.useRef,useCallback=R.useCallback,useMemo=R.useMemo,useContext=R.useContext,useReducer=R.useReducer,createContext=R.createContext,forwardRef=R.forwardRef,memo=R.memo,Fragment=R.Fragment,createElement=R.createElement,cloneElement=R.cloneElement,Children=R.Children,Suspense=R.Suspense,lazy=R.lazy;',
+            );
+            writeFileSync(
+              resolve(reactShimDir, 'package.json'),
+              '{"name":"react","main":"index.js","type":"module"}',
+            );
+            writeFileSync(
+              resolve(jsxShimDir, 'index.js'),
+              'const J=globalThis.__FORKCART_REACT_JSX;export const jsx=J.jsx,jsxs=J.jsxs,Fragment=J.Fragment,jsxDEV=J.jsxDEV||J.jsx;',
+            );
+            writeFileSync(
+              resolve(jsxShimDir, 'package.json'),
+              '{"name":"react/jsx-runtime","main":"index.js","type":"module"}',
+            );
+            writeFileSync(
+              resolve(reactDomShimDir, 'index.js'),
+              'const RD=globalThis.__FORKCART_REACT_DOM;export default RD;export const createPortal=RD.createPortal,flushSync=RD.flushSync;',
+            );
+            writeFileSync(
+              resolve(reactDomShimDir, 'package.json'),
+              '{"name":"react-dom","main":"index.js","type":"module"}',
+            );
+
             const { execSync: execSyncComp } = await import('node:child_process');
             execSyncComp(
-              `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --external:react --external:react-dom --external:react/jsx-runtime --loader:.ts=ts --loader:.tsx=tsx`,
+              `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --loader:.ts=ts --loader:.tsx=tsx`,
               { cwd: pluginDir, timeout: 15000 },
             );
 

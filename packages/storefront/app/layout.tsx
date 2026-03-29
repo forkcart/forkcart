@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { getThemeSettings, generateThemeCSS } from '@/lib/theme';
 import { StorefrontSlot } from '@/components/plugins/StorefrontSlot';
+import { ReactGlobals } from '@/components/plugins/ReactGlobals';
 import { API_URL } from '@/lib/config';
 import './globals.css';
 
@@ -29,6 +30,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.png" />
+
         {/* API URL for storefront plugins */}
         <meta name="forkcart-api" content={API_URL} />
         <script
@@ -60,6 +62,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body className={`${inter.className} flex min-h-screen flex-col`}>
         {/* Plugin slot: body start */}
+        <ReactGlobals />
         <StorefrontSlot slotName="body-start" />
         {children}
         {/* Plugin slot: body end */}
