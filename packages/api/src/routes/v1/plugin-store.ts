@@ -269,6 +269,46 @@ export function createPluginStoreRoutes(
           }
         }
 
+        // Auto-compile storefront components (React/TSX → ESM browser bundle)
+        // Components may live at <pluginDir>/components/ or <pluginDir>/src/components/
+        const componentsDirRoot = resolve(pluginDir, 'components');
+        const componentsDirSrc = resolve(pluginDir, 'src', 'components');
+        const componentsDir = existsSync(componentsDirRoot)
+          ? componentsDirRoot
+          : existsSync(componentsDirSrc)
+            ? componentsDirSrc
+            : null;
+        if (componentsDir) {
+          try {
+            const { readdirSync } = await import('node:fs');
+            const componentFiles = readdirSync(componentsDir).filter((f) =>
+              /\.(tsx?|jsx?)$/.test(f),
+            );
+            if (componentFiles.length > 0) {
+              const barrelLines = componentFiles.map((f) => {
+                const basename = f.replace(/\.[^.]+$/, '');
+                return `export * from './${basename}';`;
+              });
+              const barrelPath = resolve(componentsDir, '_barrel.ts');
+              writeFileSync(barrelPath, barrelLines.join('\n'));
+
+              const distDir = resolve(pluginDir, 'dist');
+              mkdirSync(distDir, { recursive: true });
+              const componentsOutFile = resolve(distDir, 'components.js');
+              execSyncFn(
+                `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --external:react --external:react-dom --external:react/jsx-runtime --loader:.ts=ts --loader:.tsx=tsx`,
+                { cwd: pluginDir, timeout: 15000 },
+              );
+
+              try {
+                require('node:fs').unlinkSync(barrelPath);
+              } catch {}
+            }
+          } catch (compErr) {
+            console.error('Plugin component auto-compile failed:', compErr);
+          }
+        }
+
         // 4. Register in local plugin system DB via psql
         const plugin = detail.plugin;
         const { execSync } = await import('node:child_process');
@@ -386,6 +426,44 @@ export function createPluginStoreRoutes(
         } catch (buildErr) {
           console.error('Plugin auto-compile failed:', buildErr);
           // Continue anyway — maybe dist already exists
+        }
+      }
+
+      // Auto-compile storefront components (React/TSX → ESM browser bundle)
+      const componentsDirRoot = resolve(pluginDir, 'components');
+      const componentsDirSrc = resolve(pluginDir, 'src', 'components');
+      const componentsDir = existsSync(componentsDirRoot)
+        ? componentsDirRoot
+        : existsSync(componentsDirSrc)
+          ? componentsDirSrc
+          : null;
+      if (componentsDir) {
+        try {
+          const { readdirSync } = await import('node:fs');
+          const componentFiles = readdirSync(componentsDir).filter((f) => /\.(tsx?|jsx?)$/.test(f));
+          if (componentFiles.length > 0) {
+            const barrelLines = componentFiles.map((f) => {
+              const basename = f.replace(/\.[^.]+$/, '');
+              return `export * from './${basename}';`;
+            });
+            const barrelPath = resolve(componentsDir, '_barrel.ts');
+            writeFileSync(barrelPath, barrelLines.join('\n'));
+
+            const distDir = resolve(pluginDir, 'dist');
+            mkdirSync(distDir, { recursive: true });
+            const componentsOutFile = resolve(distDir, 'components.js');
+            const { execSync: execSyncComp } = await import('node:child_process');
+            execSyncComp(
+              `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --external:react --external:react-dom --external:react/jsx-runtime --loader:.ts=ts --loader:.tsx=tsx`,
+              { cwd: pluginDir, timeout: 15000 },
+            );
+
+            try {
+              require('node:fs').unlinkSync(barrelPath);
+            } catch {}
+          }
+        } catch (compErr) {
+          console.error('Plugin component auto-compile failed:', compErr);
         }
       }
 
