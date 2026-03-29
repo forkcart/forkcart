@@ -312,8 +312,8 @@ function CheckoutPage() {
       }
 
       setStep('shipping');
-    } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : 'Failed to load shipping methods');
+    } catch {
+      setPaymentError('Failed to load shipping methods');
     } finally {
       setLoadingShipping(false);
     }
@@ -330,7 +330,8 @@ function CheckoutPage() {
   async function handleShippingSubmit() {
     setPaymentError('');
 
-    if (!fallbackMode && selectedProvider) {
+    // Never auto-redirect — always show payment step with provider selection + pay button
+    if (false && !fallbackMode && providers.length === 1 && selectedProvider) {
       setLoading(true);
       try {
         const cartId = effectiveCartId ?? (await ensureServerCart());
@@ -373,18 +374,18 @@ function CheckoutPage() {
         };
 
         // If provider returns a redirect URL (e.g. Stripe Checkout), redirect immediately
-        if (data.data.clientData?.url) {
-          window.location.href = data.data.clientData.url;
+        const redirectUrl: string | undefined = data.data.clientData?.url;
+        if (typeof redirectUrl === 'string') {
+          window.location.href = redirectUrl as string;
           return;
         }
 
         setClientSecret(data.data.clientSecret);
-        if (data.data.clientData?.publishableKey) {
-          setPublishableKey(data.data.clientData.publishableKey as string);
-        }
+        const pk = data.data.clientData?.publishableKey;
+        if (pk) setPublishableKey(String(pk));
         setStep('payment');
-      } catch (err) {
-        setPaymentError(err instanceof Error ? err.message : 'Payment initialization failed');
+      } catch {
+        setPaymentError('Payment initialization failed');
       } finally {
         setLoading(false);
       }
@@ -425,8 +426,8 @@ function CheckoutPage() {
       setOrderNumber(data.data.orderNumber);
       clearCart();
       setStep('success');
-    } catch (err) {
-      setPaymentError(err instanceof Error ? err.message : 'Failed to create order');
+    } catch {
+      setPaymentError('Failed to create order');
     } finally {
       setLoading(false);
     }
@@ -737,6 +738,78 @@ function CheckoutPage() {
                       />
                     )}
 
+                  {/* Pay Now button for redirect-based providers (e.g. Stripe Checkout) */}
+                  {!fallbackMode && selectedProvider && !clientSecret && (
+                    <button
+                      onClick={async () => {
+                        setLoading(true);
+                        setPaymentError('');
+                        try {
+                          const cartId = effectiveCartId ?? (await ensureServerCart());
+                          const res = await fetch(`${API_URL}/api/v1/payments/create-intent`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              cartId,
+                              providerId: selectedProvider,
+                              customer: {
+                                email: shipping.email,
+                                firstName: shipping.firstName,
+                                lastName: shipping.lastName,
+                              },
+                              shippingAddress: {
+                                firstName: shipping.firstName,
+                                lastName: shipping.lastName,
+                                addressLine1: shipping.address,
+                                city: shipping.city,
+                                postalCode: shipping.postalCode,
+                                country: shipping.country,
+                              },
+                              shippingMethodId: selectedShippingMethod,
+                            }),
+                          });
+                          if (!res.ok) {
+                            const err = await res.json().catch(() => ({}));
+                            throw new Error(
+                              (err as { error?: { message?: string } }).error?.message ??
+                                'Failed to initialize payment',
+                            );
+                          }
+                          const data = (await res.json()) as {
+                            data: {
+                              clientSecret: string;
+                              clientData?: {
+                                publishableKey?: string;
+                                url?: string;
+                              };
+                            };
+                          };
+                          if (data.data.clientData?.url != null) {
+                            window.location.href = String(data.data.clientData.url);
+                            return;
+                          }
+                          setClientSecret(data.data.clientSecret);
+                          if (data.data.clientData?.publishableKey) {
+                            setPublishableKey(String(data.data.clientData!.publishableKey));
+                          }
+                        } catch {
+                          setPaymentError('Payment initialization failed');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                      className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CreditCard className="h-4 w-4" />
+                      )}
+                      {loading ? t('checkout.processing') : t('checkout.payNow')}
+                    </button>
+                  )}
+
                   {fallbackMode && <PrepaymentForm onSubmit={handlePrepaymentComplete} />}
                 </div>
               </section>
@@ -865,8 +938,8 @@ function GuestRegistrationBanner({
         );
       }
       setStatus('success');
-    } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : 'Registration failed');
+    } catch {
+      setErrorMsg('Registration failed');
       setStatus('error');
     }
   }
