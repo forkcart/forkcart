@@ -94,13 +94,15 @@ interface SdkPluginDefinition {
     description?: string;
     keys: string[];
   }>;
-  storefrontComponents?: Array<{
-    slot: string;
-    name: string;
-    props?: string[];
-    pages?: string[];
-    order?: number;
-  }>;
+  storefrontComponents?:
+    | Array<{
+        slot: string;
+        name: string;
+        props?: string[];
+        pages?: string[];
+        order?: number;
+      }>
+    | Record<string, string>;
   storefrontPages?: Array<{
     path: string;
     title: string;
@@ -1041,7 +1043,20 @@ export class PluginLoader {
 
     // Register storefront components (React components)
     if (def.storefrontComponents) {
-      for (const comp of def.storefrontComponents) {
+      // Support both array format [{slot, name, ...}] and object format {Name: './path'}
+      const comps = Array.isArray(def.storefrontComponents)
+        ? def.storefrontComponents
+        : Object.entries(def.storefrontComponents as Record<string, string>).map(
+            ([name, path]) => ({
+              slot: 'plugin-component',
+              name,
+              props: [] as string[],
+              pages: [] as string[],
+              order: 10,
+              path,
+            }),
+          );
+      for (const comp of comps) {
         const existing = this.storefrontComponents.get(comp.slot) ?? [];
         existing.push({
           pluginName,
