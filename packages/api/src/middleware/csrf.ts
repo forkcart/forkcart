@@ -14,9 +14,12 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
  */
 const EXEMPT_PATH_PREFIXES = [
   '/api/v1/payments/webhook',
-  '/api/v1/auth/login',
-  '/api/v1/tax/calculate',
-  '/api/v1/public/plugins/', // Plugin routes are called cross-origin from storefront
+  '/api/v1/payments/create-intent',
+  '/api/v1/auth/',
+  '/api/v1/tax/',
+  '/api/v1/carts',
+  '/api/v1/shipping/',
+  '/api/v1/public/',
 ];
 
 /**

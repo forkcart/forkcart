@@ -96,7 +96,7 @@ function CheckoutPage() {
     (w.FORKCART as Record<string, unknown>).pageType = 'checkout';
   }, []);
 
-  const { items, subtotal, clearCart, serverCartId } = useCart();
+  const { items, subtotal, clearCart, serverCartId, ensureServerCart } = useCart();
   const { customer, token } = useAuth();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
@@ -333,11 +333,12 @@ function CheckoutPage() {
     if (!fallbackMode && selectedProvider) {
       setLoading(true);
       try {
+        const cartId = effectiveCartId ?? (await ensureServerCart());
         const res = await fetch(`${API_URL}/api/v1/payments/create-intent`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            cartId: effectiveCartId,
+            cartId,
             providerId: selectedProvider,
             customer: {
               email: shipping.email,
@@ -365,8 +366,18 @@ function CheckoutPage() {
         }
 
         const data = (await res.json()) as {
-          data: { clientSecret: string; clientData?: { publishableKey?: string } };
+          data: {
+            clientSecret: string;
+            clientData?: { publishableKey?: string; url?: string; sessionId?: string };
+          };
         };
+
+        // If provider returns a redirect URL (e.g. Stripe Checkout), redirect immediately
+        if (data.data.clientData?.url) {
+          window.location.href = data.data.clientData.url;
+          return;
+        }
+
         setClientSecret(data.data.clientSecret);
         if (data.data.clientData?.publishableKey) {
           setPublishableKey(data.data.clientData.publishableKey as string);

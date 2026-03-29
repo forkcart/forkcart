@@ -1211,6 +1211,7 @@ export class PluginLoader {
       typeof provider['createPaymentIntent'] === 'function'
     ) {
       const paymentBridge = this.createPaymentProviderBridge(def.name, provider, settings);
+      await paymentBridge.initialize(settings);
       this.paymentRegistry.register(paymentBridge);
     }
 
@@ -1254,9 +1255,16 @@ export class PluginLoader {
     _settings: Record<string, unknown>,
   ): PaymentProvider {
     const p = provider as Record<string, (...args: unknown[]) => unknown>;
+    // Use the provider's own ID from getClientConfig if available, otherwise plugin name
+    const clientConfig =
+      typeof p['getClientConfig'] === 'function'
+        ? (p['getClientConfig']() as Record<string, unknown>)
+        : null;
+    const providerId = (clientConfig?.['provider'] as string) ?? name;
+    const displayName = (clientConfig?.['displayName'] as string) ?? name;
     return {
-      id: name,
-      displayName: name,
+      id: providerId,
+      displayName,
       async initialize(s: Record<string, unknown>) {
         if (typeof p['initialize'] === 'function') await p['initialize'](s);
       },

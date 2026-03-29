@@ -66,8 +66,20 @@ export function createPaymentRoutes(paymentService: PaymentService) {
   /** Create a payment intent via a specific provider */
   router.post('/create-intent', async (c) => {
     const body = await c.req.json();
-    const input = CreatePaymentIntentSchema.parse(body);
-    const result = await paymentService.createPaymentIntent(input);
+    const parsed = CreatePaymentIntentSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: {
+            code: 'VALIDATION_ERROR',
+            message: 'Request validation failed',
+            details: parsed.error.issues,
+          },
+        },
+        400,
+      );
+    }
+    const result = await paymentService.createPaymentIntent(parsed.data);
     return c.json({ data: result }, 201);
   });
 

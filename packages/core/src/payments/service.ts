@@ -125,6 +125,15 @@ export class PaymentService {
     }
     if (amount <= 0) throw new ValidationError('Cart total must be greater than 0');
 
+    // 2b. Add shipping cost if a shipping method is selected
+    if (input.shippingMethodId && this.shippingService) {
+      const shippingCost = await this.shippingService.calculateShippingCost(
+        input.shippingMethodId,
+        amount,
+      );
+      amount += shippingCost;
+    }
+
     // 3. Find existing customer or proceed as guest
     const existingCustomer = await this.customerRepo.findByEmail(input.customer.email);
     const customerId = existingCustomer?.id ?? null;

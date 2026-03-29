@@ -54,6 +54,7 @@ interface CartContextValue {
   updateQuantity: (itemId: string, quantity: number) => void;
   removeItem: (itemId: string) => void;
   clearCart: () => void;
+  ensureServerCart: () => Promise<string>;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -300,6 +301,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updateQuantity,
         removeItem,
         clearCart,
+        ensureServerCart,
       }}
     >
       {children}

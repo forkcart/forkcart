@@ -44,6 +44,7 @@ interface PluginSettingSchema {
   placeholder?: string;
   min?: number;
   max?: number;
+  readOnly?: boolean;
 }
 
 interface PluginSettingsGroup {
@@ -144,8 +145,10 @@ function SettingField({
                 ? '(configured — enter new value to change)'
                 : (schema.placeholder ?? (schema.default ? String(schema.default) : ''))
             }
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
+            value={schema.readOnly ? String(schema.default ?? schema.placeholder ?? '') : value}
+            onChange={(e) => !schema.readOnly && onChange(e.target.value)}
+            readOnly={!!schema.readOnly}
+            className={schema.readOnly ? 'bg-muted cursor-default' : ''}
           />
           {isSecret && (
             <button
