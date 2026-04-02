@@ -14,6 +14,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { spawn, execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import type { Language, InstallConfig } from './types';
@@ -159,6 +160,62 @@ app.post('/api/install', async (c) => {
 app.get('/api/status', (c) => {
   const status = getInstallStatus();
   return c.json(status);
+});
+
+/**
+ * POST /api/handover — Shut down installer, start storefront on same port.
+ * Called by the frontend after install completes. The browser already has
+ * the success page loaded, so the user sees "Reloading..." while services start.
+ */
+app.post('/api/handover', async (c) => {
+  const status = getInstallStatus();
+  if (!status.completed || !status.handover) {
+    return c.json({ ok: false, error: 'Installation not complete' }, 400);
+  }
+
+  const { rootDir } = status.handover;
+  const envPath = join(rootDir, '.env');
+  const pnpmPath = execSync('which pnpm', { encoding: 'utf-8' }).trim();
+
+  console.log('[installer] Handover requested — starting storefront, then exiting.');
+
+  // Spawn storefront + API + admin as detached processes
+  const env = { ...process.env };
+  if (existsSync(envPath)) {
+    const envContent = readFileSync(envPath, 'utf-8');
+    for (const line of envContent.split('\n')) {
+      const match = line.match(/^([A-Z_]+)=(.+)$/);
+      if (match && match[1] && match[2]) env[match[1]] = match[2];
+    }
+  }
+
+  // Start API first
+  const api = spawn(pnpmPath, ['--filter', '@forkcart/api', 'start'], {
+    cwd: rootDir, env, detached: true, stdio: 'ignore',
+  });
+  api.unref();
+  console.log(`[installer] API started (PID ${api.pid})`);
+
+  // Start Admin
+  const admin = spawn(pnpmPath, ['--filter', '@forkcart/admin', 'start'], {
+    cwd: rootDir, env, detached: true, stdio: 'ignore',
+  });
+  admin.unref();
+  console.log(`[installer] Admin started (PID ${admin.pid})`);
+
+  // Reply first, then shut down after a small delay so the response is sent
+  setTimeout(() => {
+    console.log('[installer] Shutting down to free port for storefront...');
+    // Start storefront (will bind to our port after we exit)
+    const sf = spawn(pnpmPath, ['--filter', '@forkcart/storefront', 'start'], {
+      cwd: rootDir, env, detached: true, stdio: 'ignore',
+    });
+    sf.unref();
+    console.log(`[installer] Storefront started (PID ${sf.pid}) — exiting now.`);
+    process.exit(0);
+  }, 1000);
+
+  return c.json({ ok: true, message: 'Starting services, installer shutting down...' });
 });
 
 // Start server — defaults to 4200 (same port the storefront will use later)

@@ -887,15 +887,10 @@ export function generateHTML(lang: Language = 'en'): string {
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
             <h2>Installation complete! 🎉</h2>
-            <p class="subtitle">Your database, admin account, and configuration are ready.</p>
-
-            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
-              <strong style="display: block; margin-bottom: 12px;">🚀 Next steps:</strong>
-              <ol style="margin: 0; padding-left: 20px; line-height: 2;">
-                <li>Build the storefront: <code>pnpm build</code></li>
-                <li>Start all services: <code>pnpm start</code></li>
-                <li id="portsInfo">Your shop will be available on the configured ports</li>
-              </ol>
+            <p class="subtitle" id="handoverStatus">Starting your shop...</p>
+            <div style="margin: 20px 0;" id="handoverSpinner">
+              <div style="width:40px;height:40px;border:3px solid #e2e8f0;border-top:3px solid #10b981;border-radius:50%;margin:0 auto;animation:spin 1s linear infinite"></div>
+              <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
             </div>
 
             <div class="credentials-box">
@@ -1219,14 +1214,39 @@ export function generateHTML(lang: Language = 'en'): string {
             document.getElementById('finalEmail').textContent = config.admin.email;
             document.getElementById('finalPassword').textContent = '••••••••';
 
-            // Show port info
-            var sfPort = config.shop.storefrontPort || 4200;
-            var adPort = config.shop.adminPort || 4201;
-            var apiPort = config.shop.apiPort || 4000;
-            var portsEl = document.getElementById('portsInfo');
-            if (portsEl) {
-              portsEl.innerHTML = 'Storefront: <strong>:' + sfPort + '</strong> | Admin: <strong>:' + adPort + '</strong> | API: <strong>:' + apiPort + '</strong>';
-            }
+            // Trigger handover: installer shuts down, storefront takes over
+            fetch('/api/handover', { method: 'POST' })
+              .then(function() {
+                document.getElementById('handoverStatus').textContent = 'Starting storefront...';
+                // Poll until the storefront is serving (installer has exited, storefront took the port)
+                var attempts = 0;
+                var pollForShop = setInterval(function() {
+                  attempts++;
+                  fetch(window.location.origin, { mode: 'no-cors' })
+                    .then(function() {
+                      // Something is responding — storefront might be up
+                      if (attempts > 5) {
+                        clearInterval(pollForShop);
+                        document.getElementById('handoverStatus').textContent = 'Your shop is ready! Reloading...';
+                        document.getElementById('handoverSpinner').style.display = 'none';
+                        setTimeout(function() { window.location.reload(); }, 2000);
+                      }
+                    })
+                    .catch(function() {
+                      // Port not yet available — keep waiting
+                      document.getElementById('handoverStatus').textContent = 'Starting storefront... (' + attempts + 's)';
+                    });
+                  if (attempts > 60) {
+                    clearInterval(pollForShop);
+                    document.getElementById('handoverStatus').innerHTML = 'Storefront is starting. Refresh this page in a moment, or run:<br><code>pnpm --filter @forkcart/storefront start</code>';
+                    document.getElementById('handoverSpinner').style.display = 'none';
+                  }
+                }, 1000);
+              })
+              .catch(function() {
+                document.getElementById('handoverStatus').innerHTML = 'Run <code>pnpm build && pnpm start</code> to start your shop.';
+                document.getElementById('handoverSpinner').style.display = 'none';
+              });
           } else if (status.error) {
             // Show error
             progressEl.innerHTML += \`

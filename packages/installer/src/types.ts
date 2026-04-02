@@ -78,8 +78,11 @@ export interface InstallStatus {
   steps: InstallStep[];
   completed: boolean;
   error?: string;
-  /** Set when build & services are done — frontend should redirect here */
-  storefrontUrl?: string;
+  /** Handover info for starting storefront after installer exits */
+  handover?: {
+    storefrontPort: string;
+    rootDir: string;
+  };
 }
 
 /** Database test result */

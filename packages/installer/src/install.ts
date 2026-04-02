@@ -114,6 +114,7 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     { id: 'demo', label: 'Loading demo data...', status: 'pending' },
     { id: 'keys', label: 'Generating security keys...', status: 'pending' },
 
+    { id: 'build', label: 'Building your shop...', status: 'pending' },
     { id: 'done', label: 'Done!', status: 'pending' },
   ];
 
@@ -185,20 +186,33 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 
     updateStep('keys', 'completed');
 
+    // Step: Build everything
+    installStatus.currentStep++;
+    updateStep('build', 'running');
+
+    execSync('pnpm build', {
+      cwd: rootDir,
+      env: { ...process.env, DATABASE_URL: connectionString },
+      stdio: 'pipe',
+      timeout: 600_000, // 10 min max
+    });
+
+    updateStep('build', 'completed');
+
     // Write lock file so installer won't show again
     writeFileSync(join(rootDir, '.installed'), new Date().toISOString(), 'utf-8');
 
-    // Step: Done
+    // Write .env port info for the handover
+    const sfPort = String(config.shop.storefrontPort ?? 4200);
+
+    // Step: Done — signal frontend, then hand over port to storefront
     installStatus.currentStep++;
     updateStep('done', 'completed');
     installStatus.completed = true;
-
-    // Provide the storefront URL so the frontend can redirect
-    // Only set storefrontUrl if an explicit domain was configured.
-    // Otherwise the frontend will use window.location.origin (the installer's own domain).
-    if (config.shop.domain) {
-      installStatus.storefrontUrl = config.shop.domain;
-    }
+    installStatus.handover = {
+      storefrontPort: sfPort,
+      rootDir,
+    };
 
     return installStatus;
   } catch (error) {
