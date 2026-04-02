@@ -893,6 +893,12 @@ export function generateHTML(lang: Language = 'en'): string {
               <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
             </div>
 
+            <div id="serviceLinks" style="display:none; margin: 16px 0;">
+              <div class="success-links">
+                <a id="adminLink" href="#" target="_blank">⚙️ Admin Panel</a>
+              </div>
+            </div>
+
             <div class="credentials-box">
               <strong data-i18n="success.credentials">${t['success.credentials']}</strong>
               <p>Email: <span class="value" id="finalEmail"></span></p>
@@ -1213,6 +1219,14 @@ export function generateHTML(lang: Language = 'en'): string {
             document.getElementById('successView').style.display = 'block';
             document.getElementById('finalEmail').textContent = config.admin.email;
             document.getElementById('finalPassword').textContent = '••••••••';
+
+            // Show admin link
+            var adminPort = config.shop.adminPort || 4201;
+            var host = window.location.hostname;
+            var adminUrl = window.location.protocol + '//' + host + ':' + adminPort;
+            document.getElementById('adminLink').href = adminUrl;
+            document.getElementById('adminLink').textContent = '\u2699\ufe0f Admin Panel (:' + adminPort + ')';
+            document.getElementById('serviceLinks').style.display = 'block';
 
             // Trigger handover: installer shuts down, storefront takes over
             fetch('/api/handover', { method: 'POST' })
