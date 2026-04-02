@@ -30,6 +30,7 @@
     "db:migrate": "pnpm --filter @forkcart/database migrate",
     "db:seed": "pnpm --filter @forkcart/database seed",
     "db:studio": "pnpm --filter @forkcart/database studio",
+    "installer": "pnpm --filter @forkcart/installer start",
     "clean": "turbo run clean && rm -rf node_modules",
     "prepare": "husky"
   },
