@@ -283,7 +283,6 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     lines.push('', '# CORS', `API_CORS_ORIGIN="${config.shop.domain}"`);
   }
 
-  const apiPort = 4000;
   const adminPort = 4201;
   const sfPort = 4200;
 
