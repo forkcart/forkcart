@@ -1,9 +1,12 @@
 import { Hono } from 'hono';
 
 const STOREFRONT_URL = process.env['STOREFRONT_URL'] ?? 'http://localhost:3000';
-// RVS-022: Reject default revalidation secret
+// RVS-022: Check revalidation secret
 const REVALIDATE_SECRET = process.env['REVALIDATE_SECRET'] ?? '';
-if (!REVALIDATE_SECRET || REVALIDATE_SECRET === 'forkcart-revalidate') {
+if (
+  process.env['NODE_ENV'] === 'production' &&
+  (!REVALIDATE_SECRET || REVALIDATE_SECRET === 'forkcart-revalidate')
+) {
   console.warn(
     '[cache] REVALIDATE_SECRET is missing or uses the default value. Set a unique secret in production.',
   );

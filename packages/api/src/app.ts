@@ -4,6 +4,7 @@ import { logger as honoLogger } from 'hono/logger';
 import { secureHeaders } from 'hono/secure-headers';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { resolve, relative, join } from 'node:path';
+import { mkdirSync, existsSync } from 'node:fs';
 import type { Database } from '@forkcart/database';
 import { AIProviderRegistry } from '@forkcart/ai';
 import {
@@ -205,6 +206,12 @@ export async function createApp(db: Database) {
   // Media storage config
   const storagePath = resolve(process.env['MEDIA_STORAGE_PATH'] ?? './uploads');
   const baseUrl = process.env['MEDIA_BASE_URL'] ?? 'http://localhost:4000/uploads';
+
+  // Ensure uploads directory exists
+  if (!existsSync(storagePath)) {
+    mkdirSync(storagePath, { recursive: true });
+    console.log(`[media] Created uploads directory: ${storagePath}`);
+  }
 
   // Static file serving for uploads — resolve relative to CWD for serveStatic
   const relativeStoragePath = relative(process.cwd(), storagePath);
