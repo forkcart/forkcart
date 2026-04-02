@@ -765,8 +765,8 @@ export function generateHTML(lang: Language = 'en'): string {
           <div class="form-group">
             <label for="shopCurrency" data-i18n="shop.currency">${t['shop.currency']}</label>
             <select id="shopCurrency">
-              <option value="EUR">EUR (€)</option>
               <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
               <option value="GBP">GBP (£)</option>
               <option value="CHF">CHF</option>
             </select>
@@ -774,8 +774,8 @@ export function generateHTML(lang: Language = 'en'): string {
           <div class="form-group">
             <label for="shopLanguage" data-i18n="shop.language">${t['shop.language']}</label>
             <select id="shopLanguage">
-              <option value="de">Deutsch</option>
               <option value="en">English</option>
+              <option value="de">Deutsch</option>
             </select>
           </div>
         </div>
