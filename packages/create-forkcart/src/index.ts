@@ -108,7 +108,9 @@ async function main(): Promise<void> {
     explicitTag = args[tagIdx + 1];
   }
 
-  const initialName = args.find((a, i) => !a.startsWith('-') && i !== tagIdx + 1);
+  const initialName = args.find(
+    (a, i) => !a.startsWith('-') && (tagIdx === -1 || i !== tagIdx + 1),
+  );
 
   const onCancel = () => {
     console.log(kleur.red('\n  ✖ Setup cancelled.\n'));
