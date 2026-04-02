@@ -180,6 +180,9 @@ app.post('/api/handover', async (c) => {
   console.log('[installer] Handover requested — starting storefront, then exiting.');
 
   // Spawn storefront + API + admin as detached processes
+  // Load .env, but OVERRIDE storefront port with the installer's own port
+  // so the storefront takes over the same URL the user is looking at.
+  const installerPort = String(process.env['INSTALLER_PORT'] ?? process.env['PORT'] ?? '4200');
   const env = { ...process.env };
   if (existsSync(envPath)) {
     const envContent = readFileSync(envPath, 'utf-8');
@@ -188,6 +191,8 @@ app.post('/api/handover', async (c) => {
       if (match && match[1] && match[2]) env[match[1]] = match[2];
     }
   }
+  // Key: storefront must bind to the installer's port so the URL stays the same
+  env['STOREFRONT_PORT'] = installerPort;
 
   // Start API first
   const api = spawn(pnpmPath, ['--filter', '@forkcart/api', 'start'], {
