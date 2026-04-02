@@ -38,6 +38,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             __html: `window.FORKCART = window.FORKCART || {}; window.FORKCART.apiUrl = "${API_URL}";`,
           }}
         />
+        {/* Import map: resolve bare "react" imports in plugin ESM bundles
+            to shim modules that re-export the host React instance */}
+        <script
+          type="importmap"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              imports: {
+                react: '/_plugin-shims/react.js',
+                'react-dom': '/_plugin-shims/react-dom.js',
+                'react/jsx-runtime': '/_plugin-shims/react-jsx-runtime.js',
+              },
+            }),
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `

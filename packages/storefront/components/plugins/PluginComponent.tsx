@@ -4,23 +4,34 @@ import { Component, lazy, Suspense, useRef, type ReactNode, type ErrorInfo } fro
 import { API_URL } from '@/lib/config';
 
 // ─── Module cache (avoid re-importing the same bundle) ───────────────────────
+// Cache key includes the bundle hash so updated plugins get a fresh import.
 
 const moduleCache = new Map<string, Promise<Record<string, unknown>>>();
 
-function getPluginModule(pluginSlug: string): Promise<Record<string, unknown>> {
-  const cached = moduleCache.get(pluginSlug);
+/**
+ * Dynamically import a plugin's ESM component bundle.
+ * Appends `?v=<bundleHash>` when a hash is provided to bust browser caches.
+ * The cache key is `slug@hash` so stale entries are never re-used.
+ */
+function getPluginModule(
+  pluginSlug: string,
+  bundleHash?: string | null,
+): Promise<Record<string, unknown>> {
+  const cacheKey = bundleHash ? `${pluginSlug}@${bundleHash}` : pluginSlug;
+  const cached = moduleCache.get(cacheKey);
   if (cached) return cached;
 
-  const url = `${API_URL}/api/v1/public/plugins/${encodeURIComponent(pluginSlug)}/components.js`;
+  const baseUrl = `${API_URL}/api/v1/public/plugins/${encodeURIComponent(pluginSlug)}/components.js`;
+  const url = bundleHash ? `${baseUrl}?v=${bundleHash}` : baseUrl;
   const promise = import(/* webpackIgnore: true */ url).then(
     (mod) => mod as Record<string, unknown>,
   );
 
-  moduleCache.set(pluginSlug, promise);
+  moduleCache.set(cacheKey, promise);
 
   // On failure, remove from cache so it can be retried
   promise.catch(() => {
-    moduleCache.delete(pluginSlug);
+    moduleCache.delete(cacheKey);
   });
 
   return promise;
@@ -74,6 +85,8 @@ export interface PluginComponentProps {
   componentName: string;
   /** Props to pass to the plugin component */
   props?: Record<string, unknown>;
+  /** Content hash of the bundle — used as cache-buster query parameter */
+  bundleHash?: string | null;
 }
 
 /**
@@ -82,12 +95,17 @@ export interface PluginComponentProps {
  * The bundle is fetched from /api/v1/public/plugins/<slug>/components.js
  * and the named export is resolved as a React component.
  */
-export function PluginComponent({ pluginSlug, componentName, props = {} }: PluginComponentProps) {
+export function PluginComponent({
+  pluginSlug,
+  componentName,
+  props = {},
+  bundleHash,
+}: PluginComponentProps) {
   const lazyRef = useRef<ReturnType<typeof lazy> | null>(null);
 
   if (!lazyRef.current) {
     lazyRef.current = lazy(() =>
-      getPluginModule(pluginSlug).then((mod) => {
+      getPluginModule(pluginSlug, bundleHash).then((mod) => {
         const comp = mod[componentName];
         if (typeof comp !== 'function') {
           throw new Error(`Plugin "${pluginSlug}" does not export component "${componentName}"`);

@@ -4,9 +4,11 @@ import { IdParamSchema } from '@forkcart/shared';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
 import { rm, readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { resolve, join } from 'node:path';
 import type { Context } from 'hono';
 import { setRebuildNeeded } from './system';
+import { rateLimit } from '../../middleware/rate-limit';
 
 const UpdateSettingsSchema = z.record(z.string(), z.unknown());
 
@@ -21,6 +23,38 @@ const InstallPluginSchema = z.object({
 const ToggleTaskSchema = z.object({
   enabled: z.boolean(),
 });
+
+/**
+ * Compute a short SHA-256 hash (first 8 hex chars) of a string.
+ * Used as ETag and cache-buster for plugin component bundles.
+ */
+function computeBundleHash(content: string): string {
+  return createHash('sha256').update(content).digest('hex').slice(0, 8);
+}
+
+/**
+ * Resolve the content hash for a plugin's components.js bundle.
+ * Searches the same paths as the `/:slug/components.js` endpoint.
+ * Returns `null` when no bundle exists on disk.
+ */
+async function resolveBundleHash(dataPluginsDir: string, slug: string): Promise<string | null> {
+  const possiblePaths = [
+    join(dataPluginsDir, slug, 'dist', 'components.js'),
+    join(dataPluginsDir, slug, `forkcart-plugin-${slug}`, 'dist', 'components.js'),
+    join(dataPluginsDir, slug, slug, 'dist', 'components.js'),
+  ];
+
+  for (const bundlePath of possiblePaths) {
+    try {
+      const content = await readFile(bundlePath, 'utf-8');
+      return computeBundleHash(content);
+    } catch {
+      // Try next path
+    }
+  }
+
+  return null;
+}
 
 /** Public plugin routes (no auth required, for storefront) */
 export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
@@ -185,21 +219,53 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
     });
   });
 
-  /** List all registered storefront components (React components from plugins) */
+  /** List all registered storefront components (React components from plugins).
+   *  Each entry includes a `bundleHash` derived from the plugin's components.js
+   *  file content, enabling cache-busted imports on the storefront. */
   router.get('/components', async (c) => {
     const components = pluginLoader.getAllStorefrontComponents();
-    return c.json({ data: components });
+    const dataPluginsDir = resolve(process.cwd(), 'data', 'plugins');
+
+    // Enrich each component with its bundle's content hash
+    const enriched = await Promise.all(
+      components.map(async (comp) => {
+        const slug = comp.pluginName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const bundleHash = await resolveBundleHash(dataPluginsDir, slug);
+        return { ...comp, bundleHash };
+      }),
+    );
+
+    return c.json({ data: enriched });
   });
 
-  /** Get storefront components for a specific slot */
+  /** Get storefront components for a specific slot.
+   *  Includes `bundleHash` per component for cache-busted imports. */
   router.get('/components/:slotName', async (c) => {
     const slotName = c.req.param('slotName');
     const currentPage = c.req.query('page');
     const components = pluginLoader.getStorefrontComponents(slotName, currentPage);
-    return c.json({ data: components });
+    const dataPluginsDir = resolve(process.cwd(), 'data', 'plugins');
+
+    const enriched = await Promise.all(
+      components.map(async (comp) => {
+        const slug = comp.pluginName
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '');
+        const bundleHash = await resolveBundleHash(dataPluginsDir, slug);
+        return { ...comp, bundleHash };
+      }),
+    );
+
+    return c.json({ data: enriched });
   });
 
-  /** Serve the components.js ESM bundle for a plugin */
+  /** Serve the components.js ESM bundle for a plugin.
+   *  Uses content-based ETag for cache busting: browsers cache immutably,
+   *  and the storefront appends `?v=<hash>` to bust on plugin updates. */
   router.get('/:slug/components.js', async (c) => {
     const slug = c.req.param('slug');
 
@@ -214,10 +280,19 @@ export function createPublicPluginRoutes(pluginLoader: PluginLoader) {
     for (const bundlePath of possiblePaths) {
       try {
         const content = await readFile(bundlePath, 'utf-8');
+        const etag = computeBundleHash(content);
+
+        // Support conditional requests (If-None-Match → 304)
+        const ifNoneMatch = c.req.header('if-none-match');
+        if (ifNoneMatch === etag) {
+          return new Response(null, { status: 304 });
+        }
+
         return new Response(content, {
           headers: {
             'Content-Type': 'application/javascript',
-            'Cache-Control': 'public, max-age=300',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            ETag: etag,
           },
         });
       } catch {
@@ -276,6 +351,31 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     const settings = UpdateSettingsSchema.parse(body);
     await pluginLoader.updatePluginSettings(id, settings);
     return c.json({ data: { success: true } });
+  });
+
+  /**
+   * Reload plugin settings from database.
+   * Clears the settings cache and reloads fresh values.
+   * Useful when settings were changed externally or to force a cache refresh.
+   */
+  router.post('/:id/reload-settings', async (c) => {
+    const { id } = IdParamSchema.parse({ id: c.req.param('id') });
+    try {
+      const settings = await pluginLoader.reloadSettings(id);
+      return c.json({
+        data: {
+          success: true,
+          reloadedAt: new Date().toISOString(),
+          settingsCount: Object.keys(settings).length,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reload settings';
+      if (message.includes('not found')) {
+        return c.json({ error: { code: 'NOT_FOUND', message } }, 404);
+      }
+      return c.json({ error: { code: 'RELOAD_FAILED', message } }, 500);
+    }
   });
 
   /** Install a plugin from npm */
@@ -547,6 +647,40 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
     return c.json({ data: conflicts, hasConflicts: conflicts.length > 0 });
   });
 
+  // ─── Error Stats Routes ─────────────────────────────────────────────────────
+
+  /** Get error statistics for all plugins */
+  router.get('/error-stats', async (c) => {
+    const stats = pluginLoader.getAllPluginErrorStats();
+    const result: Record<
+      string,
+      { totalErrors: number; recentErrors: number; unhealthy: boolean }
+    > = {};
+    for (const [name, stat] of stats) {
+      result[name] = stat;
+    }
+    return c.json({ data: result });
+  });
+
+  /** Get error details for a specific plugin */
+  router.get('/:id/errors', async (c) => {
+    const { id } = IdParamSchema.parse({ id: c.req.param('id') });
+    const allPlugins = await pluginLoader.getAllPlugins();
+    const plugin = allPlugins.find((p) => p.id === id);
+    if (!plugin) {
+      return c.json({ error: { code: 'NOT_FOUND', message: 'Plugin not found' } }, 404);
+    }
+    const recentErrors = pluginLoader.getPluginRecentErrors(plugin.name);
+    const totalErrors = pluginLoader.getPluginErrorCount(plugin.name);
+    return c.json({
+      data: {
+        pluginName: plugin.name,
+        totalErrors,
+        recentErrors,
+      },
+    });
+  });
+
   // ─── Dev Mode / Hot Reload Routes ─────────────────────────────────────────
 
   /** Manually reload a plugin (admin only) */
@@ -576,6 +710,7 @@ export function createPluginRoutes(pluginLoader: PluginLoader, scheduler?: Plugi
 
 /**
  * Build a Hono sub-router for a plugin's custom routes.
+ * Applies per-plugin rate limiting (100 req/min) and crash isolation.
  */
 function buildPluginRouter(
   pluginName: string,
@@ -584,20 +719,44 @@ function buildPluginRouter(
 ): Hono {
   const pluginRouter = new Hono();
 
+  // Apply per-plugin rate limiting (100 requests/minute per IP per plugin)
+  const pluginSlug = slugifyPluginName(pluginName);
+  pluginRouter.use('*', rateLimit(`plugin:${pluginSlug}`, 100, 60_000));
+
   const pluginContext = pluginLoader.getPluginContext(pluginName) as {
     settings?: Record<string, unknown>;
     db?: unknown;
     logger?: unknown;
   } | null;
 
-  const wrap = (handler: (c: unknown) => unknown) => (c: Context) => {
+  /**
+   * Wrap a plugin route handler with crash isolation.
+   * Catches errors so a crashing plugin route does not bring down the server.
+   */
+  const wrap = (handler: (c: unknown) => unknown) => async (c: Context) => {
     if (pluginContext) {
       c.set('pluginSettings', pluginContext.settings || {});
       c.set('db', pluginContext.db);
       c.set('logger', pluginContext.logger);
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    return handler(c) as any;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return (await handler(c)) as any;
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[plugins] Route handler crash in plugin '${pluginName}':`, msg);
+      // Record the error for circuit-breaker tracking
+      pluginLoader.recordRouteError(pluginName, error, c.req.method + ' ' + c.req.path);
+      return c.json(
+        {
+          error: {
+            code: 'PLUGIN_ROUTE_ERROR',
+            message: `Plugin '${pluginName}' route handler failed: ${msg}`,
+          },
+        },
+        500,
+      );
+    }
   };
 
   const registeredRoutes = new Set<string>();
@@ -654,6 +813,9 @@ function slugifyPluginName(name: string): string {
  * this registers a single wildcard route that resolves the correct plugin router
  * at request time. Plugin routers are cached and invalidated when the set of
  * registered route registrars changes (e.g., after plugin activation/deactivation/reload).
+ *
+ * The router cache is also immediately invalidated when a plugin is deactivated,
+ * via the routeCacheInvalidationCallback set on the PluginLoader.
  */
 export function mountPluginRoutes(
   parentRouter: Hono,
@@ -664,6 +826,23 @@ export function mountPluginRoutes(
   const routerCache = new Map<string, Hono>();
   // Snapshot of registrar keys to detect changes
   let lastRegistrarSnapshot = '';
+
+  /**
+   * Immediately invalidate the entire route cache.
+   * Called when a plugin is deactivated to ensure its routes become
+   * unavailable without waiting for a request that triggers the snapshot check.
+   */
+  const invalidateRouteCache = (): void => {
+    const previousSize = routerCache.size;
+    routerCache.clear();
+    lastRegistrarSnapshot = '';
+    if (previousSize > 0) {
+      console.log(`[plugins] Route cache invalidated (cleared ${previousSize} cached routers)`);
+    }
+  };
+
+  // Register the invalidation callback with the PluginLoader
+  pluginLoader.setRouteCacheInvalidationCallback(invalidateRouteCache);
 
   const invalidateStaleCaches = () => {
     const registrars = pluginLoader.getPluginRouteRegistrars();

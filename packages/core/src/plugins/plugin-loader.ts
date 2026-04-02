@@ -21,6 +21,27 @@ import { MigrationRunner } from './migration-runner';
 
 const logger = createLogger('plugin-loader');
 
+// ─── Plugin Error Tracking (Sandbox / Isolation) ────────────────────────────
+
+/** Timestamped error entry for per-plugin error tracking */
+interface PluginErrorEntry {
+  /** Unix timestamp (ms) when the error occurred */
+  timestamp: number;
+  /** Short description or error message */
+  message: string;
+}
+
+/**
+ * Configuration for the automatic plugin circuit breaker.
+ * When a plugin exceeds `maxErrors` within `windowMs`, it is auto-deactivated.
+ */
+const CIRCUIT_BREAKER_CONFIG = {
+  /** Maximum errors allowed within the time window before auto-deactivation */
+  maxErrors: 5,
+  /** Sliding time window in milliseconds (5 minutes) */
+  windowMs: 5 * 60 * 1000,
+} as const;
+
 // ─── Legacy definition (backward compat with existing registerDefinition calls) ─
 
 /** @deprecated Use `@forkcart/plugin-sdk` PluginDefinition instead */
@@ -209,6 +230,8 @@ interface ActivePluginState {
   pluginName: string;
   registeredHooks: Map<string, EventHandler<unknown>>;
   registeredFilters: Map<string, FilterHandler>;
+  /** Whether the plugin is considered unhealthy (too many errors) */
+  unhealthy: boolean;
 }
 
 /**
@@ -284,6 +307,9 @@ export class PluginLoader {
   // ─── Plugin Routes Registry ────────────────────────────────────────────────
   private pluginRouteRegistrars = new Map<string, (router: unknown) => void>();
 
+  /** Callback to invalidate the route cache when plugins are deactivated */
+  private routeCacheInvalidationCallback?: () => void;
+
   // ─── PageBuilder Blocks Registry ───────────────────────────────────────────
   private pageBuilderBlocks = new Map<
     string,
@@ -302,6 +328,20 @@ export class PluginLoader {
     }>
   >();
 
+  // ─── Plugin Error Tracking (Sandbox / Isolation) ──────────────────────────
+
+  /**
+   * Per-plugin error history for circuit-breaker logic.
+   * Key: plugin name. Value: array of recent error entries.
+   */
+  private pluginErrorLog = new Map<string, PluginErrorEntry[]>();
+
+  /**
+   * Total error count per plugin (lifetime, not windowed).
+   * Exposed via the plugin status API.
+   */
+  private pluginErrorCounts = new Map<string, number>();
+
   // ─── Migration Runner ──────────────────────────────────────────────────────
   private migrationRunner: MigrationRunner;
 
@@ -314,6 +354,147 @@ export class PluginLoader {
     private readonly eventBus?: EventBus,
   ) {
     this.migrationRunner = new MigrationRunner(db);
+  }
+
+  // ─── Plugin Error Tracking API (Sandbox / Isolation) ──────────────────────
+
+  /**
+   * Record an error for a plugin and trigger auto-deactivation if the
+   * circuit-breaker threshold is exceeded.
+   *
+   * @param pluginName - Name of the plugin that errored
+   * @param error      - The error that occurred
+   * @param context    - Human-readable context (e.g. "onActivate", "hook:order.created")
+   */
+  private recordPluginError(pluginName: string, error: unknown, context: string): void {
+    const msg = error instanceof Error ? error.message : String(error);
+    logger.error({ pluginName, context, error: msg }, `Plugin error in ${context}`);
+
+    // Bump lifetime counter
+    this.pluginErrorCounts.set(pluginName, (this.pluginErrorCounts.get(pluginName) ?? 0) + 1);
+
+    // Add to sliding window log
+    const now = Date.now();
+    const log = this.pluginErrorLog.get(pluginName) ?? [];
+    log.push({ timestamp: now, message: `${context}: ${msg}` });
+
+    // Prune entries outside the window
+    const cutoff = now - CIRCUIT_BREAKER_CONFIG.windowMs;
+    const pruned = log.filter((e) => e.timestamp >= cutoff);
+    this.pluginErrorLog.set(pluginName, pruned);
+
+    // Check circuit breaker
+    if (pruned.length >= CIRCUIT_BREAKER_CONFIG.maxErrors) {
+      this.autoDeactivatePlugin(pluginName).catch((deactivateErr) => {
+        logger.error(
+          { pluginName, error: deactivateErr },
+          'Failed to auto-deactivate unhealthy plugin',
+        );
+      });
+    }
+  }
+
+  /**
+   * Auto-deactivate a plugin that has exceeded the error threshold.
+   * Marks the plugin as unhealthy and deactivates it in the DB.
+   */
+  private async autoDeactivatePlugin(pluginName: string): Promise<void> {
+    const state = this.activeStates.get(pluginName);
+    if (state?.unhealthy) {
+      // Already marked unhealthy — avoid duplicate deactivation
+      return;
+    }
+
+    logger.warn(
+      {
+        pluginName,
+        errorCount: this.pluginErrorCounts.get(pluginName),
+        windowMs: CIRCUIT_BREAKER_CONFIG.windowMs,
+        maxErrors: CIRCUIT_BREAKER_CONFIG.maxErrors,
+      },
+      `Auto-deactivating plugin '${pluginName}' — exceeded ${CIRCUIT_BREAKER_CONFIG.maxErrors} errors in ${CIRCUIT_BREAKER_CONFIG.windowMs / 1000}s`,
+    );
+
+    // Mark as unhealthy
+    if (state) {
+      state.unhealthy = true;
+    }
+
+    // Find plugin ID and deactivate
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.name, pluginName),
+    });
+    if (plugin?.isActive) {
+      try {
+        await this.deactivatePlugin(plugin.id);
+        logger.warn({ pluginName }, `Plugin '${pluginName}' auto-deactivated successfully`);
+      } catch (err) {
+        logger.error(
+          { pluginName, error: err },
+          'Auto-deactivation failed during deactivatePlugin',
+        );
+      }
+    }
+  }
+
+  /**
+   * Record an error from a plugin route handler.
+   * Public wrapper around `recordPluginError` for use by the API layer.
+   *
+   * @param pluginName - Name of the plugin
+   * @param error      - The error that occurred
+   * @param context    - Human-readable context (e.g. "GET /my-route")
+   */
+  recordRouteError(pluginName: string, error: unknown, context: string): void {
+    this.recordPluginError(pluginName, error, `route:${context}`);
+  }
+
+  /**
+   * Get the error count for a specific plugin (lifetime total).
+   * @param pluginName - Name of the plugin
+   */
+  getPluginErrorCount(pluginName: string): number {
+    return this.pluginErrorCounts.get(pluginName) ?? 0;
+  }
+
+  /**
+   * Get recent error entries for a plugin (within the sliding window).
+   * @param pluginName - Name of the plugin
+   */
+  getPluginRecentErrors(pluginName: string): PluginErrorEntry[] {
+    const now = Date.now();
+    const cutoff = now - CIRCUIT_BREAKER_CONFIG.windowMs;
+    const log = this.pluginErrorLog.get(pluginName) ?? [];
+    return log.filter((e) => e.timestamp >= cutoff);
+  }
+
+  /**
+   * Get error statistics for all plugins.
+   * Returns a map of plugin name → { totalErrors, recentErrors, unhealthy }.
+   */
+  getAllPluginErrorStats(): Map<
+    string,
+    { totalErrors: number; recentErrors: number; unhealthy: boolean }
+  > {
+    const stats = new Map<
+      string,
+      { totalErrors: number; recentErrors: number; unhealthy: boolean }
+    >();
+    const now = Date.now();
+    const cutoff = now - CIRCUIT_BREAKER_CONFIG.windowMs;
+
+    for (const [name, total] of this.pluginErrorCounts) {
+      const log = this.pluginErrorLog.get(name) ?? [];
+      const recent = log.filter((e) => e.timestamp >= cutoff).length;
+      const state = this.activeStates.get(name);
+      stats.set(name, {
+        totalErrors: total,
+        recentErrors: recent,
+        unhealthy: state?.unhealthy ?? false,
+      });
+    }
+
+    return stats;
   }
 
   // ─── Permission API ────────────────────────────────────────────────────────
@@ -870,24 +1051,39 @@ export class PluginLoader {
     // Decrypt secret settings for onDeactivate callback
     const settings = this.decryptSettings(plugin.name, rawSettings);
 
-    // Call onDeactivate for SDK plugins
+    // Call onDeactivate for SDK plugins (wrapped in try/catch for crash isolation)
     const sdkDef = this.findSdkDef(plugin.name, plugin.metadata as Record<string, unknown> | null);
     if (sdkDef?.onDeactivate) {
       try {
         await sdkDef.onDeactivate(this.buildPluginContext(plugin.name, settings));
       } catch (error) {
-        logger.error({ pluginName: plugin.name, error }, 'onDeactivate failed');
+        this.recordPluginError(plugin.name, error, 'onDeactivate');
       }
     }
+
+    // Track what we're removing for logging
+    const removedItems = {
+      hooks: 0,
+      filters: 0,
+      slots: [] as string[],
+      components: [] as string[],
+      pages: [] as string[],
+      blocks: [] as string[],
+      cliCommands: [] as string[],
+      scheduledTasks: [] as string[],
+      routes: false,
+    };
 
     // Unregister hooks
     const state = this.activeStates.get(plugin.name);
     if (state && this.eventBus) {
+      removedItems.hooks = state.registeredHooks.size;
       this.eventBus.removeHandlers(state.registeredHooks);
     }
 
     // Unregister filters
     if (state?.registeredFilters) {
+      removedItems.filters = state.registeredFilters.size;
       for (const [filterName, handler] of state.registeredFilters) {
         const handlers = this.filterHandlers.get(filterName);
         if (handlers) {
@@ -906,7 +1102,11 @@ export class PluginLoader {
 
     // Unregister storefront slots
     for (const [slotName, slots] of this.storefrontSlots) {
+      const originalLength = slots.length;
       const filtered = slots.filter((s) => s.pluginName !== plugin.name);
+      if (originalLength !== filtered.length) {
+        removedItems.slots.push(slotName);
+      }
       if (filtered.length === 0) {
         this.storefrontSlots.delete(slotName);
       } else {
@@ -916,7 +1116,14 @@ export class PluginLoader {
 
     // Unregister storefront components
     for (const [slotName, comps] of this.storefrontComponents) {
+      const originalLength = comps.length;
       const filtered = comps.filter((c) => c.pluginName !== plugin.name);
+      if (originalLength !== filtered.length) {
+        const removedComps = comps.filter((c) => c.pluginName === plugin.name);
+        for (const comp of removedComps) {
+          removedItems.components.push(`${slotName}/${comp.name}`);
+        }
+      }
       if (filtered.length === 0) {
         this.storefrontComponents.delete(slotName);
       } else {
@@ -927,6 +1134,7 @@ export class PluginLoader {
     // Unregister storefront pages
     for (const [path, page] of this.storefrontPages) {
       if (page.pluginName === plugin.name) {
+        removedItems.pages.push(path);
         this.storefrontPages.delete(path);
       }
     }
@@ -934,6 +1142,7 @@ export class PluginLoader {
     // Unregister pageBuilderBlocks
     for (const [key] of this.pageBuilderBlocks) {
       if (key.startsWith(`${plugin.name}:`)) {
+        removedItems.blocks.push(key);
         this.pageBuilderBlocks.delete(key);
       }
     }
@@ -941,6 +1150,7 @@ export class PluginLoader {
     // Unregister CLI commands
     for (const [key, entry] of this.cliCommands) {
       if (entry.pluginName === plugin.name) {
+        removedItems.cliCommands.push(key);
         this.cliCommands.delete(key);
       }
     }
@@ -948,16 +1158,32 @@ export class PluginLoader {
     // Unregister scheduled tasks
     for (const [key, entry] of this.scheduledTasks) {
       if (entry.pluginName === plugin.name) {
+        removedItems.scheduledTasks.push(key);
         this.scheduledTasks.delete(key);
       }
     }
 
-    // Unregister custom routes
-    this.pluginRouteRegistrars.delete(plugin.name);
+    // Unregister custom routes and invalidate route cache
+    if (this.pluginRouteRegistrars.has(plugin.name)) {
+      removedItems.routes = true;
+      this.pluginRouteRegistrars.delete(plugin.name);
+
+      // Immediately invalidate the route cache so the plugin's routes
+      // become unavailable without waiting for the next request
+      if (this.routeCacheInvalidationCallback) {
+        this.routeCacheInvalidationCallback();
+      }
+    }
 
     this.activeStates.delete(plugin.name);
 
-    // Unregister legacy providers
+    // Clear settings cache for this plugin
+    this.clearSettingsCache(plugin.name);
+
+    // Unregister providers (SDK and legacy)
+    await this.unregisterPluginProviders(plugin.name, sdkDef);
+
+    // Unregister legacy providers (kept for backward compatibility)
     const legacyDef = this.legacyPlugins.get(plugin.name);
     if (legacyDef) {
       this.deactivateLegacyPlugin(legacyDef);
@@ -972,7 +1198,56 @@ export class PluginLoader {
       await this.eventBus.emit('plugin:deactivated', { pluginName: plugin.name });
     }
 
-    logger.info({ pluginName: plugin.name }, 'Plugin deactivated');
+    // Log what was removed
+    logger.info(
+      {
+        pluginName: plugin.name,
+        removed: {
+          hooks: removedItems.hooks,
+          filters: removedItems.filters,
+          slots: removedItems.slots.length,
+          components: removedItems.components.length,
+          pages: removedItems.pages.length,
+          blocks: removedItems.blocks.length,
+          cliCommands: removedItems.cliCommands.length,
+          scheduledTasks: removedItems.scheduledTasks.length,
+          routes: removedItems.routes,
+        },
+      },
+      'Plugin deactivated',
+    );
+
+    // Log detailed removal info at debug level
+    if (removedItems.slots.length > 0) {
+      logger.debug(
+        { pluginName: plugin.name, slots: removedItems.slots },
+        'Removed storefront slots',
+      );
+    }
+    if (removedItems.components.length > 0) {
+      logger.debug(
+        { pluginName: plugin.name, components: removedItems.components },
+        'Removed storefront components',
+      );
+    }
+    if (removedItems.pages.length > 0) {
+      logger.debug(
+        { pluginName: plugin.name, pages: removedItems.pages },
+        'Removed storefront pages',
+      );
+    }
+    if (removedItems.scheduledTasks.length > 0) {
+      logger.debug(
+        { pluginName: plugin.name, tasks: removedItems.scheduledTasks },
+        'Removed scheduled tasks',
+      );
+    }
+    if (removedItems.routes) {
+      logger.debug(
+        { pluginName: plugin.name },
+        'Removed plugin routes and invalidated route cache',
+      );
+    }
   }
 
   // ─── SDK plugin activation ────────────────────────────────────────────────
@@ -994,7 +1269,7 @@ export class PluginLoader {
           try {
             await handler(event, ctx);
           } catch (error) {
-            logger.error({ pluginName, eventType, error }, 'Plugin hook handler failed');
+            this.recordPluginError(pluginName, error, `hook:${eventType}`);
             // Call plugin's onError handler if defined
             if (def.onError && error instanceof Error) {
               try {
@@ -1018,7 +1293,7 @@ export class PluginLoader {
           try {
             return await handler(data, ctx);
           } catch (error) {
-            logger.error({ pluginName, filterName, error }, 'Plugin filter handler failed');
+            this.recordPluginError(pluginName, error, `filter:${filterName}`);
             return data; // Return unmodified data on error
           }
         };
@@ -1148,6 +1423,7 @@ export class PluginLoader {
       pluginName,
       registeredHooks: hookHandlers,
       registeredFilters: filterHandlers,
+      unhealthy: false,
     });
 
     // Run pending migrations before activation
@@ -1158,14 +1434,41 @@ export class PluginLoader {
       await this.migrationRunner.runPendingMigrations(pluginName, def.migrations, ctxWithDb.db);
     }
 
-    // Call onActivate
+    // ─── Memory tracking: snapshot before onActivate ──────────────────
+    const memBefore = process.memoryUsage();
+
+    // Call onActivate (wrapped in try/catch for crash isolation)
     if (def.onActivate) {
-      await def.onActivate(ctx);
+      try {
+        await def.onActivate(ctx);
+      } catch (error) {
+        this.recordPluginError(pluginName, error, 'onActivate');
+        throw error; // Re-throw so activation is marked as failed
+      }
     }
+
+    // ─── Memory tracking: snapshot after onActivate ───────────────────
+    const memAfter = process.memoryUsage();
+    const heapDeltaMb = ((memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024).toFixed(2);
+    const rssDeltaMb = ((memAfter.rss - memBefore.rss) / 1024 / 1024).toFixed(2);
+    logger.info(
+      {
+        pluginName,
+        heapDeltaMb: Number(heapDeltaMb),
+        rssDeltaMb: Number(rssDeltaMb),
+        heapUsedMb: Number((memAfter.heapUsed / 1024 / 1024).toFixed(2)),
+      },
+      `Plugin '${pluginName}' activation memory delta: heap ${heapDeltaMb} MB, rss ${rssDeltaMb} MB`,
+    );
 
     // Register provider based on type (bridge to existing registries)
     if (def.provider) {
-      await this.bridgeProviderToRegistry(def, settings);
+      try {
+        await this.bridgeProviderToRegistry(def, settings);
+      } catch (error) {
+        this.recordPluginError(pluginName, error, 'bridgeProviderToRegistry');
+        throw error;
+      }
     }
   }
 
@@ -1208,6 +1511,72 @@ export class PluginLoader {
     ) {
       const provider = def.createMarketplaceProvider();
       this.marketplaceRegistry.unregister(provider.id);
+    }
+  }
+
+  /**
+   * Unregister providers for SDK-style plugins.
+   * Called during plugin deactivation to remove payment, email, marketplace,
+   * and shipping providers from their respective registries.
+   * @param pluginName - The name of the plugin being deactivated
+   * @param sdkDef - The SDK plugin definition (may be undefined for legacy plugins)
+   */
+  private async unregisterPluginProviders(
+    pluginName: string,
+    sdkDef: SdkPluginDefinition | undefined,
+  ): Promise<void> {
+    if (!sdkDef?.provider) return;
+
+    const provider = sdkDef.provider;
+
+    // Unregister payment provider
+    if (
+      sdkDef.type === 'payment' &&
+      'createPaymentIntent' in provider &&
+      typeof provider['createPaymentIntent'] === 'function'
+    ) {
+      // Get the provider ID the same way it's created in bridgeProviderToRegistry
+      let clientConfig: Record<string, unknown> | null = null;
+      const getConfigFn = (provider as Record<string, unknown>)['getClientConfig'];
+      if (typeof getConfigFn === 'function') {
+        clientConfig = (getConfigFn as () => Record<string, unknown>)();
+      }
+      const providerId = (clientConfig?.['provider'] as string) ?? pluginName;
+      this.paymentRegistry.unregister(providerId);
+      logger.debug({ pluginName, providerId }, 'Unregistered payment provider');
+    }
+
+    // Unregister email provider
+    if (
+      sdkDef.type === 'email' &&
+      'sendEmail' in provider &&
+      typeof provider['sendEmail'] === 'function' &&
+      this.emailRegistry
+    ) {
+      this.emailRegistry.unregister(pluginName);
+      logger.debug({ pluginName }, 'Unregistered email provider');
+    }
+
+    // Unregister marketplace provider
+    if (
+      sdkDef.type === 'marketplace' &&
+      'listProduct' in provider &&
+      typeof provider['listProduct'] === 'function' &&
+      this.marketplaceRegistry
+    ) {
+      this.marketplaceRegistry.unregister(pluginName);
+      logger.debug({ pluginName }, 'Unregistered marketplace provider');
+    }
+
+    // Unregister shipping provider
+    if (
+      sdkDef.type === 'shipping' &&
+      'getRates' in provider &&
+      typeof provider['getRates'] === 'function' &&
+      this.shippingRegistry
+    ) {
+      this.shippingRegistry.unregister(pluginName);
+      logger.debug({ pluginName }, 'Unregistered shipping provider');
     }
   }
 
@@ -1499,15 +1868,23 @@ export class PluginLoader {
         plugin.metadata as Record<string, unknown> | null,
       );
       if (sdkDef) {
-        await this.activateSdkPlugin(plugin.name, sdkDef, settings);
-        logger.info({ pluginName: plugin.name }, 'SDK plugin loaded');
+        try {
+          await this.activateSdkPlugin(plugin.name, sdkDef, settings);
+          logger.info({ pluginName: plugin.name }, 'SDK plugin loaded');
+        } catch (error) {
+          this.recordPluginError(plugin.name, error, 'loadActivePlugins:activateSdkPlugin');
+        }
         continue;
       }
 
       const legacyDef = this.legacyPlugins.get(plugin.name);
       if (legacyDef) {
-        await this.activateLegacyPlugin(legacyDef, settings);
-        logger.info({ pluginName: plugin.name }, 'Legacy plugin loaded');
+        try {
+          await this.activateLegacyPlugin(legacyDef, settings);
+          logger.info({ pluginName: plugin.name }, 'Legacy plugin loaded');
+        } catch (error) {
+          this.recordPluginError(plugin.name, error, 'loadActivePlugins:activateLegacyPlugin');
+        }
         continue;
       }
 
@@ -1517,8 +1894,12 @@ export class PluginLoader {
         plugin.metadata as Record<string, unknown> | null,
       );
       if (loadedDef) {
-        await this.activateSdkPlugin(plugin.name, loadedDef, settings);
-        logger.info({ pluginName: plugin.name }, 'Plugin loaded from installed directory');
+        try {
+          await this.activateSdkPlugin(plugin.name, loadedDef, settings);
+          logger.info({ pluginName: plugin.name }, 'Plugin loaded from installed directory');
+        } catch (error) {
+          this.recordPluginError(plugin.name, error, 'loadActivePlugins:activateInstalledPlugin');
+        }
         continue;
       }
 
@@ -1541,7 +1922,7 @@ export class PluginLoader {
           await sdkDef.onReady(this.buildPluginContext(plugin.name, settings));
           logger.info({ pluginName: plugin.name }, 'Plugin onReady completed');
         } catch (error) {
-          logger.error({ pluginName: plugin.name, error }, 'Plugin onReady failed');
+          this.recordPluginError(plugin.name, error, 'onReady');
         }
       }
     }
@@ -1938,6 +2319,11 @@ export class PluginLoader {
           }))
         : [];
 
+      // Error statistics for this plugin
+      const errorTotal = this.pluginErrorCounts.get(p.name) ?? 0;
+      const recentErrors = this.getPluginRecentErrors(p.name);
+      const state = this.activeStates.get(p.name);
+
       return {
         id: p.id,
         name: p.name,
@@ -1957,6 +2343,11 @@ export class PluginLoader {
         requiredSettings:
           paymentProvider?.getRequiredSettings() ?? emailProvider?.getRequiredSettings() ?? [],
         installedAt: p.installedAt,
+        errorStats: {
+          totalErrors: errorTotal,
+          recentErrors: recentErrors.length,
+          unhealthy: state?.unhealthy ?? false,
+        },
       };
     });
   }
@@ -1977,6 +2368,16 @@ export class PluginLoader {
     return this.pluginRouteRegistrars;
   }
 
+  /**
+   * Set a callback to be invoked when plugin routes are removed.
+   * Used by mountPluginRoutes to invalidate its router cache immediately
+   * rather than waiting for the next request.
+   * @param callback - Function to call when routes are removed
+   */
+  setRouteCacheInvalidationCallback(callback: () => void): void {
+    this.routeCacheInvalidationCallback = callback;
+  }
+
   // ─── Plugin Health Check API ──────────────────────────────────────────────
 
   /** Run health checks on all active plugins */
@@ -1994,10 +2395,15 @@ export class PluginLoader {
         // Check if hooks are registered
         const hookCount = state.registeredHooks.size;
         const filterCount = state.registeredFilters.size;
+        const errorTotal = this.pluginErrorCounts.get(pluginName) ?? 0;
+        const isUnhealthy = state.unhealthy;
+
         results.push({
           pluginName,
-          healthy: true,
-          message: `Active (${hookCount} hooks, ${filterCount} filters)`,
+          healthy: !isUnhealthy,
+          message: isUnhealthy
+            ? `Unhealthy (${errorTotal} total errors, auto-deactivated)`
+            : `Active (${hookCount} hooks, ${filterCount} filters, ${errorTotal} errors)`,
         });
       } catch (error) {
         results.push({
@@ -2400,13 +2806,13 @@ export class PluginLoader {
       await this.migrationRunner.runPendingMigrations(pluginName, sdkDef.migrations, ctxWithDb.db);
     }
 
-    // Call onUpdate lifecycle hook
+    // Call onUpdate lifecycle hook (wrapped for crash isolation)
     if (sdkDef.onUpdate) {
       try {
         await sdkDef.onUpdate(ctx, fromVersion);
         logger.info({ pluginName, fromVersion, toVersion }, 'Plugin onUpdate completed');
       } catch (error) {
-        logger.error({ pluginName, fromVersion, toVersion, error }, 'Plugin onUpdate failed');
+        this.recordPluginError(pluginName, error, `onUpdate(${fromVersion}→${toVersion})`);
       }
     }
   }
@@ -2483,6 +2889,60 @@ export class PluginLoader {
     return page?.apiRoute ?? null;
   }
 
+  // ─── Settings Cache Invalidation ──────────────────────────────────────────
+
+  /**
+   * Clear cached settings for a specific plugin.
+   * Call this before re-initializing a plugin to ensure fresh settings are loaded.
+   * @param pluginName - The name of the plugin whose cache should be cleared
+   */
+  clearSettingsCache(pluginName: string): void {
+    this.pluginSettingsCache.delete(pluginName);
+    logger.debug({ pluginName }, 'Plugin settings cache cleared');
+  }
+
+  /**
+   * Clear cached settings for all plugins.
+   * Useful for bulk operations or system-wide resets.
+   */
+  clearAllSettingsCache(): void {
+    const count = this.pluginSettingsCache.size;
+    this.pluginSettingsCache.clear();
+    logger.debug({ count }, 'All plugin settings caches cleared');
+  }
+
+  /**
+   * Reload settings for a plugin from the database.
+   * Clears the cache and reloads settings, updating the cache with fresh values.
+   * If the plugin is active, it will be re-initialized with the new settings.
+   * @param pluginId - The database ID of the plugin
+   * @returns The freshly loaded settings
+   */
+  async reloadSettings(pluginId: string): Promise<Record<string, unknown>> {
+    const plugin = await this.db.query.plugins.findFirst({
+      where: eq(plugins.id, pluginId),
+      with: { settings: true },
+    });
+
+    if (!plugin) throw new Error(`Plugin not found: ${pluginId}`);
+
+    // Clear existing cache
+    this.clearSettingsCache(plugin.name);
+
+    // Build fresh settings from DB
+    const rawSettings: Record<string, unknown> = {};
+    for (const s of plugin.settings) {
+      rawSettings[s.key] = s.value;
+    }
+
+    // Decrypt and cache
+    const settings = this.decryptSettings(plugin.name, rawSettings);
+    this.pluginSettingsCache.set(plugin.name, settings);
+
+    logger.info({ pluginName: plugin.name }, 'Plugin settings reloaded from database');
+    return settings;
+  }
+
   /** Update plugin settings */
   async updatePluginSettings(
     pluginId: string,
@@ -2514,7 +2974,10 @@ export class PluginLoader {
       }
     }
 
-    // If plugin is active, re-initialize
+    // Clear settings cache BEFORE re-initializing to ensure fresh settings are used
+    this.clearSettingsCache(plugin.name);
+
+    // If plugin is active, re-initialize with fresh settings
     if (plugin.isActive) {
       await this.deactivatePlugin(pluginId);
       await this.activatePlugin(pluginId);

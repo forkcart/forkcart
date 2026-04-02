@@ -23,6 +23,7 @@ interface RegisteredComponent {
   slot: string;
   props?: string[];
   order: number;
+  bundleHash?: string | null;
 }
 
 interface ComponentsResponse {
@@ -88,6 +89,7 @@ export async function PluginComponentSlot({
           pluginSlug={slugifyPluginName(comp.pluginName)}
           componentName={comp.name}
           props={sharedProps}
+          bundleHash={comp.bundleHash}
         />
       ))}
     </div>

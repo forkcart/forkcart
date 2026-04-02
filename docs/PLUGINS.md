@@ -1146,9 +1146,67 @@ Response:
 
 The `components.js` bundle is served with `Content-Type: application/javascript` and cached for 5 minutes (`Cache-Control: public, max-age=300`). The storefront's `PluginComponent` loader caches imported modules in memory — each bundle is fetched only once per page load.
 
+### Available React APIs in Plugin Components
+
+Plugin components run against the **host application's React instance** via an import map. Every public React 18 API is available — just import from `'react'` as usual:
+
+```tsx
+import { useState, useId, useSyncExternalStore } from 'react';
+```
+
+**Hooks:**
+
+| Hook                   | Available | Notes     |
+| ---------------------- | --------- | --------- |
+| `useState`             | ✅        |           |
+| `useEffect`            | ✅        |           |
+| `useContext`           | ✅        |           |
+| `useReducer`           | ✅        |           |
+| `useCallback`          | ✅        |           |
+| `useMemo`              | ✅        |           |
+| `useRef`               | ✅        |           |
+| `useId`                | ✅        | React 18+ |
+| `useSyncExternalStore` | ✅        | React 18+ |
+| `useTransition`        | ✅        | React 18+ |
+| `useDeferredValue`     | ✅        | React 18+ |
+| `useImperativeHandle`  | ✅        |           |
+| `useLayoutEffect`      | ✅        |           |
+| `useDebugValue`        | ✅        |           |
+| `useInsertionEffect`   | ✅        | React 18+ |
+
+**Component Utilities:**
+
+| API               | Available |
+| ----------------- | --------- |
+| `memo`            | ✅        |
+| `forwardRef`      | ✅        |
+| `lazy`            | ✅        |
+| `createElement`   | ✅        |
+| `cloneElement`    | ✅        |
+| `createRef`       | ✅        |
+| `createContext`   | ✅        |
+| `isValidElement`  | ✅        |
+| `Children`        | ✅        |
+| `Fragment`        | ✅        |
+| `Suspense`        | ✅        |
+| `StrictMode`      | ✅        |
+| `Profiler`        | ✅        |
+| `startTransition` | ✅        |
+| `use`             | ✅        |
+
+**ReactDOM APIs** (`import from 'react-dom'`):
+
+`createPortal`, `flushSync`, `createRoot`, `hydrateRoot`, `render`, `hydrate`, `findDOMNode`, `unmountComponentAtNode`
+
+**JSX Runtime** (`import from 'react/jsx-runtime'`):
+
+`jsx`, `jsxs`, `jsxDEV`, `Fragment`
+
+> **How it works:** The storefront injects an [import map](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type/importmap) that redirects bare `react`, `react-dom`, and `react/jsx-runtime` imports to shim modules under `/_plugin-shims/`. These shims re-export every API from the host application's React instance (set by `<ReactGlobals />`). This ensures plugins use the **same React instance** as the storefront — no duplicate React, no hooks crashes.
+
 ### Component Best Practices
 
-1. **React is external** — Never bundle React into your component. Import from `'react'` normally; the storefront provides it at runtime. If you accidentally bundle React, you'll get duplicate React instances and hooks will break.
+1. **React is external** — Never bundle React into your component. Import from `'react'` normally; the storefront provides it at runtime via import map shims. If you accidentally bundle React, you'll get duplicate React instances and hooks will break.
 
 2. **Handle errors gracefully** — The `PluginErrorBoundary` catches crashes and renders nothing, but your component should still handle its own error states (network failures, missing data, etc.) with user-friendly fallbacks.
 

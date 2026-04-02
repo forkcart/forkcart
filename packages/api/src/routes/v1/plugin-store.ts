@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import type { PluginStoreService } from '@forkcart/core';
+import {
+  createPluginBackup,
+  restorePluginBackup,
+  listPluginBackups,
+  cleanupOldBackups,
+  getPluginVersion,
+} from '@forkcart/core';
 import { requireRole } from '../../middleware/permissions';
 import { setRebuildNeeded } from './system';
 
@@ -384,13 +391,35 @@ export function createPluginStoreRoutes(
     return c.json({ data: { ...result, rebuildNeeded: true } }, 201);
   });
 
-  /** Update an installed plugin to latest version (admin) */
+  /**
+   * Update an installed plugin to latest version (admin)
+   *
+   * Creates a backup of the current version before updating.
+   * If activation fails, automatically rolls back to the backup.
+   */
   router.post('/:slug/update', requireRole('admin', 'superadmin'), async (c) => {
     const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
 
     if (!REGISTRY_URL) {
       return c.json({ error: 'No plugin registry configured' }, 400);
     }
+
+    const { resolve } = await import('node:path');
+    const { mkdirSync, existsSync, writeFileSync } = await import('node:fs');
+
+    // Determine plugin directory paths
+    const targetDir = resolve(process.cwd(), 'data', 'plugins', slug);
+    const prefixedSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+    const sameNameSubDir = resolve(targetDir, slug);
+    const pluginDir = existsSync(prefixedSubDir)
+      ? prefixedSubDir
+      : existsSync(sameNameSubDir)
+        ? sameNameSubDir
+        : targetDir;
+
+    // Track if we rolled back
+    let rolledBack = false;
+    let backupVersion: string | null = null;
 
     try {
       // 1. Get latest version from registry
@@ -406,7 +435,20 @@ export function createPluginStoreRoutes(
       const latestVersion = detail.versions?.[0];
       if (!latestVersion?.version) throw new Error('No version available');
 
-      // 2. Download the ZIP
+      // 2. Create backup of current version BEFORE updating (optional safety net)
+      const currentVersion = await getPluginVersion(pluginDir);
+      if (currentVersion && existsSync(pluginDir)) {
+        const backupResult = await createPluginBackup(slug, currentVersion, pluginDir);
+        if (backupResult.success) {
+          backupVersion = currentVersion;
+          console.log(`[plugin-store] Backup created for ${slug}@${currentVersion}`);
+        } else {
+          // Log but don't block — backup is optional safety net
+          console.warn(`[plugin-store] Backup failed for ${slug}: ${backupResult.error}`);
+        }
+      }
+
+      // 3. Download the ZIP
       const zipRes = await fetch(
         `${REGISTRY_URL}/store/${slug}/download/${latestVersion.version}`,
         { signal: AbortSignal.timeout(30000) },
@@ -415,29 +457,26 @@ export function createPluginStoreRoutes(
 
       const zipBuffer = Buffer.from(await zipRes.arrayBuffer());
 
-      // 3. Extract ZIP — overwrite existing plugin directory
+      // 4. Extract ZIP — overwrite existing plugin directory
       const AdmZip = (await import('adm-zip')).default;
       const zip = new AdmZip(zipBuffer);
-      const { resolve } = await import('node:path');
-      const { mkdirSync, existsSync, writeFileSync } = await import('node:fs');
-      const targetDir = resolve(process.cwd(), 'data', 'plugins', slug);
       mkdirSync(targetDir, { recursive: true });
       zip.extractAllTo(targetDir, true);
 
-      // 4. Auto-compile TypeScript → JavaScript (plugins ship as source)
-      const prefixedSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
-      const sameNameSubDir = resolve(targetDir, slug);
-      const pluginDir = existsSync(prefixedSubDir)
+      // Re-determine plugin directory after extraction (structure may have changed)
+      const newPluginDir = existsSync(prefixedSubDir)
         ? prefixedSubDir
         : existsSync(sameNameSubDir)
           ? sameNameSubDir
           : targetDir;
-      const srcEntry = resolve(pluginDir, 'src', 'index.ts');
+
+      // 5. Auto-compile TypeScript → JavaScript (plugins ship as source)
+      const srcEntry = resolve(newPluginDir, 'src', 'index.ts');
 
       if (existsSync(srcEntry)) {
         try {
           // Create a definePlugin shim so esbuild can bundle without @forkcart/plugin-sdk
-          const shimDir = resolve(pluginDir, 'node_modules', '@forkcart', 'plugin-sdk');
+          const shimDir = resolve(newPluginDir, 'node_modules', '@forkcart', 'plugin-sdk');
           mkdirSync(shimDir, { recursive: true });
           writeFileSync(
             resolve(shimDir, 'index.js'),
@@ -448,13 +487,13 @@ export function createPluginStoreRoutes(
             '{"name":"@forkcart/plugin-sdk","main":"index.js","type":"module"}',
           );
 
-          const distDir = resolve(pluginDir, 'dist');
+          const distDir = resolve(newPluginDir, 'dist');
           mkdirSync(distDir, { recursive: true });
 
           const { execSync } = await import('node:child_process');
           execSync(
             `npx esbuild "${srcEntry}" --outfile="${resolve(distDir, 'index.js')}" --format=esm --platform=node --bundle --external:hono --loader:.ts=ts`,
-            { cwd: pluginDir, timeout: 15000 },
+            { cwd: newPluginDir, timeout: 15000 },
           );
         } catch (buildErr) {
           console.error('Plugin auto-compile failed:', buildErr);
@@ -463,8 +502,8 @@ export function createPluginStoreRoutes(
       }
 
       // Auto-compile storefront components (React/TSX → ESM browser bundle)
-      const componentsDirRoot = resolve(pluginDir, 'components');
-      const componentsDirSrc = resolve(pluginDir, 'src', 'components');
+      const componentsDirRoot = resolve(newPluginDir, 'components');
+      const componentsDirSrc = resolve(newPluginDir, 'src', 'components');
       const componentsDir = existsSync(componentsDirRoot)
         ? componentsDirRoot
         : existsSync(componentsDirSrc)
@@ -482,14 +521,14 @@ export function createPluginStoreRoutes(
             const barrelPath = resolve(componentsDir, '_barrel.ts');
             writeFileSync(barrelPath, barrelLines.join('\n'));
 
-            const distDir = resolve(pluginDir, 'dist');
+            const distDir = resolve(newPluginDir, 'dist');
             mkdirSync(distDir, { recursive: true });
             const componentsOutFile = resolve(distDir, 'components.js');
 
             // Create React shims for shared React instance
-            const reactShimDir = resolve(pluginDir, 'node_modules', 'react');
-            const reactDomShimDir = resolve(pluginDir, 'node_modules', 'react-dom');
-            const jsxShimDir = resolve(pluginDir, 'node_modules', 'react', 'jsx-runtime');
+            const reactShimDir = resolve(newPluginDir, 'node_modules', 'react');
+            const reactDomShimDir = resolve(newPluginDir, 'node_modules', 'react-dom');
+            const jsxShimDir = resolve(newPluginDir, 'node_modules', 'react', 'jsx-runtime');
             mkdirSync(reactShimDir, { recursive: true });
             mkdirSync(reactDomShimDir, { recursive: true });
             mkdirSync(jsxShimDir, { recursive: true });
@@ -521,7 +560,7 @@ export function createPluginStoreRoutes(
             const { execSync: execSyncComp } = await import('node:child_process');
             execSyncComp(
               `npx esbuild "${barrelPath}" --outfile="${componentsOutFile}" --format=esm --platform=browser --bundle --loader:.ts=ts --loader:.tsx=tsx`,
-              { cwd: pluginDir, timeout: 15000 },
+              { cwd: newPluginDir, timeout: 15000 },
             );
 
             try {
@@ -533,23 +572,12 @@ export function createPluginStoreRoutes(
         }
       }
 
-      // 5. Update DB version
-      const dbUrl =
-        process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
-      const escapeSql = (s: string) => s.replace(/'/g, "''");
-      const plugin = detail.plugin;
-      const pluginName = String(plugin.name || slug);
-      const updateSql = `UPDATE plugins SET version = '${escapeSql(latestVersion.version)}', updated_at = NOW() WHERE metadata->>'slug' = '${escapeSql(slug)}' OR name = '${escapeSql(pluginName)}';`;
-      try {
-        const { execSync } = await import('node:child_process');
-        execSync(`psql "${dbUrl}" -c "${updateSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
-      } catch {
-        console.error('Failed to update plugin version in DB');
-      }
+      // 6. Hot-reload: re-import the updated plugin module and try to activate
+      let activationFailed = false;
+      let activationError = '';
 
-      // 6. Hot-reload: re-import the updated plugin module
       try {
-        const distPath = resolve(pluginDir, 'dist', 'index.js');
+        const distPath = resolve(newPluginDir, 'dist', 'index.js');
         const cacheBustUrl = `file://${distPath}?t=${Date.now()}`;
         const mod = (await import(cacheBustUrl)) as Record<string, unknown>;
         const def = (mod['default'] ?? mod) as Record<string, unknown>;
@@ -560,25 +588,202 @@ export function createPluginStoreRoutes(
           await pluginLoader.activateSdkPlugin(String(def.name), def as never, settings);
         }
       } catch (reloadErr) {
-        console.error('Hot-reload failed (restart API manually):', reloadErr);
+        activationFailed = true;
+        activationError =
+          reloadErr instanceof Error ? reloadErr.message : 'Unknown activation error';
+        console.error('Plugin activation failed:', reloadErr);
+      }
+
+      // 7. Auto-rollback if activation failed and we have a backup
+      if (activationFailed && backupVersion) {
+        console.log(`[plugin-store] Activation failed, rolling back ${slug} to ${backupVersion}`);
+        const restoreResult = await restorePluginBackup(slug, backupVersion, pluginDir);
+        if (restoreResult.success) {
+          rolledBack = true;
+          console.log(`[plugin-store] Rollback successful for ${slug}`);
+
+          // Try to re-activate the old version
+          try {
+            const distPath = resolve(pluginDir, 'dist', 'index.js');
+            const cacheBustUrl = `file://${distPath}?t=${Date.now()}`;
+            const mod = (await import(cacheBustUrl)) as Record<string, unknown>;
+            const def = (mod['default'] ?? mod) as Record<string, unknown>;
+
+            if (def.name && def.version && pluginLoader) {
+              pluginLoader.registerSdkPlugin(def as never);
+              const settings: Record<string, unknown> = {};
+              await pluginLoader.activateSdkPlugin(String(def.name), def as never, settings);
+            }
+          } catch (rollbackActivationErr) {
+            console.error('Rollback activation also failed:', rollbackActivationErr);
+          }
+
+          return c.json(
+            {
+              error: `Update failed, rolled back to ${backupVersion}: ${activationError}`,
+              data: {
+                slug,
+                rolledBack: true,
+                restoredVersion: backupVersion,
+                failedVersion: latestVersion.version,
+              },
+            },
+            500,
+          );
+        } else {
+          console.error(`[plugin-store] Rollback failed for ${slug}: ${restoreResult.error}`);
+        }
+      }
+
+      // 8. Update DB version (only if not rolled back)
+      if (!rolledBack) {
+        const dbUrl =
+          process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
+        const escapeSql = (s: string) => s.replace(/'/g, "''");
+        const plugin = detail.plugin;
+        const pluginName = String(plugin.name || slug);
+        const updateSql = `UPDATE plugins SET version = '${escapeSql(latestVersion.version)}', updated_at = NOW() WHERE metadata->>'slug' = '${escapeSql(slug)}' OR name = '${escapeSql(pluginName)}';`;
+        try {
+          const { execSync } = await import('node:child_process');
+          execSync(`psql "${dbUrl}" -c "${updateSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+        } catch {
+          console.error('Failed to update plugin version in DB');
+        }
+
+        // 9. Cleanup old backups (keep last 3)
+        await cleanupOldBackups(slug, 3);
       }
 
       setRebuildNeeded(`Plugin updated: ${slug} → ${latestVersion.version}`);
 
       return c.json({
         data: {
-          name: plugin.name,
+          name: detail.plugin.name,
           slug,
           version: latestVersion.version,
-          updatedTo: pluginDir,
+          previousVersion: backupVersion,
+          updatedTo: newPluginDir,
           source: 'registry',
           message: 'Plugin updated and reloaded!',
+          rebuildNeeded: true,
+          rolledBack: false,
+        },
+      });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: `Update failed: ${errMsg}`, data: { rolledBack } }, 500);
+    }
+  });
+
+  /**
+   * Rollback a plugin to a previous backup version (admin)
+   *
+   * @param version - Optional query param to specify which version to rollback to.
+   *                  If not provided, rolls back to the most recent backup.
+   */
+  router.post('/:slug/rollback', requireRole('admin', 'superadmin'), async (c) => {
+    const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+    const targetVersion = c.req.query('version') ?? undefined;
+
+    const { resolve } = await import('node:path');
+    const { existsSync } = await import('node:fs');
+
+    // Determine plugin directory
+    const targetDir = resolve(process.cwd(), 'data', 'plugins', slug);
+    const prefixedSubDir = resolve(targetDir, `forkcart-plugin-${slug}`);
+    const sameNameSubDir = resolve(targetDir, slug);
+    const pluginDir = existsSync(prefixedSubDir)
+      ? prefixedSubDir
+      : existsSync(sameNameSubDir)
+        ? sameNameSubDir
+        : targetDir;
+
+    try {
+      // Get available backups
+      const backups = await listPluginBackups(slug);
+      if (backups.length === 0) {
+        return c.json(
+          { error: { code: 'NO_BACKUPS', message: 'No backups available for this plugin' } },
+          404,
+        );
+      }
+
+      // Restore from backup
+      const restoreResult = await restorePluginBackup(slug, targetVersion, pluginDir);
+      if (!restoreResult.success) {
+        return c.json({ error: { code: 'ROLLBACK_FAILED', message: restoreResult.error } }, 500);
+      }
+
+      // Try to re-activate the restored version
+      let activationSucceeded = false;
+      try {
+        const distPath = resolve(pluginDir, 'dist', 'index.js');
+        if (existsSync(distPath)) {
+          const cacheBustUrl = `file://${distPath}?t=${Date.now()}`;
+          const mod = (await import(cacheBustUrl)) as Record<string, unknown>;
+          const def = (mod['default'] ?? mod) as Record<string, unknown>;
+
+          if (def.name && def.version && pluginLoader) {
+            pluginLoader.registerSdkPlugin(def as never);
+            const settings: Record<string, unknown> = {};
+            await pluginLoader.activateSdkPlugin(String(def.name), def as never, settings);
+            activationSucceeded = true;
+          }
+        }
+      } catch (activationErr) {
+        console.error('Rollback activation failed:', activationErr);
+      }
+
+      // Update DB version
+      if (restoreResult.restoredVersion) {
+        const dbUrl =
+          process.env['DATABASE_URL'] || 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
+        const escapeSql = (s: string) => s.replace(/'/g, "''");
+        const updateSql = `UPDATE plugins SET version = '${escapeSql(restoreResult.restoredVersion)}', updated_at = NOW() WHERE metadata->>'slug' = '${escapeSql(slug)}';`;
+        try {
+          const { execSync } = await import('node:child_process');
+          execSync(`psql "${dbUrl}" -c "${updateSql.replace(/"/g, '\\"')}"`, { timeout: 5000 });
+        } catch {
+          console.error('Failed to update plugin version in DB after rollback');
+        }
+      }
+
+      setRebuildNeeded(`Plugin rolled back: ${slug} → ${restoreResult.restoredVersion}`);
+
+      return c.json({
+        data: {
+          slug,
+          restoredVersion: restoreResult.restoredVersion,
+          activated: activationSucceeded,
+          message: activationSucceeded
+            ? 'Plugin rolled back and reactivated!'
+            : 'Plugin rolled back (restart API to activate)',
           rebuildNeeded: true,
         },
       });
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : 'Unknown error';
-      return c.json({ error: `Update failed: ${errMsg}` }, 500);
+      return c.json({ error: `Rollback failed: ${errMsg}` }, 500);
+    }
+  });
+
+  /**
+   * List available backups for a plugin (admin)
+   */
+  router.get('/:slug/backups', requireRole('admin', 'superadmin'), async (c) => {
+    const { slug } = SlugParamSchema.parse({ slug: c.req.param('slug') });
+
+    try {
+      const backups = await listPluginBackups(slug);
+      return c.json({
+        data: backups.map((b) => ({
+          version: b.version,
+          createdAt: b.createdAt.toISOString(),
+        })),
+      });
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : 'Unknown error';
+      return c.json({ error: `Failed to list backups: ${errMsg}` }, 500);
     }
   });
 

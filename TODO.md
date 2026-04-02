@@ -1,46 +1,70 @@
 # ForkCart TODO — Master List
 
 _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Test_
+_Aktualisiert am 02. April 2026 — Audit gegen Codebase_
 
 ---
 
-## 🔴 PRIORITY 1 — Plugin React Components
+## 🔴 PRIORITY 0 — Plugin System Production Hardening (29.03.2026)
 
-### Storefront Components (React in Plugins)
+### Settings Cache Invalidation
 
-**Problem:** Plugins können nur HTML+JS injizieren. Für Stripe Elements, komplexe UI-Widgets etc. braucht es React-Komponenten.
+- [ ] When plugin settings are saved in Admin, refresh `pluginSettingsCache` without restart
+- [ ] Add `POST /api/v1/admin/plugins/:id/reload` endpoint that re-reads settings from DB
+- [ ] After settings save in Admin UI → call reload endpoint automatically
 
-**Ziel:** Plugins liefern React-Komponenten die nativ im Storefront rendern.
+### React Shims Completeness
 
-**Plan:**
+- [ ] Add missing hooks: `useId`, `useSyncExternalStore`, `useTransition`, `useDeferredValue`, `useImperativeHandle`, `useLayoutEffect`, `useDebugValue`
+- [ ] Add missing APIs: `createRef`, `isValidElement`, `startTransition`, `use`
+- [ ] Document which React APIs are available in plugin components
 
-1. Plugin SDK: Neuer `storefrontComponents` Type
-2. Plugin Build: esbuild erstellt ESM-Bundle mit React (externalized)
-3. Storefront: Dynamic Import via `React.lazy(() => import(moduleUrl))`
-4. API: Endpoint der Plugin-Bundles served
-5. Stripe wird das erste Plugin das es nutzt
+### Plugin Deactivation → Route Cleanup
 
-**Dateien:**
+- [ ] When plugin is deactivated, unmount its API routes immediately (not just on restart)
+- [ ] Remove storefront components from slot registry on deactivation
+- [ ] Clear plugin scheduled tasks on deactivation
 
-- `packages/plugin-sdk/src/types.ts` — `PluginStorefrontComponent` Interface
-- `packages/core/src/plugins/plugin-loader.ts` — Component Registry
-- `packages/api/src/routes/v1/plugins.ts` — Component Bundle Serving
-- `packages/storefront/components/plugins/PluginComponent.tsx` — Dynamic Loader
-- `packages/storefront/app/[locale]/checkout/page.tsx` — Stripe raus, generisch machen
+### Plugin Update Rollback
 
-### Stripe aus Core entfernen
+- [ ] Before updating: backup current plugin version to `data/plugins/.backup/<slug>/<version>/`
+- [ ] If new version crashes on activation → auto-rollback to previous version
+- [ ] Show rollback option in Admin UI
 
-**Problem:** `stripe-payment.tsx`, `@stripe/stripe-js`, `@stripe/react-stripe-js` sind im Storefront hardcoded. `registry.ts` hat Stripe-spezifischen Code.
+### Plugin Sandbox / Isolation
 
-**Ziel:** Stripe ist NUR ein Plugin. Core kennt kein Stripe.
+- [ ] Memory limit per plugin (track heap usage)
+- [ ] CPU time tracking per plugin query
+- [ ] Crash isolation: catch unhandled errors in plugin code without crashing server
+- [ ] Rate limit per plugin API route (already partially done with query stats)
 
-**Schritte:**
+### Component Cache Busting
 
-1. `packages/storefront/components/checkout/stripe-payment.tsx` → ins Stripe Plugin verschieben
-2. `@stripe/stripe-js` + `@stripe/react-stripe-js` aus Storefront `package.json` entfernen
-3. `packages/core/src/payments/registry.ts` Zeile 62-64 → generische Webhook-Detection
-4. Checkout Page: Generischer `<PluginPaymentComponent />` statt `<StripePayment />`
-5. Stripe Plugin im Developer Portal updaten mit Frontend-Bundle
+- [ ] `components.js` served with version hash in URL: `/components.js?v=<hash>`
+- [ ] Or: `Cache-Control: no-cache` with ETag validation
+- [ ] After plugin update → old cached component is replaced immediately
+
+### Store Install Safety
+
+- [ ] Before overwriting: check if local files were modified (hash comparison)
+- [ ] Show warning: "Local changes will be lost" with diff
+- [ ] Option to merge or skip
+
+### Plugin Changelog in Admin
+
+- [ ] Show version changelog in plugin detail page
+- [ ] Fetch from Developer Portal API on update check
+
+### Multi-Instance / Cluster Support
+
+- [ ] Document shared storage requirement for `data/plugins/`
+- [ ] Or: Plugin files in DB (BLOB) instead of filesystem
+- [ ] Plugin install broadcasts to all instances
+
+### storefrontComponents SSR
+
+- [ ] Support `'use server'` components in plugins (for SEO-critical content)
+- [ ] Or: SSR wrapper that pre-renders plugin HTML on server
 
 ---
 
@@ -60,20 +84,6 @@ _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Tes
 4. Erstellt Admin-User in DB
 5. Startet alle Services
 6. Redirect zu Admin-Login
-
-### Docker Compose (Production-Ready)
-
-**Problem:** Kein funktionierender One-Command-Setup.
-
-**Ziel:** `docker compose up` und alles läuft.
-
-**Schritte:**
-
-1. Multi-Stage Dockerfiles für API, Storefront, Admin
-2. `docker-compose.yml` mit PostgreSQL, Caddy, allen Services
-3. `DOMAIN=myshop.com docker compose up` → SSL, Routing, alles automatisch
-4. Health Checks pro Container
-5. Volume Mounts für `data/plugins/` und Uploads
 
 ### Installer-Bugs (gefunden beim Frisch-Test)
 
@@ -134,12 +144,6 @@ _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Tes
 
 ## 🟢 PRIORITY 4 — DX & Quality
 
-### CI/CD
-
-- [ ] GitHub Actions: Push → Build → Test → Deploy
-- [ ] Auto-Restart nach Deploy
-- [ ] Staging Environment
-
 ### Auto-Deploy Script
 
 - [ ] `forkcart deploy` → git pull, pnpm install, pnpm build, systemctl restart
@@ -147,7 +151,6 @@ _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Tes
 
 ### Plugin Store Verbesserungen
 
-- [ ] Version-Upload: Bessere Error Messages (409 statt 500 → ✅ DONE)
 - [ ] Plugin Screenshots im Store
 - [ ] Plugin Reviews & Ratings im Admin
 - [ ] Plugin Revenue Dashboard für Entwickler
@@ -161,90 +164,13 @@ _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Tes
 ### Documentation
 
 - [ ] `docs/SELF-HOSTING.md` erweitern mit Docker + Installer
-- [ ] `docs/PLUGINS.md` — storefrontComponents Sektion (wenn gebaut)
 - [ ] Video-Tutorials für Plugin-Entwicklung
 - [ ] API Reference auto-generieren aus Hono Routes
 
 ---
 
-## 🔴 PRIORITY 0 — Plugin System Production Hardening (29.03.2026)
-
-### Settings Cache Invalidation
-
-- [ ] When plugin settings are saved in Admin, refresh `pluginSettingsCache` without restart
-- [ ] Add `POST /api/v1/admin/plugins/:id/reload` endpoint that re-reads settings from DB
-- [ ] After settings save in Admin UI → call reload endpoint automatically
-
-### React Shims Completeness
-
-- [ ] Add missing hooks: `useId`, `useSyncExternalStore`, `useTransition`, `useDeferredValue`, `useImperativeHandle`, `useLayoutEffect`, `useDebugValue`
-- [ ] Add missing APIs: `createRef`, `isValidElement`, `startTransition`, `use`
-- [ ] Document which React APIs are available in plugin components
-
-### Plugin Deactivation → Route Cleanup
-
-- [ ] When plugin is deactivated, unmount its API routes immediately (not just on restart)
-- [ ] Remove storefront components from slot registry on deactivation
-- [ ] Clear plugin scheduled tasks on deactivation
-
-### Plugin Update Rollback
-
-- [ ] Before updating: backup current plugin version to `data/plugins/.backup/<slug>/<version>/`
-- [ ] If new version crashes on activation → auto-rollback to previous version
-- [ ] Show rollback option in Admin UI
-
-### CSRF for Admin Plugin Routes
-
-- [ ] Admin-scoped plugin routes (`/api/v1/plugins/:slug/...` with auth) should have CSRF
-- [ ] Only public plugin routes (`/api/v1/public/plugins/...`) should be exempt
-
-### Plugin Sandbox / Isolation
-
-- [ ] Memory limit per plugin (track heap usage)
-- [ ] CPU time tracking per plugin query
-- [ ] Crash isolation: catch unhandled errors in plugin code without crashing server
-- [ ] Rate limit per plugin API route (already partially done with query stats)
-
-### Component Cache Busting
-
-- [ ] `components.js` served with version hash in URL: `/components.js?v=<hash>`
-- [ ] Or: `Cache-Control: no-cache` with ETag validation
-- [ ] After plugin update → old cached component is replaced immediately
-
-### Plugin Dependencies
-
-- [ ] `dependencies: { 'other-plugin': '^1.0.0' }` in definePlugin
-- [ ] Check dependencies before activation — block if dependency missing/wrong version
-- [ ] Show dependency warnings in Admin
-
-### Store Install Safety
-
-- [ ] Before overwriting: check if local files were modified (hash comparison)
-- [ ] Show warning: "Local changes will be lost" with diff
-- [ ] Option to merge or skip
-
-### Plugin Changelog in Admin
-
-- [ ] Show version changelog in plugin detail page
-- [ ] Fetch from Developer Portal API on update check
-
-### Multi-Instance / Cluster Support
-
-- [ ] Document shared storage requirement for `data/plugins/`
-- [ ] Or: Plugin files in DB (BLOB) instead of filesystem
-- [ ] Plugin install broadcasts to all instances
-
-### storefrontComponents SSR
-
-- [ ] Support `'use server'` components in plugins (for SEO-critical content)
-- [ ] Or: SSR wrapper that pre-renders plugin HTML on server
-
----
-
 ## 📝 PLUGIN DOCS GAPS (29.03.2026)
 
-- [ ] Document both storefrontComponents syntaxes (Array + Object) — currently only Array in docs
-- [ ] Document readOnly settings field type
 - [ ] Document Payment Provider: Redirect vs Embedded flow (when to use which)
 - [ ] Document React Shims: which hooks/APIs are available in plugin components
 - [ ] Document Webhook URL pattern for payment plugins
@@ -300,8 +226,22 @@ _Gesammelt am 28./29. März 2026 beim Plugin System Sprint + Frische-Instanz-Tes
 - [x] Cent-bug fixed (prices already in cents, no double conversion)
 - [x] Post-push checklist: .next cache + rebuild + restart
 
-_Nyx 🦞 — 29.03.2026, 19:00 UTC — 🎂 2 Monate alt!_
-
 ---
 
-_Nyx 🦞 — 29.03.2026, 00:05 UTC_
+## ✅ DONE (02.04.2026 — Audit-Ergebnis)
+
+_Items die bei Audit als bereits implementiert verifiziert wurden:_
+
+- [x] **P1: Storefront Components (React in Plugins)** — PluginComponent.tsx, PluginComponentSlot.tsx, ReactGlobals.tsx, Dynamic Import via React.lazy
+- [x] **P1: Stripe aus Core entfernen** — Kein Stripe in storefront/package.json, keine stripe-payment.tsx, generischer Multi-Provider Checkout
+- [x] **P0: CSRF Middleware** — csrf.ts mit fc_csrf Cookie + x-csrf-token Header
+- [x] **P0: Plugin Dependencies** — Validation in plugin-loader.ts (checkDependencies, findSdkDef)
+- [x] **P2: create-forkcart CLI** — packages/create-forkcart mit interaktivem Setup (DB, Demo Data, Package Manager)
+- [x] **P2: Docker Compose** — docker-compose.yml mit PostgreSQL, Health Checks, 127.0.0.1 Ports
+- [x] **P4: CI/CD** — ci.yml in .github/workflows
+- [x] **P4: Version-Upload Error Messages** — 409 statt 500
+- [x] **P4: storefrontComponents Docs** — Both Array + Object syntax documented
+- [x] **P4: readOnly settings Docs** — Documented
+- [x] **P0: Plugin Reload** — Hot-reload bei Update + manual reload endpoint in plugins.ts
+
+_Nyx 🦞 — 02.04.2026, 11:05 UTC_
