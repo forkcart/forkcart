@@ -27,7 +27,8 @@ export async function apiClient<T>(path: string, options: RequestInit = {}): Pro
     // Token invalid/expired — clear and redirect to login
     removeToken();
     if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
-      window.location.href = '/login';
+      // Use basePath-aware redirect
+      window.location.href = '/admin/login';
     }
     throw new Error('Session expired. Please log in again.');
   }
