@@ -188,7 +188,10 @@ app.post('/api/handover', async (c) => {
     const envContent = readFileSync(envPath, 'utf-8');
     for (const line of envContent.split('\n')) {
       const match = line.match(/^([A-Z_]+)=(.+)$/);
-      if (match && match[1] && match[2]) env[match[1]] = match[2];
+      if (match && match[1] && match[2]) {
+        // Strip surrounding quotes from .env values
+        env[match[1]] = match[2].replace(/^["']|["']$/g, '');
+      }
     }
   }
   // Key: storefront must bind to the installer's port so the URL stays the same
