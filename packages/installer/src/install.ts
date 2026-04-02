@@ -100,7 +100,6 @@ export function findRootDir(): string {
  * Returns the spawned PID for logging purposes.
  */
 
-
 /**
  * Run the full installation process
  */

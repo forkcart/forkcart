@@ -50,7 +50,9 @@ app.use('*', async (c, next) => {
         const api = env.match(/API_PORT=(\d+)/)?.[1] ?? '4000';
         ports = `Storefront: :${sf} | Admin: :${ad} | API: :${api}`;
       }
-      return c.html(`<html><head><style>body{font-family:system-ui;text-align:center;padding:80px;color:#1e293b}code{background:#f1f5f9;padding:4px 8px;border-radius:4px;font-size:14px}.ports{color:#10b981;font-weight:600;margin:16px 0}</style></head><body><h1>\u2705 ForkCart is installed</h1><p>Run these commands to start your shop:</p><p><code>pnpm build && pnpm start</code></p><p class="ports">${ports}</p><p style="margin-top:24px;color:#94a3b8;font-size:13px">Delete <code>.installed</code> to re-run the installer.</p></body></html>`);
+      return c.html(
+        `<html><head><style>body{font-family:system-ui;text-align:center;padding:80px;color:#1e293b}code{background:#f1f5f9;padding:4px 8px;border-radius:4px;font-size:14px}.ports{color:#10b981;font-weight:600;margin:16px 0}</style></head><body><h1>\u2705 ForkCart is installed</h1><p>Run these commands to start your shop:</p><p><code>pnpm build && pnpm start</code></p><p class="ports">${ports}</p><p style="margin-top:24px;color:#94a3b8;font-size:13px">Delete <code>.installed</code> to re-run the installer.</p></body></html>`,
+      );
     }
   } catch {
     // Root dir not found yet \u2014 let the wizard handle it
@@ -199,14 +201,20 @@ app.post('/api/handover', async (c) => {
 
   // Start API first
   const api = spawn(pnpmPath, ['--filter', '@forkcart/api', 'start'], {
-    cwd: rootDir, env, detached: true, stdio: 'ignore',
+    cwd: rootDir,
+    env,
+    detached: true,
+    stdio: 'ignore',
   });
   api.unref();
   console.log(`[installer] API started (PID ${api.pid})`);
 
   // Start Admin
   const admin = spawn(pnpmPath, ['--filter', '@forkcart/admin', 'start'], {
-    cwd: rootDir, env, detached: true, stdio: 'ignore',
+    cwd: rootDir,
+    env,
+    detached: true,
+    stdio: 'ignore',
   });
   admin.unref();
   console.log(`[installer] Admin started (PID ${admin.pid})`);
@@ -216,7 +224,10 @@ app.post('/api/handover', async (c) => {
     console.log('[installer] Shutting down to free port for storefront...');
     // Start storefront (will bind to our port after we exit)
     const sf = spawn(pnpmPath, ['--filter', '@forkcart/storefront', 'start'], {
-      cwd: rootDir, env, detached: true, stdio: 'ignore',
+      cwd: rootDir,
+      env,
+      detached: true,
+      stdio: 'ignore',
     });
     sf.unref();
     console.log(`[installer] Storefront started (PID ${sf.pid}) — exiting now.`);

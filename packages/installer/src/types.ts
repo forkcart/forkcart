@@ -51,7 +51,6 @@ export interface ShopConfig {
   loadDemoData: boolean;
   domain?: string;
   /** Service ports — configurable for multi-instance setups */
-
 }
 
 /** Full installation configuration */
