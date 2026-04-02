@@ -50,6 +50,10 @@ export interface ShopConfig {
   language: Language;
   loadDemoData: boolean;
   domain?: string;
+  /** Service ports — configurable for multi-instance setups */
+  storefrontPort?: number;
+  adminPort?: number;
+  apiPort?: number;
 }
 
 /** Full installation configuration */

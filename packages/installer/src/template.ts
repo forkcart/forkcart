@@ -789,9 +789,28 @@ export function generateHTML(lang: Language = 'en'): string {
         </div>
 
         <div class="form-group" style="margin-top: 20px;">
-          <label for="shopDomain" data-i18n="shop.domain">${t['shop.domain']}</label>
+          <label for="shopDomain">Domain (optional)</label>
           <input type="text" id="shopDomain" placeholder="https://myshop.com">
-          <div class="hint" data-i18n="shop.domainHint">${t['shop.domainHint']}</div>
+          <div class="hint">Leave empty to use the current URL. Set this if you have a custom domain.</div>
+        </div>
+
+        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+          <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #475569;">⚙️ Service Ports</h3>
+          <div class="hint" style="margin-bottom: 16px;">Change these if you run multiple ForkCart instances on the same server.</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="portStorefront">Storefront</label>
+              <input type="number" id="portStorefront" value="4200" min="1024" max="65535">
+            </div>
+            <div class="form-group">
+              <label for="portAdmin">Admin</label>
+              <input type="number" id="portAdmin" value="4201" min="1024" max="65535">
+            </div>
+            <div class="form-group">
+              <label for="portApi">API</label>
+              <input type="number" id="portApi" value="4000" min="1024" max="65535">
+            </div>
+          </div>
         </div>
 
         <div class="nav-buttons">
@@ -1137,6 +1156,9 @@ export function generateHTML(lang: Language = 'en'): string {
           language: document.getElementById('shopLanguage').value,
           loadDemoData: document.getElementById('loadDemoData').checked,
           domain: document.getElementById('shopDomain').value || undefined,
+          storefrontPort: parseInt(document.getElementById('portStorefront').value) || 4200,
+          adminPort: parseInt(document.getElementById('portAdmin').value) || 4201,
+          apiPort: parseInt(document.getElementById('portApi').value) || 4000,
         },
       };
 
@@ -1196,8 +1218,10 @@ export function generateHTML(lang: Language = 'en'): string {
             // Determine URLs — backend may provide storefrontUrl
             const host = window.location.hostname;
             const proto = window.location.protocol;
-            const sfUrl = status.storefrontUrl || (config.shop.domain ? config.shop.domain : proto + '//' + host + ':4200');
-            const adminUrl = (config.shop.domain ? config.shop.domain : proto + '//' + host) + ':4201/app';
+            // Priority: backend storefrontUrl > user-entered domain > same origin as installer
+            const sfUrl = status.storefrontUrl || config.shop.domain || window.location.origin;
+            const sfBase = sfUrl.endsWith('/') ? sfUrl.slice(0, -1) : sfUrl;
+            const adminUrl = sfBase + '/admin';
 
             document.getElementById('storefrontLink').href = sfUrl;
             document.getElementById('adminLink').href = adminUrl;
@@ -1210,6 +1234,8 @@ export function generateHTML(lang: Language = 'en'): string {
               if (cdEl) cdEl.textContent = String(seconds);
               if (seconds <= 0) {
                 clearInterval(cdInterval);
+                // Tell the installer to shut down so the storefront can bind to the same port
+                fetch('/api/shutdown', { method: 'POST' }).catch(function() {});
                 window.location.href = sfUrl;
               }
             }, 1000);

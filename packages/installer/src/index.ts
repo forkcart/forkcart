@@ -32,12 +32,19 @@ app.use('*', cors());
  * request to the storefront so the wizard is never shown again.
  */
 app.use('*', async (c, next) => {
+  // Skip lock-file check for API routes (needed during installation)
+  if (c.req.path.startsWith('/api/')) {
+    return next();
+  }
   try {
     const rootDir = findRootDir();
     if (existsSync(join(rootDir, '.installed'))) {
-      const storefrontPort = process.env['STOREFRONT_PORT'] ?? '4200';
-      const host = c.req.header('host')?.split(':')[0] ?? 'localhost';
-      return c.redirect(`http://${host}:${storefrontPort}`);
+      // Read stored domain from .env, or use the request origin
+      const proto = c.req.header('x-forwarded-proto') ?? 'http';
+      const host = c.req.header('host') ?? 'localhost';
+      // Behind a reverse proxy (Caddy/nginx), host already has the right domain
+      const storefrontUrl = `${proto}://${host}`;
+      return c.redirect(storefrontUrl);
     }
   } catch {
     // Root dir not found yet — let the wizard handle it
@@ -147,6 +154,16 @@ app.post('/api/install', async (c) => {
 app.get('/api/status', (c) => {
   const status = getInstallStatus();
   return c.json(status);
+});
+
+/**
+ * Graceful shutdown — called by the frontend after the countdown finishes.
+ * Gives the storefront a chance to bind to the same port.
+ */
+app.post('/api/shutdown', (c) => {
+  console.log('[installer] Shutdown requested — exiting in 2s so storefront can take over.');
+  setTimeout(() => process.exit(0), 2000);
+  return c.json({ ok: true });
 });
 
 // Start server — defaults to 4200 (same port the storefront will use later)

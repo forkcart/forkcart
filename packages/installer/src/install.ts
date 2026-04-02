@@ -227,46 +227,64 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 
     updateStep('build-admin', 'completed');
 
-    // Step: Start services (detached)
+    // Step: Start services (detached) — skip if ports are already in use
     installStatus.currentStep++;
     updateStep('start-services', 'running');
+
+    const apiPort = config.shop.apiPort ?? 4000;
+    const storefrontPort = config.shop.storefrontPort ?? 4200;
+    const adminPort = config.shop.adminPort ?? 4201;
 
     const serviceEnv: NodeJS.ProcessEnv = {
       ...process.env,
       DATABASE_URL: connectionString,
-      API_PORT: process.env['API_PORT'] ?? '4000',
-      STOREFRONT_PORT: process.env['STOREFRONT_PORT'] ?? '4200',
-      ADMIN_PORT: process.env['ADMIN_PORT'] ?? '4201',
+      API_PORT: String(apiPort),
+      STOREFRONT_PORT: String(storefrontPort),
+      ADMIN_PORT: String(adminPort),
     };
 
-    // Resolve pnpm path for spawning
+    /** Check if a port is already in use */
+    function isPortInUse(port: number): boolean {
+      try {
+        execSync(`ss -tlnp | grep ':${port} '`, { encoding: 'utf-8' });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
     const pnpmPath = execSync('which pnpm', { encoding: 'utf-8' }).trim();
+    const skipped: string[] = [];
 
-    const apiPid = spawnDetached(
-      pnpmPath,
-      ['--filter', '@forkcart/api', 'start'],
-      rootDir,
-      serviceEnv,
-    );
-    console.log(`[installer] API started (PID ${apiPid})`);
+    if (isPortInUse(apiPort)) {
+      console.log(`[installer] Port ${apiPort} already in use — skipping API start`);
+      skipped.push('API');
+    } else {
+      const apiPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/api', 'start'], rootDir, serviceEnv);
+      console.log(`[installer] API started (PID ${apiPid})`);
+    }
 
-    const storefrontPid = spawnDetached(
-      pnpmPath,
-      ['--filter', '@forkcart/storefront', 'start'],
-      rootDir,
-      serviceEnv,
-    );
-    console.log(`[installer] Storefront started (PID ${storefrontPid})`);
+    if (isPortInUse(storefrontPort)) {
+      console.log(`[installer] Port ${storefrontPort} already in use — skipping Storefront start`);
+      skipped.push('Storefront');
+    } else {
+      const sfPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/storefront', 'start'], rootDir, serviceEnv);
+      console.log(`[installer] Storefront started (PID ${sfPid})`);
+    }
 
-    const adminPid = spawnDetached(
-      pnpmPath,
-      ['--filter', '@forkcart/admin', 'start'],
-      rootDir,
-      serviceEnv,
-    );
-    console.log(`[installer] Admin started (PID ${adminPid})`);
+    if (isPortInUse(adminPort)) {
+      console.log(`[installer] Port ${adminPort} already in use — skipping Admin start`);
+      skipped.push('Admin');
+    } else {
+      const adPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/admin', 'start'], rootDir, serviceEnv);
+      console.log(`[installer] Admin started (PID ${adPid})`);
+    }
 
-    updateStep('start-services', 'completed');
+    if (skipped.length > 0) {
+      updateStep('start-services', 'completed', `${skipped.join(', ')} already running`);
+    } else {
+      updateStep('start-services', 'completed');
+    }
 
     // Write lock file so installer won't show again
     writeFileSync(join(rootDir, '.installed'), new Date().toISOString(), 'utf-8');
@@ -277,8 +295,12 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     installStatus.completed = true;
 
     // Provide the storefront URL so the frontend can redirect
-    const storefrontPort = serviceEnv['STOREFRONT_PORT'] ?? '4200';
-    installStatus.storefrontUrl = config.shop.domain || `http://localhost:${storefrontPort}`;
+    const storefrontPort = String(config.shop.storefrontPort ?? 4200);
+    // Only set storefrontUrl if an explicit domain was configured.
+    // Otherwise the frontend will use window.location.origin (the installer's own domain).
+    if (config.shop.domain) {
+      installStatus.storefrontUrl = config.shop.domain;
+    }
 
     return installStatus;
   } catch (error) {
@@ -323,7 +345,7 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     `DEFAULT_LANGUAGE="${config.shop.language}"`,
     '',
     '# API Settings',
-    `API_PORT=${process.env['API_PORT'] ?? '4000'}`,
+    `API_PORT=${config.shop.apiPort ?? 4000}`,
     'API_HOST=0.0.0.0',
   ];
 
@@ -334,10 +356,10 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
   lines.push(
     '',
     '# Admin Settings',
-    `ADMIN_PORT=${process.env['ADMIN_PORT'] ?? '4201'}`,
+    `ADMIN_PORT=${config.shop.adminPort ?? 4201}`,
     '',
     '# Storefront Settings',
-    `STOREFRONT_PORT=${process.env['STOREFRONT_PORT'] ?? '4200'}`,
+    `STOREFRONT_PORT=${config.shop.storefrontPort ?? 4200}`,
   );
 
   return lines.join('\n') + '\n';
