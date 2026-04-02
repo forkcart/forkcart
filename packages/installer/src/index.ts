@@ -39,15 +39,20 @@ app.use('*', async (c, next) => {
   try {
     const rootDir = findRootDir();
     if (existsSync(join(rootDir, '.installed'))) {
-      // Read stored domain from .env, or use the request origin
-      const proto = c.req.header('x-forwarded-proto') ?? 'http';
-      const host = c.req.header('host') ?? 'localhost';
-      // Behind a reverse proxy (Caddy/nginx), host already has the right domain
-      const storefrontUrl = `${proto}://${host}`;
-      return c.redirect(storefrontUrl);
+      // Read .env for port info
+      let ports = 'Storefront: :4200 | Admin: :4201 | API: :4000';
+      const envPath = join(rootDir, '.env');
+      if (existsSync(envPath)) {
+        const env = readFileSync(envPath, 'utf-8');
+        const sf = env.match(/STOREFRONT_PORT=(\d+)/)?.[1] ?? '4200';
+        const ad = env.match(/ADMIN_PORT=(\d+)/)?.[1] ?? '4201';
+        const api = env.match(/API_PORT=(\d+)/)?.[1] ?? '4000';
+        ports = `Storefront: :${sf} | Admin: :${ad} | API: :${api}`;
+      }
+      return c.html(`<html><head><style>body{font-family:system-ui;text-align:center;padding:80px;color:#1e293b}code{background:#f1f5f9;padding:4px 8px;border-radius:4px;font-size:14px}.ports{color:#10b981;font-weight:600;margin:16px 0}</style></head><body><h1>\u2705 ForkCart is installed</h1><p>Run these commands to start your shop:</p><p><code>pnpm build && pnpm start</code></p><p class="ports">${ports}</p><p style="margin-top:24px;color:#94a3b8;font-size:13px">Delete <code>.installed</code> to re-run the installer.</p></body></html>`);
     }
   } catch {
-    // Root dir not found yet — let the wizard handle it
+    // Root dir not found yet \u2014 let the wizard handle it
   }
   return next();
 });
@@ -154,16 +159,6 @@ app.post('/api/install', async (c) => {
 app.get('/api/status', (c) => {
   const status = getInstallStatus();
   return c.json(status);
-});
-
-/**
- * Graceful shutdown — called by the frontend after the countdown finishes.
- * Gives the storefront a chance to bind to the same port.
- */
-app.post('/api/shutdown', (c) => {
-  console.log('[installer] Shutdown requested — exiting in 2s so storefront can take over.');
-  setTimeout(() => process.exit(0), 2000);
-  return c.json({ ok: true });
 });
 
 // Start server — defaults to 4200 (same port the storefront will use later)

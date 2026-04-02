@@ -10,7 +10,7 @@
 import { randomBytes } from 'node:crypto';
 import { writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { execSync, spawn } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import type { InstallConfig, InstallStatus, InstallStep } from './types';
@@ -99,21 +99,7 @@ export function findRootDir(): string {
  * Spawn a detached child process that survives the installer shutdown.
  * Returns the spawned PID for logging purposes.
  */
-function spawnDetached(
-  command: string,
-  args: string[],
-  cwd: string,
-  env: NodeJS.ProcessEnv,
-): number {
-  const child = spawn(command, args, {
-    cwd,
-    env,
-    detached: true,
-    stdio: 'ignore',
-  });
-  child.unref();
-  return child.pid ?? -1;
-}
+
 
 /**
  * Run the full installation process
@@ -127,9 +113,7 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     { id: 'admin', label: 'Creating admin account...', status: 'pending' },
     { id: 'demo', label: 'Loading demo data...', status: 'pending' },
     { id: 'keys', label: 'Generating security keys...', status: 'pending' },
-    { id: 'build-storefront', label: 'Building storefront...', status: 'pending' },
-    { id: 'build-admin', label: 'Building admin panel...', status: 'pending' },
-    { id: 'start-services', label: 'Starting services...', status: 'pending' },
+
     { id: 'done', label: 'Done!', status: 'pending' },
   ];
 
@@ -201,91 +185,6 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 
     updateStep('keys', 'completed');
 
-    // Step: Build storefront
-    installStatus.currentStep++;
-    updateStep('build-storefront', 'running');
-
-    execSync('pnpm --filter @forkcart/storefront build', {
-      cwd: rootDir,
-      env: { ...process.env, DATABASE_URL: connectionString },
-      stdio: 'pipe',
-      timeout: 300_000, // 5 min max
-    });
-
-    updateStep('build-storefront', 'completed');
-
-    // Step: Build admin
-    installStatus.currentStep++;
-    updateStep('build-admin', 'running');
-
-    execSync('pnpm --filter @forkcart/admin build', {
-      cwd: rootDir,
-      env: { ...process.env, DATABASE_URL: connectionString },
-      stdio: 'pipe',
-      timeout: 300_000,
-    });
-
-    updateStep('build-admin', 'completed');
-
-    // Step: Start services (detached) — skip if ports are already in use
-    installStatus.currentStep++;
-    updateStep('start-services', 'running');
-
-    const apiPort = config.shop.apiPort ?? 4000;
-    const storefrontPort = config.shop.storefrontPort ?? 4200;
-    const adminPort = config.shop.adminPort ?? 4201;
-
-    const serviceEnv: NodeJS.ProcessEnv = {
-      ...process.env,
-      DATABASE_URL: connectionString,
-      API_PORT: String(apiPort),
-      STOREFRONT_PORT: String(storefrontPort),
-      ADMIN_PORT: String(adminPort),
-    };
-
-    /** Check if a port is already in use */
-    function isPortInUse(port: number): boolean {
-      try {
-        execSync(`ss -tlnp | grep ':${port} '`, { encoding: 'utf-8' });
-        return true;
-      } catch {
-        return false;
-      }
-    }
-
-    const pnpmPath = execSync('which pnpm', { encoding: 'utf-8' }).trim();
-    const skipped: string[] = [];
-
-    if (isPortInUse(apiPort)) {
-      console.log(`[installer] Port ${apiPort} already in use — skipping API start`);
-      skipped.push('API');
-    } else {
-      const apiPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/api', 'start'], rootDir, serviceEnv);
-      console.log(`[installer] API started (PID ${apiPid})`);
-    }
-
-    if (isPortInUse(storefrontPort)) {
-      console.log(`[installer] Port ${storefrontPort} already in use — skipping Storefront start`);
-      skipped.push('Storefront');
-    } else {
-      const sfPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/storefront', 'start'], rootDir, serviceEnv);
-      console.log(`[installer] Storefront started (PID ${sfPid})`);
-    }
-
-    if (isPortInUse(adminPort)) {
-      console.log(`[installer] Port ${adminPort} already in use — skipping Admin start`);
-      skipped.push('Admin');
-    } else {
-      const adPid = spawnDetached(pnpmPath, ['--filter', '@forkcart/admin', 'start'], rootDir, serviceEnv);
-      console.log(`[installer] Admin started (PID ${adPid})`);
-    }
-
-    if (skipped.length > 0) {
-      updateStep('start-services', 'completed', `${skipped.join(', ')} already running`);
-    } else {
-      updateStep('start-services', 'completed');
-    }
-
     // Write lock file so installer won't show again
     writeFileSync(join(rootDir, '.installed'), new Date().toISOString(), 'utf-8');
 
@@ -295,7 +194,6 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     installStatus.completed = true;
 
     // Provide the storefront URL so the frontend can redirect
-    const storefrontPort = String(config.shop.storefrontPort ?? 4200);
     // Only set storefrontUrl if an explicit domain was configured.
     // Otherwise the frontend will use window.location.origin (the installer's own domain).
     if (config.shop.domain) {

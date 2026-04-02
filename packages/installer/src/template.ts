@@ -886,12 +886,16 @@ export function generateHTML(lang: Language = 'en'): string {
             <svg class="success-icon" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            <h2>Your shop is ready! 🎉</h2>
-            <p class="subtitle" id="redirectNotice">Redirecting to your storefront in <strong id="countdown">5</strong> seconds...</p>
+            <h2>Installation complete! 🎉</h2>
+            <p class="subtitle">Your database, admin account, and configuration are ready.</p>
 
-            <div class="success-links">
-              <a id="storefrontLink" href="#">🛒 Open Storefront</a>
-              <a id="adminLink" href="#" target="_blank">⚙️ Open Admin</a>
+            <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: left;">
+              <strong style="display: block; margin-bottom: 12px;">🚀 Next steps:</strong>
+              <ol style="margin: 0; padding-left: 20px; line-height: 2;">
+                <li>Build the storefront: <code>pnpm build</code></li>
+                <li>Start all services: <code>pnpm start</code></li>
+                <li id="portsInfo">Your shop will be available on the configured ports</li>
+              </ol>
             </div>
 
             <div class="credentials-box">
@@ -1215,30 +1219,14 @@ export function generateHTML(lang: Language = 'en'): string {
             document.getElementById('finalEmail').textContent = config.admin.email;
             document.getElementById('finalPassword').textContent = '••••••••';
 
-            // Determine URLs — backend may provide storefrontUrl
-            const host = window.location.hostname;
-            const proto = window.location.protocol;
-            // Priority: backend storefrontUrl > user-entered domain > same origin as installer
-            const sfUrl = status.storefrontUrl || config.shop.domain || window.location.origin;
-            const sfBase = sfUrl.endsWith('/') ? sfUrl.slice(0, -1) : sfUrl;
-            const adminUrl = sfBase + '/admin';
-
-            document.getElementById('storefrontLink').href = sfUrl;
-            document.getElementById('adminLink').href = adminUrl;
-
-            // Countdown redirect
-            let seconds = 5;
-            const cdEl = document.getElementById('countdown');
-            const cdInterval = setInterval(() => {
-              seconds--;
-              if (cdEl) cdEl.textContent = String(seconds);
-              if (seconds <= 0) {
-                clearInterval(cdInterval);
-                // Tell the installer to shut down so the storefront can bind to the same port
-                fetch('/api/shutdown', { method: 'POST' }).catch(function() {});
-                window.location.href = sfUrl;
-              }
-            }, 1000);
+            // Show port info
+            var sfPort = config.shop.storefrontPort || 4200;
+            var adPort = config.shop.adminPort || 4201;
+            var apiPort = config.shop.apiPort || 4000;
+            var portsEl = document.getElementById('portsInfo');
+            if (portsEl) {
+              portsEl.innerHTML = 'Storefront: <strong>:' + sfPort + '</strong> | Admin: <strong>:' + adPort + '</strong> | API: <strong>:' + apiPort + '</strong>';
+            }
           } else if (status.error) {
             // Show error
             progressEl.innerHTML += \`
