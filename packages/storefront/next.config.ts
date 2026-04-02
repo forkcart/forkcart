@@ -1,7 +1,17 @@
 import type { NextConfig } from 'next';
 
+const adminPort = process.env['ADMIN_PORT'] ?? '4201';
+
 const nextConfig: NextConfig = {
   transpilePackages: ['@forkcart/shared'],
+  async rewrites() {
+    return [
+      {
+        source: '/admin/:path*',
+        destination: `http://127.0.0.1:${adminPort}/admin/:path*`,
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'forkcart-api.heynyx.dev' },

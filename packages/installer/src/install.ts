@@ -279,13 +279,20 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     lines.push('', '# CORS', `API_CORS_ORIGIN="${config.shop.domain}"`);
   }
 
+  const apiPort = config.shop.apiPort ?? 4000;
+  const adminPort = config.shop.adminPort ?? 4201;
+  const sfPort = config.shop.storefrontPort ?? 4200;
+
   lines.push(
     '',
     '# Admin Settings',
-    `ADMIN_PORT=${config.shop.adminPort ?? 4201}`,
+    `ADMIN_PORT=${adminPort}`,
     '',
     '# Storefront Settings',
-    `STOREFRONT_PORT=${config.shop.storefrontPort ?? 4200}`,
+    `STOREFRONT_PORT=${sfPort}`,
+    '',
+    '# Public URLs (used by admin panel to reach the API)',
+    `NEXT_PUBLIC_API_URL=http://localhost:${apiPort}`,
   );
 
   return lines.join('\n') + '\n';
