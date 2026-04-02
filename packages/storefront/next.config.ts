@@ -1,12 +1,17 @@
 import type { NextConfig } from 'next';
 
 const adminPort = process.env['ADMIN_PORT'] ?? '4201';
+const apiPort = process.env['API_PORT'] ?? '4000';
 
 const nextConfig: NextConfig = {
   transpilePackages: ['@forkcart/shared'],
   async rewrites() {
     return {
       beforeFiles: [
+        {
+          source: '/api/:path*',
+          destination: `http://127.0.0.1:${apiPort}/api/:path*`,
+        },
         {
           source: '/admin',
           destination: `http://127.0.0.1:${adminPort}/admin`,

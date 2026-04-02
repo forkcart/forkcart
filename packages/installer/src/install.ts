@@ -295,8 +295,8 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     '# Storefront Settings',
     `STOREFRONT_PORT=${sfPort}`,
     '',
-    '# Public URLs (used by admin panel to reach the API)',
-    `NEXT_PUBLIC_API_URL=http://localhost:${apiPort}`,
+    '# Public API URL (empty = relative, proxied through storefront)',
+    'NEXT_PUBLIC_API_URL=',
   );
 
   return lines.join('\n') + '\n';

@@ -1,6 +1,7 @@
 import { getToken, removeToken } from './auth';
 
-const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:4000';
+// Empty string = relative URL (same origin, proxied through storefront)
+const API_BASE_URL = process.env['NEXT_PUBLIC_API_URL'] ?? '';
 
 /** Typed fetch wrapper for the ForkCart API */
 export async function apiClient<T>(path: string, options: RequestInit = {}): Promise<T> {
