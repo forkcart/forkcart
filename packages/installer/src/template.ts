@@ -871,8 +871,8 @@ export function generateHTML(lang: Language = 'en'): string {
             <p class="subtitle" data-i18n="success.subtitle">${t['success.subtitle']}</p>
 
             <div class="success-links">
-              <a href="http://localhost:9000" target="_blank" data-i18n="success.admin">${t['success.admin']}</a>
-              <a href="http://localhost:3000" target="_blank" data-i18n="success.storefront">${t['success.storefront']}</a>
+              <a id="adminLink" href="#" target="_blank" data-i18n="success.admin">${t['success.admin']}</a>
+              <a id="storefrontLink" href="#" target="_blank" data-i18n="success.storefront">${t['success.storefront']}</a>
             </div>
 
             <div class="credentials-box">
@@ -1192,6 +1192,12 @@ export function generateHTML(lang: Language = 'en'): string {
             document.getElementById('successView').style.display = 'block';
             document.getElementById('finalEmail').textContent = config.admin.email;
             document.getElementById('finalPassword').textContent = '••••••••';
+
+            // Set success links based on domain or current location
+            const domain = config.shop.domain || window.location.origin;
+            const base = domain.replace(/\/$/, '');
+            document.getElementById('storefrontLink').href = base;
+            document.getElementById('adminLink').href = base.replace(/:\d+$/, '') + ':9000/app';
           } else if (status.error) {
             // Show error
             progressEl.innerHTML += \`

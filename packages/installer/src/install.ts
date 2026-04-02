@@ -341,6 +341,7 @@ async function loadDemoData(connectionString: string): Promise<void> {
         sku: 'TS-001',
         status: 'active',
         price: 2999,
+        compare_at_price: null,
         currency: 'EUR',
         inventory_quantity: 200,
         weight: 180,
@@ -389,10 +390,10 @@ async function loadDemoData(connectionString: string): Promise<void> {
     await sql`
       INSERT INTO shipping_methods (name, description, price, estimated_days, is_active, countries, free_above)
       VALUES 
-        ('Standard Shipping', 'Delivery in 3-5 business days', 499, '3-5', true, ARRAY['DE', 'AT', 'CH'], 4900),
-        ('Express Shipping', 'Delivery in 1-2 business days', 999, '1-2', true, ARRAY['DE', 'AT'], NULL),
-        ('EU Shipping', 'Delivery in 5-10 business days within the EU', 1299, '5-10', true, ARRAY['EU'], NULL),
-        ('Worldwide Shipping', 'Worldwide delivery in 10-20 business days', 2499, '10-20', true, ARRAY['WORLDWIDE'], NULL)
+        ('Standard Shipping', 'Delivery in 3-5 business days', 499, '3-5', true, '["DE", "AT", "CH"]'::jsonb, 4900),
+        ('Express Shipping', 'Delivery in 1-2 business days', 999, '1-2', true, '["DE", "AT"]'::jsonb, NULL),
+        ('EU Shipping', 'Delivery in 5-10 business days within the EU', 1299, '5-10', true, '["EU"]'::jsonb, NULL),
+        ('Worldwide Shipping', 'Worldwide delivery in 10-20 business days', 2499, '10-20', true, '["WORLDWIDE"]'::jsonb, NULL)
     `;
 
     // Insert tax rules
