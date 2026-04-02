@@ -28,14 +28,16 @@ The only open-source TypeScript e-commerce platform that ships **storefront + ad
 ## Quick Start
 
 ```bash
-git clone https://github.com/forkcart/forkcart.git
-cd forkcart
-pnpm install
-cp .env.example .env        # set DATABASE_URL
-pnpm db:migrate && pnpm dev
+npx create-forkcart my-shop
 ```
 
-Storefront → `localhost:4200` · Admin → `localhost:4200/admin` · API → `localhost:4200/api` (proxied)
+That’s it. The web installer handles database setup, admin account, and demo data.
+
+Your store runs on **one port**:
+
+- `/` — Storefront
+- `/admin` — Admin panel
+- `/api/*` — REST API
 
 ---
 
@@ -179,23 +181,21 @@ Build plugins. Sell them. **Keep 90% — only 10% commission.**
 
 ## Self-Hosting
 
-### Docker (recommended)
+### Web Installer (recommended)
 
 ```bash
-git clone https://github.com/forkcart/forkcart.git
-cd forkcart
-cp .env.example .env
-docker compose up
+npx create-forkcart my-shop
+# Open localhost:4200 and follow the wizard
 ```
 
 ### Manual
 
 ```bash
 # Prerequisites: Node.js ≥ 22, pnpm ≥ 9, PostgreSQL 16
+git clone https://github.com/forkcart/forkcart.git
+cd forkcart
 pnpm install
-pnpm db:migrate
-pnpm db:seed        # optional demo data
-pnpm build
+pnpm installer     # or: cp .env.example .env && pnpm db:migrate && pnpm build
 pnpm start
 ```
 
