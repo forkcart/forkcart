@@ -19,7 +19,7 @@
 
 The only open-source TypeScript e-commerce platform that ships **storefront + admin + API + mobile app** in one monorepo. Full-stack, plugin-first, AI-ready. No vendor lock-in.
 
-**[Live Demo (Shop)](https://forkcart.heynyx.dev)** · **[Admin Demo](https://forkcart-admin.heynyx.dev)** (login: `admin@forkcart.dev` / `admin123`)
+**[Live Demo](https://forkcart.heynyx.dev)** (Shop + Admin at `/admin`)
 
 <!-- Screenshots coming soon: Admin Dashboard, Storefront, PageBuilder, Plugin Store -->
 
