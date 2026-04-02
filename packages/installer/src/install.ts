@@ -8,7 +8,7 @@
  */
 
 import { randomBytes } from 'node:crypto';
-import { writeFileSync, existsSync } from 'node:fs';
+import { writeFileSync, existsSync, unlinkSync, symlinkSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { execSync } from 'node:child_process';
 import bcrypt from 'bcryptjs';
@@ -141,6 +141,20 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     const connectionString = buildConnectionString(config.database);
     const envContent = generateEnvFile(connectionString, config);
     writeFileSync(join(rootDir, '.env'), envContent, 'utf-8');
+
+    // Symlink .env into each package so Next.js/API pick it up
+    // (overrides any stale package-level .env from development)
+    const packages = ['api', 'admin', 'storefront', 'database'];
+    for (const pkg of packages) {
+      const pkgEnv = join(rootDir, 'packages', pkg, '.env');
+      try {
+        if (existsSync(pkgEnv)) unlinkSync(pkgEnv);
+        symlinkSync(join(rootDir, '.env'), pkgEnv);
+      } catch {
+        // fallback: copy instead (Windows doesn't always support symlinks)
+        copyFileSync(join(rootDir, '.env'), pkgEnv);
+      }
+    }
 
     updateStep('config', 'completed');
 
