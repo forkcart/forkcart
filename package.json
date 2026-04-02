@@ -19,7 +19,7 @@
   "packageManager": "pnpm@9.15.4",
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency 15",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",

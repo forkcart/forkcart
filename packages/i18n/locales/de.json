@@ -134,6 +134,7 @@
     "title": "Mein Konto",
     "orders": "Meine Bestellungen",
     "addresses": {
+      "addressLine2": "Adresszeile 2",
       "add": "Neue Adresse hinzufügen",
       "deleteConfirm": "Adresse wirklich löschen?",
       "edit": "Adresse bearbeiten",
@@ -297,6 +298,7 @@
     "validation": "Bitte überprüfe deine Eingaben"
   },
   "category": {
+    "allProducts": "Alle Produkte",
     "noProducts": "Keine Produkte in dieser Kategorie",
     "productCount": "{count} Produkte",
     "sort": {
