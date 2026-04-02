@@ -5,8 +5,10 @@ import kleur from 'kleur';
 import fs from 'fs-extra';
 import path from 'path';
 import { execSync, spawn } from 'child_process';
+import https from 'https';
 
 const VERSION = '0.1.0';
+const REPO = 'forkcart/forkcart';
 
 function banner(): void {
   console.log();
@@ -21,6 +23,7 @@ function printHelp(): void {
   console.log('  Options:');
   console.log('    --help, -h       Show this help message');
   console.log('    --version, -v    Show version number');
+  console.log('    --tag <tag>      Use a specific version (e.g. v0.1.0)');
   console.log();
 }
 
@@ -32,7 +35,55 @@ function detectPackageManager(): string {
   const ua = process.env['npm_config_user_agent'] ?? '';
   if (ua.startsWith('yarn')) return 'yarn';
   if (ua.startsWith('pnpm')) return 'pnpm';
-  return 'pnpm'; // default to pnpm
+  return 'pnpm';
+}
+
+/** Fetch the latest release tag from GitHub API */
+function fetchLatestTag(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = `https://api.github.com/repos/${REPO}/releases/latest`;
+    https
+      .get(url, { headers: { 'User-Agent': 'create-forkcart' } }, (res) => {
+        // Follow redirects
+        if (res.statusCode === 302 || res.statusCode === 301) {
+          const location = res.headers['location'];
+          if (location) {
+            https
+              .get(location, { headers: { 'User-Agent': 'create-forkcart' } }, (r2) => {
+                let data = '';
+                r2.on('data', (chunk: Buffer) => (data += chunk));
+                r2.on('end', () => {
+                  try {
+                    resolve(JSON.parse(data).tag_name);
+                  } catch {
+                    reject(new Error('Could not parse release info'));
+                  }
+                });
+              })
+              .on('error', reject);
+            return;
+          }
+        }
+
+        if (res.statusCode === 404) {
+          // No releases yet — fall back to main
+          resolve('main');
+          return;
+        }
+
+        let data = '';
+        res.on('data', (chunk: Buffer) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            resolve(json.tag_name || 'main');
+          } catch {
+            resolve('main');
+          }
+        });
+      })
+      .on('error', () => resolve('main'));
+  });
 }
 
 async function main(): Promise<void> {
@@ -50,7 +101,14 @@ async function main(): Promise<void> {
 
   banner();
 
-  const initialName = args.find((a) => !a.startsWith('-'));
+  // Parse --tag flag
+  const tagIdx = args.indexOf('--tag');
+  let explicitTag: string | undefined;
+  if (tagIdx !== -1 && args[tagIdx + 1]) {
+    explicitTag = args[tagIdx + 1];
+  }
+
+  const initialName = args.find((a, i) => !a.startsWith('-') && i !== tagIdx + 1);
 
   const onCancel = () => {
     console.log(kleur.red('\n  ✖ Setup cancelled.\n'));
@@ -100,21 +158,42 @@ async function main(): Promise<void> {
   const spin = (msg: string) => process.stdout.write(kleur.cyan(`  ⠋ ${msg}...`));
   const done = (msg: string) => process.stdout.write(`\r${kleur.green(`  ✓ ${msg}    `)}\n`);
 
-  // Step 1: Clone
+  // Step 1: Resolve version
+  let tag = explicitTag;
+  if (!tag) {
+    spin('Checking latest version');
+    tag = await fetchLatestTag();
+    if (tag === 'main') {
+      done('Using development branch (no releases yet)');
+    } else {
+      done(`Latest version: ${kleur.bold(tag)}`);
+    }
+  } else {
+    console.log(kleur.dim(`  Using version: ${tag}`));
+  }
+
+  // Step 2: Clone at specific tag
   try {
     spin('Downloading ForkCart');
-    runCommand(
-      `git clone --depth 1 https://github.com/forkcart/forkcart.git "${targetDir}"`,
-      process.cwd(),
-    );
+    if (tag === 'main') {
+      runCommand(
+        `git clone --depth 1 https://github.com/${REPO}.git "${targetDir}"`,
+        process.cwd(),
+      );
+    } else {
+      runCommand(
+        `git clone --depth 1 --branch ${tag} https://github.com/${REPO}.git "${targetDir}"`,
+        process.cwd(),
+      );
+    }
     await fs.remove(path.join(targetDir, '.git'));
-    done('Downloaded ForkCart');
+    done(`Downloaded ForkCart ${tag}`);
   } catch {
     console.log(kleur.red('\n  ✖ Could not download ForkCart. Check your internet connection.\n'));
     process.exit(1);
   }
 
-  // Step 2: Install dependencies
+  // Step 3: Install dependencies
   const pm = detectPackageManager();
   const installCmd = pm === 'yarn' ? 'yarn' : `${pm} install`;
 
@@ -124,11 +203,11 @@ async function main(): Promise<void> {
     done('Installed dependencies');
   } catch {
     console.log(
-      kleur.dim(`\n  ⚠ Could not install dependencies. Run ${kleur.cyan(installCmd)} manually.\n`),
+      kleur.dim(`\n  ⚠ Could not install deps. Run ${kleur.cyan(installCmd)} manually.\n`),
     );
   }
 
-  // Step 3: Launch web installer
+  // Step 4: Launch web installer
   console.log();
   console.log(kleur.bold().green('  🚀 Launching setup wizard...'));
   console.log();
