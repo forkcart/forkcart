@@ -35,7 +35,7 @@ cp .env.example .env        # set DATABASE_URL
 pnpm db:migrate && pnpm dev
 ```
 
-Storefront → `localhost:3000` · Admin → `localhost:3001` · API → `localhost:4000`
+Storefront → `localhost:4200` · Admin → `localhost:4200/admin` · API → `localhost:4200/api` (proxied)
 
 ---
 

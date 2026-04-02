@@ -838,7 +838,7 @@ Every storefront page sets `window.FORKCART` with page-specific data that your p
 The root layout always provides:
 
 ```ts
-window.FORKCART.apiUrl; // Base API URL (e.g. "http://localhost:3000")
+window.FORKCART.apiUrl; // Base API URL (e.g. "http://localhost:4200")
 ```
 
 **Properties per page type:**
@@ -1839,7 +1839,7 @@ routes: (router) => {
 
 ### Calling the API from Admin Pages
 
-The admin panel runs on a different port (default 3001) than the API (default 4000). **Do not use relative URLs** like `/api/v1/...` in your admin page scripts — they will hit the admin server instead of the API.
+The admin panel runs on a different port (default 4201) than the API (default 4000). **Do not use relative URLs** like `/api/v1/...` in your admin page scripts — they will hit the admin server instead of the API.
 
 Use `window.__FORKCART_API_URL` which is automatically set by the admin app:
 
@@ -2094,7 +2094,7 @@ This will:
 
 | Option        | Default            | Description                                |
 | ------------- | ------------------ | ------------------------------------------ |
-| `-p, --port`  | `3000`             | ForkCart server port                       |
+| `-p, --port`  | `4200`             | ForkCart server port                       |
 | `--host`      | `http://localhost` | ForkCart server host                       |
 | `--no-reload` | —                  | Only rebuild on change, skip server reload |
 

@@ -15,32 +15,63 @@ Run ForkCart on your own server. Full control, no monthly fees, no vendor lock-i
 
 ## Installation
 
+### Option A: Web Installer (Recommended)
+
+The easiest way — a WordPress-style wizard that handles everything:
+
 ```bash
-# 1. Clone the repository
+# 1. Clone and install
 git clone https://github.com/forkcart/forkcart.git
 cd forkcart
-
-# 2. Install dependencies
 npm install -g pnpm
 pnpm install
 
-# 3. Create and configure .env
+# 2. Start the installer
+pnpm installer
+# Open http://localhost:4200 in your browser
+```
+
+The installer will:
+
+- Test your system (Node.js, PostgreSQL, pnpm)
+- Configure your database (local PostgreSQL or Supabase)
+- Create your admin account
+- Load demo products (optional)
+- Build and start your shop automatically
+
+After installation, everything runs on **one port**:
+
+- `/` — Your storefront
+- `/admin` — Admin panel
+- `/api/*` — API (proxied through storefront)
+
+### Option B: Manual Setup
+
+```bash
+# 1. Clone and install
+git clone https://github.com/forkcart/forkcart.git
+cd forkcart
+npm install -g pnpm
+pnpm install
+
+# 2. Create and configure .env
 cp .env.example .env
 nano .env
 
-# 4. Set up the database
+# 3. Set up the database
 sudo -u postgres createdb forkcart
 sudo -u postgres psql -c "CREATE USER forkcart WITH PASSWORD 'your-secure-password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE forkcart TO forkcart;"
 
-# 5. Run migrations
+# 4. Run migrations
 pnpm db:migrate
 
-# 6. (Optional) Seed demo data
+# 5. (Optional) Seed demo data
 pnpm db:seed
 
-# 7. Build for production
+# 6. Build and start
 pnpm build
+pnpm start
 ```
 
 ## Environment Variables
@@ -59,7 +90,7 @@ All configuration lives in `.env` at the project root.
 | ----------------- | ------------------------------------------------- | --------------------------------------------- |
 | `API_PORT`        | Port for the Hono API                             | `4000`                                        |
 | `API_HOST`        | Bind address                                      | `0.0.0.0`                                     |
-| `API_CORS_ORIGIN` | Allowed CORS origins (comma-separated)            | `http://localhost:3000,http://localhost:3001` |
+| `API_CORS_ORIGIN` | Allowed CORS origins (comma-separated)            | `http://localhost:4200,http://localhost:4201` |
 | `SESSION_SECRET`  | Secret for signing sessions/tokens (min 32 chars) | —                                             |
 
 ### Frontend
@@ -106,8 +137,8 @@ pnpm build
 
 # Test that everything starts
 node packages/api/dist/index.js &
-cd packages/admin && npx next start --port 3001 &
-cd packages/storefront && npx next start --port 3000 &
+cd packages/admin && npx next start --port 4201 &
+cd packages/storefront && npx next start --port 4200 &
 ```
 
 ## Systemd Services
@@ -147,7 +178,7 @@ After=network.target forkcart-api.service
 Type=simple
 User=forkcart
 WorkingDirectory=/opt/forkcart/packages/admin
-ExecStart=/usr/bin/npx next start --port 3001
+ExecStart=/usr/bin/npx next start --port 4201
 Restart=always
 RestartSec=5
 EnvironmentFile=/opt/forkcart/.env
@@ -168,7 +199,7 @@ After=network.target forkcart-api.service
 Type=simple
 User=forkcart
 WorkingDirectory=/opt/forkcart/packages/storefront
-ExecStart=/usr/bin/npx next start --port 3000
+ExecStart=/usr/bin/npx next start --port 4200
 Restart=always
 RestartSec=5
 EnvironmentFile=/opt/forkcart/.env
@@ -198,11 +229,11 @@ Caddy handles SSL automatically via Let's Encrypt.
 # /etc/caddy/Caddyfile
 
 yourstore.com {
-    reverse_proxy localhost:3000
+    reverse_proxy localhost:4200
 }
 
 admin.yourstore.com {
-    reverse_proxy localhost:3001
+    reverse_proxy localhost:4201
 }
 
 api.yourstore.com {
@@ -225,7 +256,7 @@ server {
     server_name yourstore.com;
 
     location / {
-        proxy_pass http://localhost:3000;
+        proxy_pass http://localhost:4200;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -239,7 +270,7 @@ server {
     server_name admin.yourstore.com;
 
     location / {
-        proxy_pass http://localhost:3001;
+        proxy_pass http://localhost:4201;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
