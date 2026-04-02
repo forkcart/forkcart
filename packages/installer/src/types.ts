@@ -51,9 +51,7 @@ export interface ShopConfig {
   loadDemoData: boolean;
   domain?: string;
   /** Service ports — configurable for multi-instance setups */
-  storefrontPort?: number;
-  adminPort?: number;
-  apiPort?: number;
+
 }
 
 /** Full installation configuration */
@@ -80,7 +78,6 @@ export interface InstallStatus {
   error?: string;
   /** Handover info for starting storefront after installer exits */
   handover?: {
-    storefrontPort: string;
     rootDir: string;
   };
 }

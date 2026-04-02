@@ -794,24 +794,7 @@ export function generateHTML(lang: Language = 'en'): string {
           <div class="hint">Leave empty to use the current URL. Set this if you have a custom domain.</div>
         </div>
 
-        <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-          <h3 style="margin: 0 0 12px 0; font-size: 15px; color: #475569;">⚙️ Service Ports</h3>
-          <div class="hint" style="margin-bottom: 16px;">Change these if you run multiple ForkCart instances on the same server.</div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="portStorefront">Storefront</label>
-              <input type="number" id="portStorefront" value="4200" min="1024" max="65535">
-            </div>
-            <div class="form-group">
-              <label for="portAdmin">Admin</label>
-              <input type="number" id="portAdmin" value="4201" min="1024" max="65535">
-            </div>
-            <div class="form-group">
-              <label for="portApi">API</label>
-              <input type="number" id="portApi" value="4000" min="1024" max="65535">
-            </div>
-          </div>
-        </div>
+
 
         <div class="nav-buttons">
           <button type="button" class="btn btn-secondary" onclick="prevStep()" data-i18n="nav.back">${t['nav.back']}</button>
@@ -1159,9 +1142,7 @@ export function generateHTML(lang: Language = 'en'): string {
           language: document.getElementById('shopLanguage').value,
           loadDemoData: document.getElementById('loadDemoData').checked,
           domain: document.getElementById('shopDomain').value || undefined,
-          storefrontPort: parseInt(document.getElementById('portStorefront').value) || 4200,
-          adminPort: parseInt(document.getElementById('portAdmin').value) || 4201,
-          apiPort: parseInt(document.getElementById('portApi').value) || 4000,
+
         },
       };
 

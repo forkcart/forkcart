@@ -208,9 +208,9 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     const buildEnv = {
       ...process.env,
       DATABASE_URL: connectionString,
-      ADMIN_PORT: String(config.shop.adminPort ?? 4201),
-      API_PORT: String(config.shop.apiPort ?? 4000),
-      STOREFRONT_PORT: String(config.shop.storefrontPort ?? 4200),
+      ADMIN_PORT: '4201',
+      API_PORT: '4000',
+      STOREFRONT_PORT: '4200',
     };
     execSync('pnpm build', {
       cwd: rootDir,
@@ -224,15 +224,11 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     // Write lock file so installer won't show again
     writeFileSync(join(rootDir, '.installed'), new Date().toISOString(), 'utf-8');
 
-    // Write .env port info for the handover
-    const sfPort = String(config.shop.storefrontPort ?? 4200);
-
     // Step: Done — signal frontend, then hand over port to storefront
     installStatus.currentStep++;
     updateStep('done', 'completed');
     installStatus.completed = true;
     installStatus.handover = {
-      storefrontPort: sfPort,
       rootDir,
     };
 
@@ -279,7 +275,7 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     `DEFAULT_LANGUAGE="${config.shop.language}"`,
     '',
     '# API Settings',
-    `API_PORT=${config.shop.apiPort ?? 4000}`,
+    `API_PORT=${4000}`,
     'API_HOST=0.0.0.0',
   ];
 
@@ -287,9 +283,9 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     lines.push('', '# CORS', `API_CORS_ORIGIN="${config.shop.domain}"`);
   }
 
-  const apiPort = config.shop.apiPort ?? 4000;
-  const adminPort = config.shop.adminPort ?? 4201;
-  const sfPort = config.shop.storefrontPort ?? 4200;
+  const apiPort = 4000;
+  const adminPort = 4201;
+  const sfPort = 4200;
 
   lines.push(
     '',
