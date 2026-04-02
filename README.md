@@ -198,12 +198,14 @@ npx create-forkcart my-shop
 
 ```bash
 # Prerequisites: Node.js ≥ 22, pnpm ≥ 9, PostgreSQL 16
-git clone https://github.com/forkcart/forkcart.git
+git clone --branch v0.1.0 --depth 1 https://github.com/forkcart/forkcart.git
 cd forkcart
 pnpm install
 pnpm installer     # or: cp .env.example .env && pnpm db:migrate && pnpm build
 pnpm start
 ```
+
+> ⚠️ Always clone a release tag (`v0.1.0`), not `main`. The main branch is active development.
 
 Use the included `Caddyfile` for reverse proxy with auto-SSL.
 
