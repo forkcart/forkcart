@@ -1,6 +1,6 @@
 {
   "name": "create-forkcart",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create a new ForkCart e-commerce store",
   "bin": {
     "create-forkcart": "./dist/index.js"

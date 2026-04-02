@@ -1,6 +1,6 @@
 {
   "name": "@forkcart/plugin-sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ForkCart Plugin SDK — build plugins with typed hooks, settings, and storefront slots",
   "main": "index.js",
   "type": "module"
