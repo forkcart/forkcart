@@ -1,20 +1,24 @@
 /**
- * @fileoverview ForkCart Installer - WordPress-style setup wizard
+ * @fileoverview ForkCart Installer — WordPress-style setup wizard
  *
- * A browser-based setup wizard that configures a fresh ForkCart installation.
+ * When ForkCart is not yet installed (no `.installed` lock-file) the
+ * installer serves a browser-based wizard on port 4200 (the same port
+ * the storefront will later use).  After installation it redirects
+ * every request to the running storefront.
+ *
  * Run with: pnpm start
- * Access at: http://localhost:3333
+ * Access at: http://localhost:4200
  */
 
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import type { Language, InstallConfig } from './types';
 import { runSystemChecks, testDatabaseConnection } from './checks';
-import { runInstallation, getInstallStatus } from './install';
+import { runInstallation, getInstallStatus, findRootDir } from './install';
 import { generateHTML } from './template';
 
 const app = new Hono();
@@ -24,7 +28,25 @@ app.use('*', logger());
 app.use('*', cors());
 
 /**
- * GET /logo - Serve the ForkCart logo
+ * Lock-file guard — once ForkCart is installed, redirect every
+ * request to the storefront so the wizard is never shown again.
+ */
+app.use('*', async (c, next) => {
+  try {
+    const rootDir = findRootDir();
+    if (existsSync(join(rootDir, '.installed'))) {
+      const storefrontPort = process.env['STOREFRONT_PORT'] ?? '4200';
+      const host = c.req.header('host')?.split(':')[0] ?? 'localhost';
+      return c.redirect(`http://${host}:${storefrontPort}`);
+    }
+  } catch {
+    // Root dir not found yet — let the wizard handle it
+  }
+  return next();
+});
+
+/**
+ * GET /logo — Serve the ForkCart logo
  */
 app.get('/logo', (c) => {
   try {
@@ -39,7 +61,7 @@ app.get('/logo', (c) => {
 });
 
 /**
- * GET / - Serve the installer wizard HTML
+ * GET / — Serve the installer wizard HTML
  */
 app.get('/', (c) => {
   const lang = (c.req.query('lang') as Language) || 'en';
@@ -50,7 +72,7 @@ app.get('/', (c) => {
 });
 
 /**
- * GET /api/check - Run system requirements check
+ * GET /api/check — Run system requirements check
  */
 app.get('/api/check', async (c) => {
   const result = await runSystemChecks();
@@ -58,7 +80,7 @@ app.get('/api/check', async (c) => {
 });
 
 /**
- * POST /api/test-db - Test database connection
+ * POST /api/test-db — Test database connection
  */
 app.post('/api/test-db', async (c) => {
   try {
@@ -90,15 +112,15 @@ app.post('/api/test-db', async (c) => {
 });
 
 /**
- * POST /api/install - Start installation process
+ * POST /api/install — Start installation process
  */
 app.post('/api/install', async (c) => {
   try {
     const config = (await c.req.json()) as InstallConfig;
 
     // Validate required fields
-    if (!config.database?.password) {
-      return c.json({ error: 'Database password is required' }, 400);
+    if (!config.database?.password && !config.database?.connectionString) {
+      return c.json({ error: 'Database password or connection string is required' }, 400);
     }
     if (!config.admin?.email || !config.admin?.password) {
       return c.json({ error: 'Admin email and password are required' }, 400);
@@ -120,15 +142,15 @@ app.post('/api/install', async (c) => {
 });
 
 /**
- * GET /api/status - Get installation progress
+ * GET /api/status — Get installation progress
  */
 app.get('/api/status', (c) => {
   const status = getInstallStatus();
   return c.json(status);
 });
 
-// Start server
-const port = parseInt(process.env['INSTALLER_PORT'] ?? '3333', 10);
+// Start server — defaults to 4200 (same port the storefront will use later)
+const port = parseInt(process.env['INSTALLER_PORT'] ?? process.env['PORT'] ?? '4200', 10);
 
 console.log(`
 ╔═══════════════════════════════════════════════════╗
@@ -136,7 +158,7 @@ console.log(`
 ║   🛒 ForkCart Installer                           ║
 ║                                                   ║
 ║   Open in your browser:                           ║
-║   http://localhost:${port}                           ║
+║   http://localhost:${String(port).padEnd(4)}                          ║
 ║                                                   ║
 ╚═══════════════════════════════════════════════════╝
 `);

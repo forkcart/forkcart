@@ -867,12 +867,12 @@ export function generateHTML(lang: Language = 'en'): string {
             <svg class="success-icon" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
             </svg>
-            <h2 data-i18n="success.title">${t['success.title']}</h2>
-            <p class="subtitle" data-i18n="success.subtitle">${t['success.subtitle']}</p>
+            <h2>Your shop is ready! 🎉</h2>
+            <p class="subtitle" id="redirectNotice">Redirecting to your storefront in <strong id="countdown">5</strong> seconds...</p>
 
             <div class="success-links">
-              <a id="adminLink" href="#" target="_blank" data-i18n="success.admin">${t['success.admin']}</a>
-              <a id="storefrontLink" href="#" target="_blank" data-i18n="success.storefront">${t['success.storefront']}</a>
+              <a id="storefrontLink" href="#">🛒 Open Storefront</a>
+              <a id="adminLink" href="#" target="_blank">⚙️ Open Admin</a>
             </div>
 
             <div class="credentials-box">
@@ -1193,11 +1193,26 @@ export function generateHTML(lang: Language = 'en'): string {
             document.getElementById('finalEmail').textContent = config.admin.email;
             document.getElementById('finalPassword').textContent = '••••••••';
 
-            // Set success links based on domain or current location
-            const domain = config.shop.domain || window.location.origin;
-            const base = domain.replace(/\/$/, '');
-            document.getElementById('storefrontLink').href = base;
-            document.getElementById('adminLink').href = base.replace(/:\d+$/, '') + ':9000/app';
+            // Determine URLs — backend may provide storefrontUrl
+            const host = window.location.hostname;
+            const proto = window.location.protocol;
+            const sfUrl = status.storefrontUrl || (config.shop.domain ? config.shop.domain : proto + '//' + host + ':4200');
+            const adminUrl = (config.shop.domain ? config.shop.domain : proto + '//' + host) + ':4201/app';
+
+            document.getElementById('storefrontLink').href = sfUrl;
+            document.getElementById('adminLink').href = adminUrl;
+
+            // Countdown redirect
+            let seconds = 5;
+            const cdEl = document.getElementById('countdown');
+            const cdInterval = setInterval(() => {
+              seconds--;
+              if (cdEl) cdEl.textContent = String(seconds);
+              if (seconds <= 0) {
+                clearInterval(cdInterval);
+                window.location.href = sfUrl;
+              }
+            }, 1000);
           } else if (status.error) {
             // Show error
             progressEl.innerHTML += \`

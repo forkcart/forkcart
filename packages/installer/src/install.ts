@@ -1,20 +1,25 @@
 /**
  * @fileoverview Installation logic for ForkCart
+ *
+ * After the core install steps (config, migrations, admin, demo, keys)
+ * this module builds the storefront & admin, spawns all services as
+ * detached child processes, writes a `.installed` lock-file, and
+ * reports the storefront URL so the UI can redirect.
  */
 
 import { randomBytes } from 'node:crypto';
 import { writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import bcrypt from 'bcryptjs';
 import postgres from 'postgres';
 import type { InstallConfig, InstallStatus, InstallStep } from './types';
 import { buildConnectionString, createDatabaseIfNotExists } from './checks';
 
-/** Installation state - tracked globally for SSE streaming */
+/** Installation state — tracked globally for SSE streaming */
 let installStatus: InstallStatus = {
   currentStep: 0,
-  totalSteps: 6,
+  totalSteps: 9,
   steps: [],
   completed: false,
 };
@@ -39,7 +44,7 @@ export function getInstallStatus(): InstallStatus {
 export function resetInstallStatus(): void {
   installStatus = {
     currentStep: 0,
-    totalSteps: 6,
+    totalSteps: 9,
     steps: [],
     completed: false,
   };
@@ -57,19 +62,24 @@ function updateStep(id: string, status: InstallStep['status'], message?: string)
 }
 
 /**
- * Find the ForkCart root directory
+ * Find the ForkCart root directory.
+ * Checks `FORKCART_DIR` env, then walks up from cwd / __dirname.
  */
-function findRootDir(): string {
+export function findRootDir(): string {
+  // Explicit env override
+  const envDir = process.env['FORKCART_DIR'];
+  if (envDir && existsSync(join(envDir, 'pnpm-workspace.yaml'))) {
+    return envDir;
+  }
+
   // Start from current directory and go up
   let dir = process.cwd();
 
   // Check if we're in packages/installer
   if (dir.includes('packages/installer')) {
-    // Go up to root
     dir = join(dir, '..', '..');
   }
 
-  // Verify we're in the right place by checking for pnpm-workspace.yaml
   if (existsSync(join(dir, 'pnpm-workspace.yaml'))) {
     return dir;
   }
@@ -86,6 +96,26 @@ function findRootDir(): string {
 }
 
 /**
+ * Spawn a detached child process that survives the installer shutdown.
+ * Returns the spawned PID for logging purposes.
+ */
+function spawnDetached(
+  command: string,
+  args: string[],
+  cwd: string,
+  env: NodeJS.ProcessEnv,
+): number {
+  const child = spawn(command, args, {
+    cwd,
+    env,
+    detached: true,
+    stdio: 'ignore',
+  });
+  child.unref();
+  return child.pid ?? -1;
+}
+
+/**
  * Run the full installation process
  */
 export async function runInstallation(config: InstallConfig): Promise<InstallStatus> {
@@ -97,6 +127,9 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     { id: 'admin', label: 'Creating admin account...', status: 'pending' },
     { id: 'demo', label: 'Loading demo data...', status: 'pending' },
     { id: 'keys', label: 'Generating security keys...', status: 'pending' },
+    { id: 'build-storefront', label: 'Building storefront...', status: 'pending' },
+    { id: 'build-admin', label: 'Building admin panel...', status: 'pending' },
+    { id: 'start-services', label: 'Starting services...', status: 'pending' },
     { id: 'done', label: 'Done!', status: 'pending' },
   ];
 
@@ -112,11 +145,10 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
   const rootDir = findRootDir();
 
   try {
-    // Step 1: Write configuration
+    // Step: Write configuration
     installStatus.currentStep = 1;
     updateStep('config', 'running');
 
-    // Create database if needed
     if (config.database.createDatabase) {
       await createDatabaseIfNotExists(config.database);
     }
@@ -127,11 +159,10 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 
     updateStep('config', 'completed');
 
-    // Step 2: Run migrations
-    installStatus.currentStep = 2;
+    // Step: Run migrations
+    installStatus.currentStep++;
     updateStep('migrations', 'running');
 
-    // Run migrations via the database package
     const databaseDir = join(rootDir, 'packages', 'database');
     execSync('pnpm run migrate', {
       cwd: databaseDir,
@@ -141,45 +172,113 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 
     updateStep('migrations', 'completed');
 
-    // Step 3: Create admin account
-    installStatus.currentStep = 3;
+    // Step: Create admin account
+    installStatus.currentStep++;
     updateStep('admin', 'running');
 
     await createAdminUser(connectionString, config.admin);
 
     updateStep('admin', 'completed');
 
-    // Step 4: Load demo data (if selected)
+    // Step: Load demo data (if selected)
     if (config.shop.loadDemoData) {
-      installStatus.currentStep = 4;
+      installStatus.currentStep++;
       updateStep('demo', 'running');
 
-      // Run seed script (but skip admin since we already created one)
       await loadDemoData(connectionString);
 
       updateStep('demo', 'completed');
     }
 
-    // Step 5: Generate security keys (already done in env file)
-    const keyStepIndex = config.shop.loadDemoData ? 5 : 4;
-    installStatus.currentStep = keyStepIndex;
+    // Step: Generate security keys (already in .env — verify)
+    installStatus.currentStep++;
     updateStep('keys', 'running');
 
-    // Keys are already in .env, but we can verify
     const envPath = join(rootDir, '.env');
-    const envExists = existsSync(envPath);
-
-    if (!envExists) {
+    if (!existsSync(envPath)) {
       throw new Error('.env file was not created');
     }
 
     updateStep('keys', 'completed');
 
-    // Step 6: Done
-    const doneStepIndex = config.shop.loadDemoData ? 6 : 5;
-    installStatus.currentStep = doneStepIndex;
+    // Step: Build storefront
+    installStatus.currentStep++;
+    updateStep('build-storefront', 'running');
+
+    execSync('pnpm --filter @forkcart/storefront build', {
+      cwd: rootDir,
+      env: { ...process.env, DATABASE_URL: connectionString },
+      stdio: 'pipe',
+      timeout: 300_000, // 5 min max
+    });
+
+    updateStep('build-storefront', 'completed');
+
+    // Step: Build admin
+    installStatus.currentStep++;
+    updateStep('build-admin', 'running');
+
+    execSync('pnpm --filter @forkcart/admin build', {
+      cwd: rootDir,
+      env: { ...process.env, DATABASE_URL: connectionString },
+      stdio: 'pipe',
+      timeout: 300_000,
+    });
+
+    updateStep('build-admin', 'completed');
+
+    // Step: Start services (detached)
+    installStatus.currentStep++;
+    updateStep('start-services', 'running');
+
+    const serviceEnv: NodeJS.ProcessEnv = {
+      ...process.env,
+      DATABASE_URL: connectionString,
+      API_PORT: process.env['API_PORT'] ?? '4000',
+      STOREFRONT_PORT: process.env['STOREFRONT_PORT'] ?? '4200',
+      ADMIN_PORT: process.env['ADMIN_PORT'] ?? '4201',
+    };
+
+    // Resolve pnpm path for spawning
+    const pnpmPath = execSync('which pnpm', { encoding: 'utf-8' }).trim();
+
+    const apiPid = spawnDetached(
+      pnpmPath,
+      ['--filter', '@forkcart/api', 'start'],
+      rootDir,
+      serviceEnv,
+    );
+    console.log(`[installer] API started (PID ${apiPid})`);
+
+    const storefrontPid = spawnDetached(
+      pnpmPath,
+      ['--filter', '@forkcart/storefront', 'start'],
+      rootDir,
+      serviceEnv,
+    );
+    console.log(`[installer] Storefront started (PID ${storefrontPid})`);
+
+    const adminPid = spawnDetached(
+      pnpmPath,
+      ['--filter', '@forkcart/admin', 'start'],
+      rootDir,
+      serviceEnv,
+    );
+    console.log(`[installer] Admin started (PID ${adminPid})`);
+
+    updateStep('start-services', 'completed');
+
+    // Write lock file so installer won't show again
+    writeFileSync(join(rootDir, '.installed'), new Date().toISOString(), 'utf-8');
+
+    // Step: Done
+    installStatus.currentStep++;
     updateStep('done', 'completed');
     installStatus.completed = true;
+
+    // Provide the storefront URL so the frontend can redirect
+    const storefrontPort = serviceEnv['STOREFRONT_PORT'] ?? '4200';
+    installStatus.storefrontUrl = config.shop.domain || `http://localhost:${storefrontPort}`;
 
     return installStatus;
   } catch (error) {
@@ -194,12 +293,13 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
 }
 
 /**
- * Generate .env file content
+ * Generate .env file content including JWT_SECRET
  */
 function generateEnvFile(connectionString: string, config: InstallConfig): string {
   const sessionSecret = generateSecret(48, 'base64url');
   const encryptionKey = generateSecret(32, 'hex');
   const revalidateSecret = generateSecret(32, 'base64url');
+  const jwtSecret = randomBytes(32).toString('hex');
 
   const lines = [
     '# ForkCart Configuration',
@@ -212,6 +312,10 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     `SESSION_SECRET="${sessionSecret}"`,
     `FORKCART_ENCRYPTION_KEY="${encryptionKey}"`,
     `REVALIDATE_SECRET="${revalidateSecret}"`,
+    `JWT_SECRET="${jwtSecret}"`,
+    '',
+    '# Admin',
+    `ADMIN_EMAIL="${config.admin.email}"`,
     '',
     '# Shop Settings',
     `SHOP_NAME="${config.admin.shopName}"`,
@@ -219,7 +323,7 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     `DEFAULT_LANGUAGE="${config.shop.language}"`,
     '',
     '# API Settings',
-    'API_PORT=4000',
+    `API_PORT=${process.env['API_PORT'] ?? '4000'}`,
     'API_HOST=0.0.0.0',
   ];
 
@@ -230,10 +334,10 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
   lines.push(
     '',
     '# Admin Settings',
-    'ADMIN_PORT=9000',
+    `ADMIN_PORT=${process.env['ADMIN_PORT'] ?? '4201'}`,
     '',
     '# Storefront Settings',
-    'STOREFRONT_PORT=3000',
+    `STOREFRONT_PORT=${process.env['STOREFRONT_PORT'] ?? '4200'}`,
   );
 
   return lines.join('\n') + '\n';
@@ -249,23 +353,19 @@ async function createAdminUser(
   const sql = postgres(connectionString, { max: 1 });
 
   try {
-    // Hash password
     const passwordHash = await bcrypt.hash(adminConfig.password, 12);
 
-    // Check if user already exists
     const existing = await sql`
       SELECT id FROM users WHERE email = ${adminConfig.email}
     `;
 
     if (existing.length > 0) {
-      // Update existing user to superadmin
       await sql`
         UPDATE users 
         SET password_hash = ${passwordHash}, role = 'superadmin'
         WHERE email = ${adminConfig.email}
       `;
     } else {
-      // Create new admin user
       await sql`
         INSERT INTO users (email, password_hash, first_name, last_name, role)
         VALUES (${adminConfig.email}, ${passwordHash}, 'Admin', 'User', 'superadmin')
@@ -283,16 +383,13 @@ async function loadDemoData(connectionString: string): Promise<void> {
   const sql = postgres(connectionString, { max: 1 });
 
   try {
-    // Check if demo data already exists
     const existingCategories = await sql`SELECT COUNT(*)::int as count FROM categories`;
     const categoryCount = existingCategories[0]?.count ?? 0;
 
     if (categoryCount > 0) {
-      // Demo data already loaded
       return;
     }
 
-    // Insert categories
     const categoryData = [
       {
         name: 'Electronics',
@@ -315,7 +412,6 @@ async function loadDemoData(connectionString: string): Promise<void> {
       RETURNING id, slug
     `;
 
-    // Insert products
     const electronicsId = insertedCategories.find((c) => c.slug === 'electronics')?.id;
     const clothingId = insertedCategories.find((c) => c.slug === 'clothing')?.id;
 
@@ -366,7 +462,6 @@ async function loadDemoData(connectionString: string): Promise<void> {
       RETURNING id
     `;
 
-    // Link products to categories
     if (electronicsId && insertedProducts[0]) {
       await sql`
         INSERT INTO product_categories (product_id, category_id)
@@ -386,7 +481,6 @@ async function loadDemoData(connectionString: string): Promise<void> {
       `;
     }
 
-    // Insert shipping methods
     await sql`
       INSERT INTO shipping_methods (name, description, price, estimated_days, is_active, countries, free_above)
       VALUES 
@@ -396,7 +490,6 @@ async function loadDemoData(connectionString: string): Promise<void> {
         ('Worldwide Shipping', 'Worldwide delivery in 10-20 business days', 2499, '10-20', true, '["WORLDWIDE"]'::jsonb, NULL)
     `;
 
-    // Insert tax rules
     await sql`
       INSERT INTO tax_rules (name, country, rate, is_default)
       VALUES 
