@@ -344,6 +344,43 @@ importers:
         specifier: ^5.7.0
         version: 5.9.3
 
+  packages/installer:
+    dependencies:
+      '@forkcart/database':
+        specifier: workspace:*
+        version: link:../database
+      '@forkcart/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@hono/node-server':
+        specifier: ^1.13.0
+        version: 1.19.11(hono@4.12.7)
+      bcryptjs:
+        specifier: ^3.0.3
+        version: 3.0.3
+      drizzle-orm:
+        specifier: ^0.38.0
+        version: 0.38.4(@types/react@19.2.14)(postgres@3.4.8)(react@19.2.4)
+      hono:
+        specifier: ^4.6.0
+        version: 4.12.7
+      postgres:
+        specifier: ^3.4.0
+        version: 3.4.8
+    devDependencies:
+      '@types/bcryptjs':
+        specifier: ^3.0.0
+        version: 3.0.0
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+
   packages/mobile:
     dependencies:
       '@expo/vector-icons':

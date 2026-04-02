@@ -108,22 +108,15 @@ describe('AuthService', () => {
       expect(repo.updateLastLogin).toHaveBeenCalledWith('user-1');
     });
 
-    it('succeeds with legacy sha256 hash and migrates to bcrypt', async () => {
+    it('rejects legacy sha256 hash (RVS-031: only bcrypt supported)', async () => {
       const legacyHash = crypto.createHash('sha256').update('legacy-pw').digest('hex');
       vi.mocked(repo.findByEmail).mockResolvedValue(
         fakeUser({ passwordHash: legacyHash }) as never,
       );
-      vi.mocked(repo.createSession).mockResolvedValue({} as never);
-      vi.mocked(repo.updateLastLogin).mockResolvedValue(undefined as never);
-      vi.mocked(repo.updatePassword).mockResolvedValue(undefined as never);
 
-      const result = await service.login('admin@forkcart.com', 'legacy-pw');
-
-      expect(result.user.email).toBe('admin@forkcart.com');
-      // Should migrate hash
-      expect(repo.updatePassword).toHaveBeenCalledOnce();
-      const [, newHash] = vi.mocked(repo.updatePassword).mock.calls[0]!;
-      expect(newHash).toMatch(/^\$2[aby]?\$/); // bcrypt
+      await expect(service.login('admin@forkcart.com', 'legacy-pw')).rejects.toMatchObject({
+        code: 'INVALID_CREDENTIALS',
+      });
     });
 
     it('throws INVALID_CREDENTIALS for non-existent user', async () => {

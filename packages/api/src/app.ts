@@ -163,7 +163,35 @@ export async function createApp(db: Database) {
 
   // Global middleware
   app.use('*', honoLogger());
-  app.use('*', secureHeaders({ crossOriginResourcePolicy: 'cross-origin' }));
+
+  /**
+   * RVS-030: Secure Headers with Content Security Policy
+   *
+   * This is a baseline CSP suitable for development and initial production.
+   * For stricter production environments, consider:
+   *   - Removing 'unsafe-inline' and 'unsafe-eval' from script-src (use nonces/hashes)
+   *   - Restricting connect-src to specific API domains
+   *   - Adding report-uri or report-to for CSP violation reporting
+   */
+  app.use(
+    '*',
+    secureHeaders({
+      crossOriginResourcePolicy: 'cross-origin',
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Next.js dev requires unsafe-eval
+        styleSrc: ["'self'", "'unsafe-inline'"], // CSS-in-JS libs often need unsafe-inline
+        imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
+        fontSrc: ["'self'", 'https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+        connectSrc: ["'self'", 'https:'],
+        frameSrc: ["'self'"], // Payment embeds may need specific domains
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        upgradeInsecureRequests: [],
+      },
+    }),
+  );
   app.use(
     '*',
     cors({

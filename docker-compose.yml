@@ -1,3 +1,15 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ForkCart Docker Compose Configuration
+#
+# SECURITY NOTE (RVS-029): All internal ports are bound to 127.0.0.1 to prevent
+# direct external access. This is CRITICAL for security:
+#   - Database: Never expose PostgreSQL to the internet directly
+#   - API: Should be accessed through a reverse proxy (Caddy, nginx, etc.)
+#   - Admin: Internal admin panel should not be publicly accessible
+#
+# For production, use a reverse proxy with HTTPS termination.
+# ─────────────────────────────────────────────────────────────────────────────
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -9,6 +21,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}
       POSTGRES_DB: ${POSTGRES_DB:-forkcart}
     ports:
+      # RVS-029: Bind to 127.0.0.1 only — never expose DB to the internet!
       - '127.0.0.1:5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -25,7 +38,8 @@ services:
     container_name: forkcart-api
     restart: unless-stopped
     ports:
-      - '4000:4000'
+      # RVS-029: Bind to localhost — use reverse proxy for public access
+      - '127.0.0.1:4000:4000'
     environment:
       # RVS-015: Database URL uses credentials from env vars
       DATABASE_URL: postgresql://${POSTGRES_USER:-forkcart}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-forkcart}
@@ -45,7 +59,8 @@ services:
     container_name: forkcart-admin
     restart: unless-stopped
     ports:
-      - '3001:3000'
+      # RVS-029: Bind to localhost — admin panel should never be publicly accessible without auth proxy
+      - '127.0.0.1:3001:3000'
     environment:
       NEXT_PUBLIC_API_URL: http://api:4000
     depends_on:
@@ -58,7 +73,9 @@ services:
     container_name: forkcart-storefront
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      # NOTE: Storefront is intentionally bound to 0.0.0.0 for direct public access,
+      # OR use 127.0.0.1 if behind a reverse proxy. Adjust as needed.
+      - '127.0.0.1:3000:3000'
     environment:
       NEXT_PUBLIC_STOREFRONT_API_URL: http://api:4000
     depends_on:

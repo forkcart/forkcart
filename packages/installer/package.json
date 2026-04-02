@@ -1,0 +1,29 @@
+{
+  "name": "@forkcart/installer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@forkcart/database": "workspace:*",
+    "@forkcart/shared": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "bcryptjs": "^3.0.3",
+    "drizzle-orm": "^0.38.0",
+    "hono": "^4.6.0",
+    "postgres": "^3.4.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
