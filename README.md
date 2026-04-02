@@ -31,6 +31,12 @@ The only open-source TypeScript e-commerce platform that ships **storefront + ad
 npx create-forkcart my-shop
 ```
 
+Or with a single script:
+
+```bash
+curl -fsSL https://forkcart.com/install.sh | bash
+```
+
 That’s it. The web installer handles database setup, admin account, and demo data.
 
 Your store runs on **one port**:
