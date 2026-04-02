@@ -53,8 +53,8 @@ function matchesPluginRoute(pathname: string, routes: string[]): string | null {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip static files, API routes, Next internals
-  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.includes('.')) {
+  // Skip static files, API routes, Next internals, admin panel
+  if (pathname.startsWith('/api/') || pathname.startsWith('/_next/') || pathname.startsWith('/admin') || pathname.includes('.')) {
     return NextResponse.next();
   }
 
@@ -121,5 +121,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon\\.ico).*)'],
+  matcher: ['/((?!api|admin|_next/static|_next/image|favicon\\.ico).*)'],
 };

@@ -5,12 +5,20 @@ const adminPort = process.env['ADMIN_PORT'] ?? '4201';
 const nextConfig: NextConfig = {
   transpilePackages: ['@forkcart/shared'],
   async rewrites() {
-    return [
-      {
-        source: '/admin/:path*',
-        destination: `http://127.0.0.1:${adminPort}/admin/:path*`,
-      },
-    ];
+    return {
+      beforeFiles: [
+        {
+          source: '/admin',
+          destination: `http://127.0.0.1:${adminPort}/admin`,
+        },
+        {
+          source: '/admin/:path*',
+          destination: `http://127.0.0.1:${adminPort}/admin/:path*`,
+        },
+      ],
+      afterFiles: [],
+      fallback: [],
+    };
   },
   images: {
     remotePatterns: [
