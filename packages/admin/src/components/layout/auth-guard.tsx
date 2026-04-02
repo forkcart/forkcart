@@ -10,7 +10,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isAuthenticated()) {
-      router.replace('/login');
+      window.location.href = '/admin/login';
     } else {
       setChecked(true);
     }
