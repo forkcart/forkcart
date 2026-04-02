@@ -4,29 +4,9 @@ import prompts from 'prompts';
 import kleur from 'kleur';
 import fs from 'fs-extra';
 import path from 'path';
-import { execSync } from 'child_process';
-import crypto from 'crypto';
+import { execSync, spawn } from 'child_process';
 
 const VERSION = '0.1.0';
-
-type DatabaseChoice = 'local' | 'docker' | 'supabase';
-type PackageManager = 'pnpm' | 'npm' | 'yarn';
-
-interface Options {
-  projectName: string;
-  database: DatabaseChoice;
-  supabaseUrl?: string;
-  demoData: boolean;
-  packageManager: PackageManager;
-}
-
-function generateSecret(length = 48): string {
-  return crypto.randomBytes(length).toString('base64url');
-}
-
-function generatePassword(length = 16): string {
-  return crypto.randomBytes(length).toString('base64url').slice(0, length);
-}
 
 function banner(): void {
   console.log();
@@ -44,22 +24,15 @@ function printHelp(): void {
   console.log();
 }
 
-function getDatabaseUrl(database: DatabaseChoice, supabaseUrl?: string): string {
-  switch (database) {
-    case 'local':
-    case 'docker':
-      return 'postgresql://forkcart:forkcart@localhost:5432/forkcart';
-    case 'supabase':
-      return supabaseUrl || '';
-  }
-}
-
-function getInstallCommand(pm: PackageManager): string {
-  return pm === 'yarn' ? 'yarn' : `${pm} install`;
-}
-
 function runCommand(cmd: string, cwd: string): void {
   execSync(cmd, { cwd, stdio: 'pipe' });
+}
+
+function detectPackageManager(): string {
+  const ua = process.env['npm_config_user_agent'] ?? '';
+  if (ua.startsWith('yarn')) return 'yarn';
+  if (ua.startsWith('pnpm')) return 'pnpm';
+  return 'pnpm'; // default to pnpm
 }
 
 async function main(): Promise<void> {
@@ -84,83 +57,31 @@ async function main(): Promise<void> {
     process.exit(1);
   };
 
-  const response = await prompts(
-    [
+  let projectName = initialName;
+
+  if (!projectName) {
+    const response = await prompts(
       {
-        type: initialName ? null : 'text',
+        type: 'text',
         name: 'projectName',
         message: 'Project name',
         initial: 'my-shop',
         validate: (value: string) =>
           /^[a-z0-9_-]+$/i.test(value) ? true : 'Only letters, numbers, hyphens, and underscores',
       },
-      {
-        type: 'select',
-        name: 'database',
-        message: 'Database',
-        choices: [
-          {
-            title: 'PostgreSQL (Docker)',
-            description: 'Spin up PostgreSQL in Docker automatically',
-            value: 'docker',
-          },
-          {
-            title: 'PostgreSQL (local)',
-            description: 'Use an existing local PostgreSQL instance',
-            value: 'local',
-          },
-          {
-            title: 'Supabase',
-            description: 'Connect to a Supabase project',
-            value: 'supabase',
-          },
-        ],
-        initial: 0,
-      },
-      {
-        type: (prev: DatabaseChoice) => (prev === 'supabase' ? 'text' : null),
-        name: 'supabaseUrl',
-        message: 'Supabase connection string',
-        validate: (value: string) =>
-          value.startsWith('postgresql://') ? true : 'Must be a valid PostgreSQL connection string',
-      },
-      {
-        type: 'confirm',
-        name: 'demoData',
-        message: 'Include demo data?',
-        initial: true,
-      },
-      {
-        type: 'select',
-        name: 'packageManager',
-        message: 'Package manager',
-        choices: [
-          { title: 'pnpm', value: 'pnpm' },
-          { title: 'npm', value: 'npm' },
-          { title: 'yarn', value: 'yarn' },
-        ],
-        initial: 0,
-      },
-    ],
-    { onCancel },
-  );
+      { onCancel },
+    );
+    projectName = response.projectName;
+  }
 
-  const options: Options = {
-    projectName: initialName || response.projectName,
-    database: response.database,
-    supabaseUrl: response.supabaseUrl,
-    demoData: response.demoData,
-    packageManager: response.packageManager,
-  };
-
-  const targetDir = path.resolve(process.cwd(), options.projectName);
+  const targetDir = path.resolve(process.cwd(), projectName!);
 
   if (await fs.pathExists(targetDir)) {
     const { overwrite } = await prompts(
       {
         type: 'confirm',
         name: 'overwrite',
-        message: `Directory ${kleur.yellow(options.projectName)} already exists. Overwrite?`,
+        message: `Directory ${kleur.yellow(projectName!)} already exists. Overwrite?`,
         initial: false,
       },
       { onCancel },
@@ -176,149 +97,70 @@ async function main(): Promise<void> {
 
   console.log();
 
-  // Step 1: Clone ForkCart
-  const spinner = (msg: string) => process.stdout.write(kleur.cyan(`  ⠋ ${msg}...`));
+  const spin = (msg: string) => process.stdout.write(kleur.cyan(`  ⠋ ${msg}...`));
   const done = (msg: string) => process.stdout.write(`\r${kleur.green(`  ✓ ${msg}    `)}\n`);
-  const fail = (msg: string, err: string) => {
-    process.stdout.write(`\r${kleur.red(`  ✖ ${msg}`)}\n`);
-    console.error(kleur.dim(`    ${err}`));
-  };
 
+  // Step 1: Clone
   try {
-    spinner('Cloning ForkCart');
+    spin('Downloading ForkCart');
     runCommand(
       `git clone --depth 1 https://github.com/forkcart/forkcart.git "${targetDir}"`,
       process.cwd(),
     );
     await fs.remove(path.join(targetDir, '.git'));
-    runCommand('git init', targetDir);
-    done('Cloned ForkCart');
+    done('Downloaded ForkCart');
   } catch {
-    // Fallback: create from template
-    done('Created project from template');
-    await fs.ensureDir(targetDir);
-
-    const templateDir = path.join(__dirname, '..', 'templates', 'default');
-    if (await fs.pathExists(templateDir)) {
-      await fs.copy(templateDir, targetDir);
-    }
+    console.log(kleur.red('\n  ✖ Could not download ForkCart. Check your internet connection.\n'));
+    process.exit(1);
   }
 
-  // Step 2: Write .env
+  // Step 2: Install dependencies
+  const pm = detectPackageManager();
+  const installCmd = pm === 'yarn' ? 'yarn' : `${pm} install`;
+
   try {
-    spinner('Configuring environment');
-    const dbUrl = getDatabaseUrl(options.database, options.supabaseUrl);
-    const envContent = [
-      `DATABASE_URL=${dbUrl}`,
-      `JWT_SECRET=${generateSecret()}`,
-      `ADMIN_EMAIL=admin@example.com`,
-      `ADMIN_PASSWORD=${generatePassword()}`,
-      `STOREFRONT_URL=http://localhost:3000`,
-      `API_URL=http://localhost:4000`,
-      `NEXT_PUBLIC_API_URL=http://localhost:4000`,
-    ].join('\n');
-
-    await fs.writeFile(path.join(targetDir, '.env'), envContent + '\n');
-    done('Configured environment');
-  } catch (err) {
-    fail('Configuring environment', String(err));
-  }
-
-  // Step 3: Write docker-compose.yml if Docker selected
-  if (options.database === 'docker') {
-    try {
-      spinner('Setting up Docker Compose');
-      const dockerCompose = `services:
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: forkcart
-      POSTGRES_USER: forkcart
-      POSTGRES_PASSWORD: forkcart
-    ports:
-      - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
-`;
-      await fs.writeFile(path.join(targetDir, 'docker-compose.yml'), dockerCompose);
-      done('Docker Compose configured');
-    } catch (err) {
-      fail('Setting up Docker Compose', String(err));
-    }
-  }
-
-  // Step 4: Install dependencies
-  try {
-    spinner('Installing dependencies');
-    runCommand(getInstallCommand(options.packageManager), targetDir);
+    spin('Installing dependencies');
+    runCommand(installCmd, targetDir);
     done('Installed dependencies');
   } catch {
     console.log(
+      kleur.dim(`\n  ⚠ Could not install dependencies. Run ${kleur.cyan(installCmd)} manually.\n`),
+    );
+  }
+
+  // Step 3: Launch web installer
+  console.log();
+  console.log(kleur.bold().green('  🚀 Launching setup wizard...'));
+  console.log();
+  console.log(`  Open ${kleur.underline().cyan('http://localhost:4200')} in your browser`);
+  console.log(kleur.dim('  The wizard will configure your database, create an admin account,'));
+  console.log(kleur.dim('  and start your store automatically.'));
+  console.log();
+
+  const child = spawn(pm, ['installer'], {
+    cwd: targetDir,
+    stdio: 'inherit',
+    shell: true,
+  });
+
+  child.on('error', () => {
+    console.log(
       kleur.dim(
-        `\n  ⚠ Could not install dependencies. Run ${kleur.cyan(getInstallCommand(options.packageManager))} manually.`,
+        `\n  ⚠ Could not start installer. Run ${kleur.cyan(`cd ${projectName} && ${pm} installer`)} manually.\n`,
       ),
     );
-  }
+  });
 
-  // Step 5: Database setup
-  if (options.database === 'docker') {
-    try {
-      spinner('Starting database');
-      runCommand('docker compose up -d', targetDir);
-      // Wait for PostgreSQL to be ready
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      done('Database started');
-    } catch {
-      console.log(kleur.dim('\n  ⚠ Could not start Docker. Run `docker compose up -d` manually.'));
+  child.on('exit', (code) => {
+    if (code === 0) {
+      console.log();
+      console.log(kleur.bold().green('  🎉 Your ForkCart store is running!'));
+      console.log();
+      console.log(`  ${kleur.bold('Store:')}  ${kleur.underline('http://localhost:4200')}`);
+      console.log(`  ${kleur.bold('Admin:')}  ${kleur.underline('http://localhost:4200/admin')}`);
+      console.log();
     }
-  }
-
-  // Step 6: Run migrations
-  try {
-    spinner('Running migrations');
-    runCommand(
-      `${options.packageManager}${options.packageManager === 'npm' ? ' run' : ''} db:migrate`,
-      targetDir,
-    );
-    done('Migrations complete');
-  } catch {
-    console.log(kleur.dim('\n  ⚠ Could not run migrations. Run them manually later.'));
-  }
-
-  // Step 7: Seed demo data
-  if (options.demoData) {
-    try {
-      spinner('Seeding demo data');
-      runCommand(
-        `${options.packageManager}${options.packageManager === 'npm' ? ' run' : ''} db:seed`,
-        targetDir,
-      );
-      done('Demo data seeded');
-    } catch {
-      console.log(kleur.dim('\n  ⚠ Could not seed demo data. Run it manually later.'));
-    }
-  }
-
-  // Done!
-  const pm = options.packageManager;
-  const devCmd = pm === 'npm' ? 'npm run dev' : `${pm} dev`;
-
-  console.log();
-  console.log(kleur.bold().green('  🎉 Your ForkCart store is ready!'));
-  console.log();
-  console.log(kleur.cyan(`  cd ${options.projectName}`));
-  if (options.database === 'docker') {
-    console.log(kleur.dim('  docker compose up -d') + kleur.dim('  # if not already running'));
-  }
-  console.log(kleur.cyan(`  ${devCmd}`));
-  console.log();
-  console.log(`  ${kleur.bold('Storefront:')}  ${kleur.underline('http://localhost:3000')}`);
-  console.log(`  ${kleur.bold('Admin:')}       ${kleur.underline('http://localhost:3001')}`);
-  console.log(`  ${kleur.bold('API:')}         ${kleur.underline('http://localhost:4000')}`);
-  console.log();
+  });
 }
 
 main().catch((err) => {
