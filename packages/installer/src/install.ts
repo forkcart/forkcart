@@ -204,9 +204,17 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     installStatus.currentStep++;
     updateStep('build', 'running');
 
+    // Pass all relevant env vars so Next.js rewrites work correctly
+    const buildEnv = {
+      ...process.env,
+      DATABASE_URL: connectionString,
+      ADMIN_PORT: String(config.shop.adminPort ?? 4201),
+      API_PORT: String(config.shop.apiPort ?? 4000),
+      STOREFRONT_PORT: String(config.shop.storefrontPort ?? 4200),
+    };
     execSync('pnpm build', {
       cwd: rootDir,
-      env: { ...process.env, DATABASE_URL: connectionString },
+      env: buildEnv,
       stdio: 'pipe',
       timeout: 600_000, // 10 min max
     });
