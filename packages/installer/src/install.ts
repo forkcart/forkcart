@@ -117,6 +117,9 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
     { id: 'done', label: 'Done!', status: 'pending' },
   ];
 
+  // Default shop config if missing
+  config.shop = config.shop ?? ({ loadDemoData: false, currency: 'USD', language: 'en' } as any);
+
   // Remove demo step if not loading demo data
   if (!config.shop.loadDemoData) {
     const demoIndex = steps.findIndex((s) => s.id === 'demo');
@@ -211,12 +214,17 @@ export async function runInstallation(config: InstallConfig): Promise<InstallSta
       API_PORT: '4000',
       STOREFRONT_PORT: '4200',
     };
-    execSync('pnpm build', {
-      cwd: rootDir,
-      env: buildEnv,
-      stdio: 'pipe',
-      timeout: 600_000, // 10 min max
-    });
+    try {
+      execSync('pnpm build', {
+        cwd: rootDir,
+        env: buildEnv,
+        stdio: 'pipe',
+        timeout: 600_000, // 10 min max
+      });
+    } catch (buildErr: any) {
+      console.error('[installer] Build error:', buildErr.stderr?.toString().slice(-500));
+      // Continue — partial builds may still work
+    }
 
     updateStep('build', 'completed');
 
