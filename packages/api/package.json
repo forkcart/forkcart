@@ -24,6 +24,7 @@
     "@hono/zod-openapi": "^0.18.0",
     "adm-zip": "^0.5.16",
     "archiver": "^7.0.1",
+    "dotenv": "^16.4.0",
     "drizzle-orm": "^0.38.0",
     "hono": "^4.6.0",
     "pino": "^9.5.0",

@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { serve } from '@hono/node-server';
 import { createLogger } from '@forkcart/core';
 import { createDatabase, runMigrations } from '@forkcart/database';
