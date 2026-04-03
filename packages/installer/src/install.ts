@@ -303,6 +303,9 @@ function generateEnvFile(connectionString: string, config: InstallConfig): strin
     '',
     '# Public API URL (empty = relative, proxied through storefront)',
     'NEXT_PUBLIC_API_URL=',
+    '',
+    '# Plugin Store Registry',
+    'PLUGIN_REGISTRY_URL=https://forkcart.com/api',
   );
 
   return lines.join('\n') + '\n';

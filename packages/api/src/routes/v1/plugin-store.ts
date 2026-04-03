@@ -81,7 +81,7 @@ export function createPluginStoreRoutes(
 
   // ─── Registry proxy helper ──────────────────────────────────────────────
 
-  const REGISTRY_URL = process.env['PLUGIN_REGISTRY_URL'];
+  const REGISTRY_URL = process.env['PLUGIN_REGISTRY_URL'] ?? 'https://forkcart.com/api';
 
   async function fetchRegistry(path: string, query?: string): Promise<Response | null> {
     if (!REGISTRY_URL) return null;
