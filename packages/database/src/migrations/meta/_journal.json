@@ -211,6 +211,20 @@
       "when": 1742385800000,
       "tag": "0029_plugin-developers",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1742390000000,
+      "tag": "0030_drop-plugin-store-tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1743724000000,
+      "tag": "0031_api-keys",
+      "breakpoints": true
     }
   ]
 }

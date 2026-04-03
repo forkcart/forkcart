@@ -2,7 +2,14 @@ import type { Context, Next } from 'hono';
 import type { AuthService, AuthUser } from '@forkcart/core';
 
 /** Paths that don't require authentication */
-const PUBLIC_PATHS = ['/health', '/api/v1/auth/login', '/uploads', '/sitemap.xml', '/robots.txt'];
+const PUBLIC_PATHS = [
+  '/health',
+  '/api/v1/auth/login',
+  '/uploads',
+  '/sitemap.xml',
+  '/robots.txt',
+  '/api/v1/openapi.json',
+];
 
 /** Extend Hono context with auth user */
 declare module 'hono' {
@@ -94,6 +101,11 @@ export function createAuthMiddleware(authService: AuthService) {
       return next();
     }
     if (path.startsWith('/api/v1/tax/settings') && c.req.method === 'GET') {
+      return next();
+    }
+
+    // Skip if already authenticated (e.g. by API key middleware)
+    if (c.get('user')) {
       return next();
     }
 

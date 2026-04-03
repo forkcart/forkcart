@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Loader2,
   Cookie,
+  Key,
 } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
@@ -88,6 +89,12 @@ const SETTINGS_SECTIONS = [
     label: 'Cookie Consent',
     description: 'GDPR-compliant cookie banner, categories, and consent logging',
     icon: Cookie,
+  },
+  {
+    href: '/settings/api-keys',
+    label: 'API Keys',
+    description: 'Manage API keys for programmatic access and agent integrations',
+    icon: Key,
   },
 ];
 
