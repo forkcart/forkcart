@@ -1,6 +1,6 @@
 {
   "name": "@forkcart/admin",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "dev": "next dev --port ${ADMIN_PORT:-4201}",
