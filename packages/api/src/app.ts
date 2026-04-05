@@ -134,6 +134,7 @@ import {
   createPublicCookieConsentRoutes,
 } from './routes/v1/cookie-consent';
 import { createSystemRoutes } from './routes/v1/system';
+import { createUpdateRoutes } from './routes/v1/updates';
 import { createApiKeyRoutes } from './routes/v1/api-keys';
 import { createOpenApiRoutes } from './routes/v1/openapi';
 import { createApiKeyMiddleware } from './middleware/api-key';
@@ -623,6 +624,7 @@ export async function createApp(db: Database) {
   v1.route('/store', createPluginStoreRoutes(pluginStoreService, pluginLoader as never));
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/system', createSystemRoutes());
+  v1.route('/system/updates', createUpdateRoutes());
   v1.route('/api-keys', createApiKeyRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));

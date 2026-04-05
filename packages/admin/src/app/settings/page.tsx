@@ -21,6 +21,7 @@ import {
   Loader2,
   Cookie,
   Key,
+  ArrowDownToLine,
 } from 'lucide-react';
 
 const SETTINGS_SECTIONS = [
@@ -95,6 +96,12 @@ const SETTINGS_SECTIONS = [
     label: 'API Keys',
     description: 'Manage API keys for programmatic access and agent integrations',
     icon: Key,
+  },
+  {
+    href: '/settings/updates',
+    label: 'System Updates',
+    description: 'Check for and install ForkCart updates',
+    icon: ArrowDownToLine,
   },
 ];
 
