@@ -135,6 +135,9 @@ import {
 } from './routes/v1/cookie-consent';
 import { createSystemRoutes } from './routes/v1/system';
 import { createUpdateRoutes } from './routes/v1/updates';
+import { createProductCSVRoutes } from './routes/v1/product-csv';
+import { createOrderCSVRoutes } from './routes/v1/order-csv';
+import { createDbBackupRoutes } from './routes/v1/db-backup';
 import { createApiKeyRoutes } from './routes/v1/api-keys';
 import { createOpenApiRoutes } from './routes/v1/openapi';
 import { createApiKeyMiddleware } from './middleware/api-key';
@@ -167,6 +170,12 @@ export async function createApp(db: Database) {
 
   // Global middleware
   app.use('*', honoLogger());
+
+  // ForkCart identification header
+  app.use('*', async (c, next) => {
+    await next();
+    c.header('X-Powered-By', 'ForkCart');
+  });
 
   /**
    * RVS-030: Secure Headers with Content Security Policy
@@ -588,6 +597,7 @@ export async function createApp(db: Database) {
   );
   v1.route('/categories', createCategoryRoutes(categoryService));
   v1.route('/orders', createOrderRoutes(orderService));
+  v1.route('/orders/csv', createOrderCSVRoutes(db));
   v1.route('/customers', createCustomerRoutes(customerService));
   v1.route('/media', createMediaRoutes(mediaService));
   v1.route('/products', createProductImageRoutes(mediaService));
@@ -618,6 +628,7 @@ export async function createApp(db: Database) {
   v1.route('/currencies', createCurrencyRoutes(currencyService));
   v1.route('/products', createProductTranslationRoutes(productTranslationService));
   v1.route('/products', createVariantRoutes(variantService));
+  v1.route('/products/csv', createProductCSVRoutes(db));
   v1.route('/attributes', createAttributeRoutes(attributeService));
   v1.route('/mobile-app', createMobileAppRoutes(mobileAppService));
   v1.route('/marketplace', createMarketplaceRoutes(marketplaceService));
@@ -625,6 +636,7 @@ export async function createApp(db: Database) {
   v1.route('/cookie-consent', createCookieConsentRoutes(db));
   v1.route('/system', createSystemRoutes());
   v1.route('/system/updates', createUpdateRoutes());
+  v1.route('/system/backups', createDbBackupRoutes());
   v1.route('/api-keys', createApiKeyRoutes(db));
   v1.route('/customer-auth', createCustomerAuthRoutes(customerAuthService));
   v1.route('/customer-auth', createPostPurchaseRegisterRoute(customerAuthService, orderRepository));

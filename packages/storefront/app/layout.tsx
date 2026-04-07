@@ -31,6 +31,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="icon" href="/favicon.png" />
 
+        {/* ForkCart generator tag — for PublicWWW/BuiltWith discoverability */}
+        <meta name="generator" content="ForkCart" />
+
         {/* API URL for storefront plugins */}
         <meta name="forkcart-api" content={API_URL} />
         <script
