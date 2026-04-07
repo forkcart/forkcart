@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { formatPrice } from '@forkcart/shared';
 import { apiClient } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
-import { Eye, ChevronLeft, ChevronRight, Clock } from 'lucide-react';
+import { Eye, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react';
 
 interface OrderCustomer {
   id: string;
@@ -290,9 +290,21 @@ export default function OrdersPage() {
 
   return (
     <div>
-      <div>
-        <h1 className="text-3xl font-bold">Orders</h1>
-        <p className="mt-1 text-muted-foreground">Manage customer orders</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Orders</h1>
+          <p className="mt-1 text-muted-foreground">Manage customer orders</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = '/api/v1/orders/csv';
+          }}
+          className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+        >
+          <Download className="h-4 w-4" />
+          Export CSV
+        </button>
       </div>
 
       {/* Status Filter */}

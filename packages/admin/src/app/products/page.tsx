@@ -4,7 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Search, ChevronUp, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  Search,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Upload,
+} from 'lucide-react';
 import { formatPrice } from '@forkcart/shared';
 import { apiClient } from '@/lib/api-client';
 import type { Product, Category } from '@forkcart/shared';
@@ -161,13 +170,60 @@ export default function ProductsPage() {
           </h1>
           <p className="mt-1 text-muted-foreground">Manage your product catalog</p>
         </div>
-        <Link
-          href="/products/new"
-          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Add Product
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = '/api/v1/products/csv';
+            }}
+            className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted"
+          >
+            <Download className="h-4 w-4" />
+            Export CSV
+          </button>
+          <label className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium transition hover:bg-muted cursor-pointer">
+            <Upload className="h-4 w-4" />
+            Import CSV
+            <input
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                try {
+                  const res = await fetch('/api/v1/products/csv', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include',
+                  });
+                  const json = await res.json();
+                  if (json.data) {
+                    const d = json.data;
+                    alert(
+                      `Import complete!\n\nCreated: ${d.created}\nUpdated: ${d.updated}\nSkipped: ${d.skipped}${d.errors?.length ? `\nErrors: ${d.errors.map((e: { row: number; message: string }) => `Row ${e.row}: ${e.message}`).join('\n')}` : ''}`,
+                    );
+                    window.location.reload();
+                  } else {
+                    alert(json.error?.message ?? 'Import failed');
+                  }
+                } catch {
+                  alert('Import failed — check the CSV format');
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <Link
+            href="/products/new"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            Add Product
+          </Link>
+        </div>
       </div>
 
       {/* Filters */}
