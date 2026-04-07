@@ -17,7 +17,12 @@ interface UpdateLogEntry {
 const STATUS_CONFIG = {
   success: { label: 'Success', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
   failed: { label: 'Failed', icon: XCircle, color: 'text-red-600', bg: 'bg-red-50' },
-  rolled_back: { label: 'Rolled Back', icon: RotateCcw, color: 'text-yellow-600', bg: 'bg-yellow-50' },
+  rolled_back: {
+    label: 'Rolled Back',
+    icon: RotateCcw,
+    color: 'text-yellow-600',
+    bg: 'bg-yellow-50',
+  },
 };
 
 export default function UpdateHistoryPage() {
@@ -63,7 +68,8 @@ export default function UpdateHistoryPage() {
               const config = STATUS_CONFIG[entry.status];
               const Icon = config.icon;
               const duration = Math.round(
-                (new Date(entry.completedAt).getTime() - new Date(entry.startedAt).getTime()) / 1000,
+                (new Date(entry.completedAt).getTime() - new Date(entry.startedAt).getTime()) /
+                  1000,
               );
 
               return (

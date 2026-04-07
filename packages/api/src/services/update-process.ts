@@ -174,9 +174,12 @@ function scheduleRestart(version: string): void {
     try {
       execSync('systemctl is-active forkcart-api', { stdio: 'pipe' });
       console.log('[update] Restarting via systemd...');
-      exec('systemctl restart forkcart-api forkcart-admin 2>/dev/null; systemctl restart forkcart 2>/dev/null', {
-        timeout: 30_000,
-      });
+      exec(
+        'systemctl restart forkcart-api forkcart-admin 2>/dev/null; systemctl restart forkcart 2>/dev/null',
+        {
+          timeout: 30_000,
+        },
+      );
       return;
     } catch {
       // not running under systemd

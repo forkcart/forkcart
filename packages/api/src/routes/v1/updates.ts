@@ -1,7 +1,12 @@
 import { Hono } from 'hono';
 import { requireRole } from '../../middleware/permissions';
 import { checkForUpdates } from '../../services/update-check';
-import { applyUpdate, getUpdateStatus, getUpdateLog, isUpdateRunning } from '../../services/update-process';
+import {
+  applyUpdate,
+  getUpdateStatus,
+  getUpdateLog,
+  isUpdateRunning,
+} from '../../services/update-process';
 
 export function createUpdateRoutes() {
   const router = new Hono();
