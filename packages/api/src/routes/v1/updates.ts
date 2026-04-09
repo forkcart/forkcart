@@ -45,9 +45,11 @@ export function createUpdateRoutes() {
     }
 
     // Start update in background — don't block the response
-    applyUpdate(updateInfo.latestVersion, updateInfo.downloadUrl).catch((err) => {
-      console.error('[update] Unhandled error in update process:', err);
-    });
+    applyUpdate(updateInfo.latestVersion, updateInfo.downloadUrl, updateInfo.releaseNotes).catch(
+      (err) => {
+        console.error('[update] Unhandled error in update process:', err);
+      },
+    );
 
     return c.json({
       data: {

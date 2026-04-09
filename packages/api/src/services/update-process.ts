@@ -2,8 +2,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, cpSync, rmSync } fr
 import { resolve } from 'node:path';
 import { exec, execSync } from 'node:child_process';
 import { pipeline } from 'node:stream/promises';
-import { createWriteStream } from 'node:fs';
+import { createWriteStream, createReadStream } from 'node:fs';
 import { Readable } from 'node:stream';
+import { createHash } from 'node:crypto';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,10 @@ export interface UpdateLogEntry {
   completedAt: string;
   error?: string;
 }
+
+// ─── Constants ──────────────────────────────────────────────────────────────
+
+const GITHUB_REPO = 'forkcart/forkcart';
 
 // ─── Paths ──────────────────────────────────────────────────────────────────
 
@@ -234,7 +239,7 @@ function run(cmd: string, label: string): void {
     execSync(cmd, {
       cwd: PROJECT_ROOT,
       stdio: 'pipe',
-      timeout: 600_000, // 10 min max per step
+      timeout: 1_200_000, // 20 min max per step
       env: { ...process.env, NODE_ENV: 'production' },
     });
   } catch (err) {
@@ -245,9 +250,39 @@ function run(cmd: string, label: string): void {
 
 // ─── Core update flow ───────────────────────────────────────────────────────
 
-export async function applyUpdate(targetVersion: string, downloadUrl: string): Promise<void> {
+/** Allowed download URL prefix — only official GitHub releases */
+const ALLOWED_URL_PREFIX = `https://github.com/${GITHUB_REPO}/`;
+
+/** Compute SHA256 hash of a file */
+async function computeSha256(filePath: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const hash = createHash('sha256');
+    const stream = createReadStream(filePath);
+    stream.on('data', (chunk) => hash.update(chunk));
+    stream.on('end', () => resolve(hash.digest('hex')));
+    stream.on('error', reject);
+  });
+}
+
+/** Try to extract a SHA256 hash from release notes (common pattern: `SHA256: <hex>`) */
+function extractSha256FromNotes(releaseNotes: string | null | undefined): string | null {
+  if (!releaseNotes) return null;
+  const match = releaseNotes.match(/SHA256:\s*([a-fA-F0-9]{64})/i);
+  return match?.[1] ? match[1].toLowerCase() : null;
+}
+
+export async function applyUpdate(
+  targetVersion: string,
+  downloadUrl: string,
+  releaseNotes?: string | null,
+): Promise<void> {
   if (currentStatus.active) {
     throw new Error('An update is already in progress');
+  }
+
+  // Validate download URL — only allow official GitHub releases
+  if (!downloadUrl.startsWith(ALLOWED_URL_PREFIX)) {
+    throw new Error(`Untrusted download URL rejected. URL must start with ${ALLOWED_URL_PREFIX}`);
   }
 
   const fromVersion = getCurrentVersion();
@@ -277,7 +312,23 @@ export async function applyUpdate(targetVersion: string, downloadUrl: string): P
       throw new Error(`Download failed: HTTP ${res.status}`);
     }
     await pipeline(Readable.fromWeb(res.body as never), createWriteStream(tarPath));
-    setStep('downloading', 'done', 'Downloaded');
+
+    // Compute SHA256 checksum of downloaded file
+    const downloadHash = await computeSha256(tarPath);
+    console.log(`[update] Downloaded v${targetVersion} — SHA256: ${downloadHash}`);
+
+    // If release notes contain a SHA256, verify it matches
+    const expectedHash = extractSha256FromNotes(releaseNotes);
+    if (expectedHash && expectedHash !== downloadHash) {
+      throw new Error(
+        `SHA256 checksum mismatch! Expected ${expectedHash} but got ${downloadHash}. Download may be corrupted or tampered with.`,
+      );
+    }
+    if (expectedHash) {
+      console.log(`[update] SHA256 checksum verified ✓`);
+    }
+
+    setStep('downloading', 'done', `Downloaded (SHA256: ${downloadHash.slice(0, 12)}…)`);
 
     // ── 2. Extract ──────────────────────────────────────────────────────────
     setStep('extracting', 'running', 'Extracting archive...');

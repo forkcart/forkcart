@@ -8,6 +8,7 @@ export interface UpdateCheckResult {
   releaseNotes: string | null;
   downloadUrl: string | null;
   publishedAt: string | null;
+  sha256: string | null;
 }
 
 interface CachedResult {
@@ -101,6 +102,7 @@ export async function checkForUpdates(force = false): Promise<UpdateCheckResult>
         releaseNotes: null,
         downloadUrl: null,
         publishedAt: null,
+        sha256: null,
       };
       return result;
     }
@@ -113,13 +115,22 @@ export async function checkForUpdates(force = false): Promise<UpdateCheckResult>
     };
 
     const latestVersion = release.tag_name.replace(/^v/, '');
+    // Try to extract SHA256 from release notes (common pattern: `SHA256: <hex>`)
+    const releaseBody = release.body ?? null;
+    let sha256: string | null = null;
+    if (releaseBody) {
+      const match = releaseBody.match(/SHA256:\s*([a-fA-F0-9]{64})/i);
+      if (match?.[1]) sha256 = match[1].toLowerCase();
+    }
+
     const result: UpdateCheckResult = {
       currentVersion,
       latestVersion,
       updateAvailable: isNewer(currentVersion, latestVersion),
-      releaseNotes: release.body ?? null,
+      releaseNotes: releaseBody,
       downloadUrl: `https://github.com/${GITHUB_REPO}/archive/refs/tags/${release.tag_name}.tar.gz`,
       publishedAt: release.published_at ?? null,
+      sha256,
     };
 
     saveCache(result);
@@ -133,6 +144,7 @@ export async function checkForUpdates(force = false): Promise<UpdateCheckResult>
       releaseNotes: null,
       downloadUrl: null,
       publishedAt: null,
+      sha256: null,
     };
   }
 }
