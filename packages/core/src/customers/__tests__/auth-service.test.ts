@@ -458,4 +458,116 @@ describe('CustomerAuthService', () => {
       // New tokens should still work, old ones shouldn't (tested in verifyToken)
     });
   });
+
+  // ── Edge cases ──────────────────────────────────────────────────────────
+
+  describe('edge cases', () => {
+    it('register rejects email with whitespace (validation before trim)', async () => {
+      const { service } = createService();
+
+      // The regex validation happens BEFORE trim, so leading/trailing spaces fail
+      await expect(
+        service.register({
+          email: '  USER@SHOP.COM  ',
+          password: 'secure-pw-123',
+          firstName: 'Jane',
+          lastName: 'Doe',
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('register lowercases email without spaces', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail).mockResolvedValue(null as never);
+      vi.mocked(repo.create).mockResolvedValue(fakeCustomer() as never);
+
+      await service.register({
+        email: 'USER@SHOP.COM',
+        password: 'secure-pw-123',
+        firstName: 'Jane',
+        lastName: 'Doe',
+      });
+
+      // Email should be lowercased (validated OK, no spaces)
+      expect(repo.create).toHaveBeenCalledWith(expect.objectContaining({ email: 'user@shop.com' }));
+    });
+
+    it('login lowercases email before lookup', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail).mockResolvedValue(null as never);
+
+      await expect(service.login('CUSTOMER@SHOP.COM', 'pw')).rejects.toThrow(UnauthorizedError);
+
+      expect(repo.findByEmail).toHaveBeenCalledWith('customer@shop.com');
+    });
+
+    it('updateProfile allows same email for same customer', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail).mockResolvedValue(fakeCustomer({ id: 'cust-1' }) as never);
+      vi.mocked(repo.update).mockResolvedValue(
+        fakeCustomer({ email: 'customer@shop.com' }) as never,
+      );
+
+      // Should NOT throw because the found email belongs to the same customer
+      const profile = await service.updateProfile('cust-1', { email: 'customer@shop.com' });
+      expect(profile.email).toBe('customer@shop.com');
+    });
+
+    it('changePassword throws NotFoundError for missing customer', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail_raw).mockResolvedValue(null as never);
+
+      await expect(service.changePassword('ghost', 'current', 'new-pw-123')).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+
+    it('forgotPassword normalizes email', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail).mockResolvedValue(null as never);
+
+      await service.forgotPassword('  USER@SHOP.COM  ');
+
+      expect(repo.findByEmail).toHaveBeenCalledWith('user@shop.com');
+    });
+
+    it('register returns token and expiry date', async () => {
+      const { service, repo } = createService();
+      vi.mocked(repo.findByEmail).mockResolvedValue(null as never);
+      vi.mocked(repo.create).mockResolvedValue(fakeCustomer() as never);
+
+      const result = await service.register({
+        email: 'new@shop.com',
+        password: 'secure-pw-123',
+        firstName: 'Jane',
+        lastName: 'Doe',
+      });
+
+      expect(result.token).toBeTruthy();
+      expect(result.expiresAt).toBeInstanceOf(Date);
+      // Token should expire in the future
+      expect(result.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('verifyToken succeeds for newly signed token after logout', async () => {
+      const { service } = createService();
+
+      // Logout first
+      await service.logout('cust-1');
+
+      // Wait a bit so the new token's iat > invalidatedAt
+      await new Promise((r) => setTimeout(r, 1100));
+
+      // Sign a NEW token (iat > invalidatedAt) — should work
+      const jwt = await import('jsonwebtoken');
+      const token = jwt.default.sign(
+        { sub: 'cust-1', email: 'a@b.com', type: 'customer' },
+        JWT_SECRET,
+        { expiresIn: '72h' },
+      );
+
+      const payload = service.verifyToken(token);
+      expect(payload.sub).toBe('cust-1');
+    });
+  });
 });
