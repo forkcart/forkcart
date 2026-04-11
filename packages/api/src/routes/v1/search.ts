@@ -34,7 +34,7 @@ const AnalyticsQuerySchema = z.object({
 });
 
 const ZeroResultsQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(50),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
   days: z.coerce.number().int().min(1).max(365).default(30),
 });
 

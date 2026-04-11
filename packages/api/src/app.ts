@@ -80,6 +80,7 @@ import {
 import { LogEmailProvider } from '@forkcart/core';
 
 import { errorHandler } from './middleware/error-handler';
+import { requestTimeout } from './middleware/timeout';
 import { createAuthMiddleware } from './middleware/auth';
 import { createAuthRoutes } from './routes/v1/auth';
 import { createProductRoutes } from './routes/v1/products';
@@ -170,6 +171,16 @@ export async function createApp(db: Database) {
 
   // Global middleware
   app.use('*', honoLogger());
+
+  // Response time tracking (early in chain to measure total duration)
+  app.use('*', async (c, next) => {
+    const start = Date.now();
+    await next();
+    c.header('X-Response-Time', `${Date.now() - start}ms`);
+  });
+
+  // Request timeout (30 seconds)
+  app.use('*', requestTimeout(30_000));
 
   // ForkCart identification header
   app.use('*', async (c, next) => {
@@ -699,8 +710,18 @@ export async function createApp(db: Database) {
   const publicSeoRoutes = createPublicSeoRoutes(seoService);
   app.route('/', publicSeoRoutes);
 
-  // 404 fallback
-  app.notFound((c) => c.json({ error: { code: 'NOT_FOUND', message: 'Route not found' } }, 404));
+  // 404 handler for unknown routes
+  app.notFound((c) => {
+    return c.json(
+      {
+        error: {
+          code: 'NOT_FOUND',
+          message: `Route ${c.req.method} ${c.req.path} not found`,
+        },
+      },
+      404,
+    );
+  });
 
   // ─── Scheduled exchange rate updates (every 6 hours) ────────────────────────
   const SIX_HOURS = 6 * 60 * 60 * 1000;

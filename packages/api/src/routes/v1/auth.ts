@@ -1,23 +1,23 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { AuthService } from '@forkcart/core';
 import { AuthError } from '@forkcart/core';
+
+const loginSchema = z.object({
+  email: z.string().email().max(255),
+  password: z.string().min(1).max(500),
+});
 
 export function createAuthRoutes(authService: AuthService) {
   const router = new Hono();
 
   /** POST /auth/login — Authenticate with email + password */
   router.post('/login', async (c) => {
-    const body = await c.req.json<{ email?: string; password?: string }>();
-
-    if (!body.email || !body.password) {
-      return c.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'Email and password are required' } },
-        400,
-      );
-    }
+    const body = await c.req.json();
+    const { email, password } = loginSchema.parse(body);
 
     try {
-      const result = await authService.login(body.email, body.password, {
+      const result = await authService.login(email, password, {
         ipAddress: c.req.header('x-forwarded-for') ?? c.req.header('x-real-ip'),
         userAgent: c.req.header('user-agent'),
       });

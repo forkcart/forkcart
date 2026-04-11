@@ -1,6 +1,11 @@
 import { Hono } from 'hono';
+import { z } from 'zod';
 import type { WishlistService, ProductService, CustomerAuthService } from '@forkcart/core';
 import { createCustomerAuthMiddleware } from '../../middleware/customer-auth';
+
+const productIdSchema = z.object({
+  productId: z.string().uuid('Invalid product ID format'),
+});
 
 /** Wishlist routes — customer auth required */
 export function createWishlistRoutes(
@@ -36,7 +41,7 @@ export function createWishlistRoutes(
   /** Toggle product in wishlist */
   router.post('/:productId', requireAuth, async (c) => {
     const customer = c.get('customer');
-    const productId = c.req.param('productId') as string;
+    const { productId } = productIdSchema.parse({ productId: c.req.param('productId') });
     const result = await wishlistService.toggle(customer.id, productId);
     return c.json({ data: result });
   });
@@ -44,7 +49,7 @@ export function createWishlistRoutes(
   /** Remove product from wishlist */
   router.delete('/:productId', requireAuth, async (c) => {
     const customer = c.get('customer');
-    const productId = c.req.param('productId') as string;
+    const { productId } = productIdSchema.parse({ productId: c.req.param('productId') });
     await wishlistService.toggle(customer.id, productId);
     return c.json({ data: { removed: true } });
   });
